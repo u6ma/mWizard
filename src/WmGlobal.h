@@ -50,7 +50,7 @@
 /* Version info */
 #define MWM_NAME "EMWM"
 #define MWM_VERSION  2
-#define MWM_REVISION 0
+#define MWM_REVISION 1
 
 #define NO_MESSAGE_CATALOG
 
