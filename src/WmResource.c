@@ -32,6 +32,7 @@
 #define MWM_NEED_IIMAGE
 #include "WmIBitmap.h"
 
+#include <stdlib.h>
 #include <stdio.h>
 
 #include <Xm/XmP.h>
@@ -83,7 +84,6 @@ void _WmATopShadowColorDefault (Widget widget, int offset, XrmValue *value);
 void _WmATopShadowPixmapDefault (Widget widget, int offset, XrmValue *value);
 void _WmFocusAutoRaiseDefault (Widget widget, int offset, XrmValue *value);
 void _WmMultiClickTimeDefault (Widget widget, int offset, XrmValue *value);
-void _WmRenderTableDefault (Widget widget, int offset, XrmValue *value);
 void ProcessWmResources (void);
 void ProcessGlobalScreenResources (void);
 void SetStdGlobalResourceValues (void);
@@ -2081,8 +2081,12 @@ XtResource wmAppearanceResources[] =
 	XmRRenderTable,
 	sizeof (XmRenderTable),
 	XtOffsetOf (AppearanceData, renderTable),
-	XtRCallProc,
-	(XtPointer)_WmRenderTableDefault
+	XtRString,
+#if (XmVersion > 2003) || defined(USE_XFT)
+	(XtPointer)"Sans"
+#else
+	(XtPointer)"Fixed"
+#endif
     },
 
     {
@@ -2433,34 +2437,6 @@ _WmMatteTSPDefault (Widget widget, int offset, XrmValue *value)
  *  value = default resource value and size
  * 
  *************************************<->***********************************/
-
-void _WmRenderTableDefault(Widget w, int offset, XrmValue *pv)
-{
-	static XmRenderTable renderTable;
-	XmRendition rendition;
-	Arg args[5];
-	Cardinal n = 0;
-
-	XtSetArg(args[n], XmNfont, XmAS_IS); n++;
-	
-	#ifdef USE_XFT
-	/* Since UTF-8 is required for EWMH title text rendering,
-	 * set up a generic Xft font by default */
-	XtSetArg(args[n], XmNfontType, XmFONT_IS_XFT); n++;
-	XtSetArg(args[n], XmNfontName, "Sans"); n++;
-	XtSetArg(args[n], XmNfontSize, 9); n++;
-	#else /* !USE_XFT */
-	XtSetArg(args[n], XmNfontType, XmFONT_IS_FONT); n++;
-	XtSetArg(args[n], XmNfontName, "fixed"); n++;
-	#endif /* USE_XFT */
-
-	rendition = XmRenditionCreate(w, XmFONTLIST_DEFAULT_TAG, args, n);
-	renderTable = XmRenderTableAddRenditions(
-		NULL, &rendition, 1, XmMERGE_NEW);
-
-	pv->addr = (XPointer) &renderTable;
-	pv->size = sizeof(XmRenderTable);
-}
 
 void 
 _WmBackgroundDefault (Widget widget, int offset, XrmValue *value)
@@ -4205,16 +4181,55 @@ void
 MakeAppearanceResources (WmScreenData *pSD, AppearanceData *pAData, Boolean makeActiveResources)
 {
     Pixel foreground;
-	int fontHeight;
-	int fontAscent;
-	int fontDescent;
+	int fontHeight = 0;
 
-	XmRenderTableGetDefaultFontExtents(pAData->renderTable,
-		&fontHeight,&fontAscent,&fontDescent);
+	if(pAData->renderTable) {
+		XmRenderTableGetDefaultFontExtents(
+			pAData->renderTable, &fontHeight, NULL, NULL);
+	}
+
+	if(!fontHeight) {
+		XmRendition rendition;
+		Arg args[5];
+		Cardinal n = 0;
+
+		Warning("Title-bar render table contains "
+			"no valid font information; using fallback font.");
+		
+		XtSetArg(args[n], XmNfont, XmAS_IS); n++;
+
+		#if (XmVersion > 2003) || defined(USE_XFT)
+		/* Since UTF-8 is required for EWMH title text rendering,
+		* set up a generic Xft font by default */
+		XtSetArg(args[n], XmNfontType, XmFONT_IS_XFT); n++;
+		XtSetArg(args[n], XmNfontName, "Sans"); n++;
+		XtSetArg(args[n], XmNfontSize, 12); n++;
+		#else
+		XtSetArg(args[n], XmNfontType, XmFONT_IS_FONT); n++;
+		XtSetArg(args[n], XmNfontName, "fixed"); n++;
+		#endif /* (XmVersion > 2003) || defined(USE_XFT) */
+
+		rendition = XmRenditionCreate(wmGD.topLevelW,
+			XmFONTLIST_DEFAULT_TAG, args, n);
+		pAData->renderTable = XmRenderTableAddRenditions(
+			NULL, &rendition, 1, XmMERGE_NEW);
 	
+		if(pAData->renderTable) {
+			XmRenderTableGetDefaultFontExtents(
+				pAData->renderTable, &fontHeight, NULL, NULL);
+		}
+
+		if(!fontHeight) {
+			Warning("Failed to create font.");
+			exit(WM_ERROR_EXIT_VALUE);
+		}
+	}
+
 	pAData->fontHeight = fontHeight;
 	pAData->titleHeight = fontHeight + WM_TITLE_BAR_PADDING;
-    /*
+
+    
+	/*
      * Make standard (inactive) appearance resources.
      */
 
