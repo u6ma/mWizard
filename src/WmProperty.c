@@ -54,6 +54,7 @@ String WmXmStringToString(XmString xmString); /* In WmIconBox.c */
 
 static SizeHints sizeHints;
 
+#define CLAMP_SIZE(s) (((s) > BIGSIZE) ? BIGSIZE : (s))
 
 
 /*************************************<->*************************************
@@ -128,17 +129,16 @@ GetNormalHints(
 	sizeHints.y = property->y;
 	sizeHints.width = property->width;
 	sizeHints.height = property->height;
-	sizeHints.min_width = property->minWidth;
-	sizeHints.min_height = property->minHeight;
-	sizeHints.max_width = property->maxWidth;
-	sizeHints.max_height = property->maxHeight;
-	sizeHints.width_inc = property->widthInc;
-	sizeHints.height_inc = property->heightInc;
-	sizeHints.min_aspect.x = (int)property->minAspectX;
-	sizeHints.min_aspect.y = (int)property->minAspectY;
-	sizeHints.max_aspect.x = (int)property->maxAspectX;
-	sizeHints.max_aspect.y = (int)property->maxAspectY;
-
+	sizeHints.min_width = CLAMP_SIZE(property->minWidth);
+	sizeHints.min_height = CLAMP_SIZE(property->minHeight);
+	sizeHints.max_width = CLAMP_SIZE(property->maxWidth);
+	sizeHints.max_height = CLAMP_SIZE(property->maxHeight);
+	sizeHints.width_inc = CLAMP_SIZE(property->widthInc);
+	sizeHints.height_inc = CLAMP_SIZE(property->heightInc);
+	sizeHints.min_aspect.x = CLAMP_SIZE((int)property->minAspectX);
+	sizeHints.min_aspect.y = CLAMP_SIZE((int)property->minAspectY);
+	sizeHints.max_aspect.x = CLAMP_SIZE((int)property->maxAspectX);
+	sizeHints.max_aspect.y = CLAMP_SIZE((int)property->maxAspectY);
 
 	if (nitems == (PROP_SIZE_HINTS_ELEMENTS - 3))
 	{
@@ -155,12 +155,11 @@ GetNormalHints(
 	     */
 
 	    sizeHints.icccVersion = ICCC_CURRENT;
-	    sizeHints.base_width = property->baseWidth;
-	    sizeHints.base_height = property->baseHeight;
+	    sizeHints.base_width = CLAMP_SIZE(property->baseWidth);
+	    sizeHints.base_height = CLAMP_SIZE(property->baseHeight);
 	    sizeHints.win_gravity = property->winGravity;
 	}
     }
-
 
     /*
      * Free the property data buffer:
