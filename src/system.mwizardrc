@@ -14,8 +14,14 @@ Menu DefaultRootMenu
 	"Next Workspace" f.next_workspace
 	"Prev. Workspace" f.prev_workspace
 	 no-label		f.separator
+	"Lock Screen"	f.exec "i3lock -c 000000"
+	 no-label		f.separator
 	"Restart..."	f.restart
-	"Quit..."       f.quit
+	"Log Out..."	f.logout
+	 no-label		f.separator
+	"Suspend"		f.suspend
+	"Reboot..."		f.reboot
+	"Shut Down..."	f.shutdown
 }
 
 ! Window menu
@@ -75,3 +81,20 @@ Buttons PointerButtonBindings
 	<Btn1Down>	window		f.raise
 	Alt<Btn1Down>	window|icon	f.lower
 }
+
+! Window manager behaviour. Everything below is read from this file rather
+! than the X resource database; see doc/CONFIGURATION.md for the full list.
+!
+! Settings
+! {
+!     ! Commands run by f.shutdown, f.reboot and f.suspend. Point these at
+!     ! whatever your system uses; leave one empty to disable its function.
+!     shutdownCommand   "systemctl poweroff"
+!     rebootCommand     "systemctl reboot"
+!     suspendCommand    "systemctl suspend"
+!
+!     ! Run lockCommand after this many idle minutes. 0 disables the timer.
+!     ! Locking is left to a program of your choosing; mWizard only runs it.
+!     lockCommand       "i3lock -c 000000"
+!     lockTimeout       10
+! }

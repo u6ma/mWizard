@@ -49,7 +49,7 @@
 #include "WmWinInfo.h"
 #include "WmWinList.h"
 #include "WmWinState.h"
-#include "WmXSMP.h"
+#include "WmSession.h"
 #include "WmKeyFocus.h"
 #include "WmEwmh.h"
 

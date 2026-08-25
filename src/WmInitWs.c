@@ -68,7 +68,7 @@
 #include "WmCDecor.h"
 #include "stdio.h"
 #include "WmResParse.h"
-#include "WmXSMP.h"
+#include "WmSession.h"
 #include "WmXmP.h"
 #include "WmXinerama.h"
 #include "WmEwmh.h"
@@ -476,9 +476,6 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
     XtAddEventHandler(wmGD.topLevelW, NoEventMask, True,
 			MappingEventHandler, NULL);
 
-    /* Add callbacks used for communication with Session Manager. */
-    AddSMCallbacks ();
-
     /* allocate namespace for screens */
     InitScreenNames();
     
@@ -722,15 +719,6 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
       wmGD.xa_MWM_WM_REQUEST = atoms[XA_MWM_WM_REQUEST];
     }
 
-    /* Initialize properties used in session management. */
-    wmGD.xa_SM_CLIENT_ID =
-      XmInternAtom (DISPLAY, _XA_MWM_SM_CLIENT_ID, False);
-    wmGD.xa_WMSAVE_HINT =
-      XmInternAtom (DISPLAY, _XA_MWM_WMSAVE_HINT, False);
-
-    /* Load client resource database. */
-    wmGD.clientResourceDB = LoadClientResourceDB();
-
     /*
      * Make the window manager workspace window.
      * Setup the _MOTIF_WM_INFO property on the root window.
@@ -909,6 +897,7 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
     
 	InitKeyboardFocus();
 	InitWmDisplayEnv();
+	InitIdleLock();
 	
 	ShowWaitState (FALSE);
 
@@ -1010,9 +999,6 @@ void InitWmScreen (WmScreenData *pSD, int sNum)
     pSD->workspaceList = NULL;
     pSD->numWorkspaces = 0;
     pSD->numWsDataAllocated = 0;
-    pSD->pSessionItems = NULL;
-    pSD->totalSessionItems = 0;
-    pSD->remainingSessionItems = 0;
 
     pSD->bMarqueeSelectionInitialized = False;
     pSD->woN = (Window) 0L;

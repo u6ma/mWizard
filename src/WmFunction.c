@@ -61,7 +61,7 @@
 #include "WmWinInfo.h"
 #include "WmWinList.h"
 #include "WmWinState.h"
-#include "WmXSMP.h"
+#include "WmSession.h"
 #include "WmEwmh.h"
 #include "WmXmP.h"
 
@@ -820,92 +820,13 @@ Boolean F_Focus_Color (String args, ClientData *pCD, XEvent *event)
 
 Boolean F_Exec (String args, ClientData *pCD, XEvent *event)
 {
-    int   pid;
-    char *shell;
-    char *shellname;
-
-
-    /* make sure the f.exec command runs on the right display. */
-    if (wmGD.pActiveSD->displayString)
-	{
-		putenv(wmGD.pActiveSD->displayString);
-	}
-    
     /*
-     * Fork a process to exec a shell to run the specified command:
+     * The fork/exec body lives in WmSession.c so that the session functions
+     * and the idle lock timer run commands exactly the same way this does.
      */
-    if ((pid = vfork ()) == 0)
-    {
-
-	setsid();
-
-	/*
-	 * Clean up window manager resources.
-	 * The X file descriptor should be automatically closed.
-	 */
-
-	/*
-	 * Fix up signal handling.
-	 */
-	RestoreDefaultSignalHandlers ();
-
-	/*
-	 * Exec the command using $WMSHELL if set or 
-	 * $SHELL if set and $MWMSHELL not set or sh.
-	 */
-
-        if (((shell = getenv ("WMSHELL")) != NULL) ||
-	    ((shell = getenv ("SHELL")) != NULL))
-
-	{
-	    shellname = strrchr (shell, '/');
-	    if (shellname == NULL)
-	    {
-		/*
-		If the shell pathname obtained from SHELL or WMSHELL does not
-		have a "/" in the path and if the user expects this shell to be
-		obtained using the PATH variable rather than the current
-		directory, then we must call execlp and not execl
-		*/
-		shellname = shell;
-		execlp (shell, shellname, "-c", args, NULL);
-	    }
-	    else
-	    {
-		shellname++;
-		execl (shell, shellname, "-c", args, NULL);
-	    }
-	}
-
-	/*
-	 * There is no SHELL environment variable or the first execl failed.
-	 * Try /bin/sh .
-	 */
-     execl ("/bin/sh", "sh", "-c", args, NULL);
-
-	/*
-	 * Error - command could not be exec'ed.
-	 */
-
-	_exit (127);
-    }
-
-    else if (pid == -1) return(True);
-
-    /*
-     * Don't need to wait because WSM sets SIGCLD handler
-     */
-
-    /*
-     * Restore original DISPLAY environment variable value
-     * so a restart will start on the same screen
-     */
-
-    if(wmGD.pActiveSD->displayString &&
-       wmGD.displayString) putenv(wmGD.displayString);
+    SpawnCommand (args);
 
     return True;
-
 
 } /* END OF FUNCTION F_Exec */
 
@@ -987,7 +908,6 @@ void Do_Quit_Mwm (Boolean diedOnRestart)
 	    }
 	}
 
-	    ResignFromSM();
         XSync (DISPLAY, False);
         XCloseDisplay (DISPLAY);
     }
@@ -2742,7 +2662,6 @@ void RestartWm (long startupFlags)
 	
     }
     
-    ResignFromSM();
 
     /*
      * This fixes restart problem when going from explicit focus to

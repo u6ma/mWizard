@@ -51,7 +51,7 @@
 #include "WmResParse.h"
 #include "WmIconBox.h"
 #include "WmWrkspace.h"
-#include "WmXSMP.h"
+#include "WmSession.h"
 
 /*
  * Function Declarations:
@@ -793,6 +793,56 @@ XtResource wmGlobalResources[] =
     },
 
     {
+	WmNshutdownCommand,
+	WmCShutdownCommand,
+	XtRString,
+	sizeof (String),
+	XtOffsetOf(WmGlobalData, shutdownCommand),
+	XtRString,
+	(XtPointer)"systemctl poweroff"
+    },
+
+    {
+	WmNrebootCommand,
+	WmCRebootCommand,
+	XtRString,
+	sizeof (String),
+	XtOffsetOf(WmGlobalData, rebootCommand),
+	XtRString,
+	(XtPointer)"systemctl reboot"
+    },
+
+    {
+	WmNsuspendCommand,
+	WmCSuspendCommand,
+	XtRString,
+	sizeof (String),
+	XtOffsetOf(WmGlobalData, suspendCommand),
+	XtRString,
+	(XtPointer)"systemctl suspend"
+    },
+
+    {
+	WmNlockCommand,
+	WmCLockCommand,
+	XtRString,
+	sizeof (String),
+	XtOffsetOf(WmGlobalData, lockCommand),
+	XtRString,
+	(XtPointer)NULL
+    },
+
+    {
+	WmNlockTimeout,
+	WmCLockTimeout,
+	XtRInt,
+	sizeof (int),
+	XtOffsetOf(WmGlobalData, lockTimeout),
+	XtRImmediate,
+	(XtPointer)0
+    },
+
+    {
 	WmNraiseKeyFocus,
 	WmCRaiseKeyFocus,
 	XtRBoolean,
@@ -819,16 +869,6 @@ XtResource wmGlobalResources[] =
         XtOffsetOf(WmGlobalData, refreshByClearing),
 	XtRImmediate,
 	(XtPointer)True
-    },
-
-    {
-	WmNsessionClientDB,
-	WmCSessionClientDB,
-	XtRString,
-	sizeof(String),
-	XtOffsetOf(WmGlobalData, sessionClientDB),
-	XtRImmediate,
-	(XtPointer)NULL
     },
 
     {
@@ -1661,16 +1701,6 @@ XtResource wmClientResources[] =
 	XtOffsetOf (ClientData, iconImageTopShadowPStr),
 	XtRCallProc,
 	(XtPointer)_WmIconImageTSPDefault
-    },
-
-    {
-	WmNignoreWMSaveHints,
-	WmCIgnoreWMSaveHints,
-	XtRBoolean,
-	sizeof (Boolean),
-	XtOffsetOf (ClientData, ignoreWMSaveHints),
-	XtRImmediate,
-	(XtPointer)True
     },
 
     {
@@ -5182,7 +5212,6 @@ SetStdClientResourceValues (ClientData *pCD)
     pCD->focusAutoRaise = True;
     pCD->systemMenu = builtinSystemMenuName;
     pCD->usePPosition = USE_PPOSITION_NONZERO;
-    pCD->ignoreWMSaveHints = True;
 
 } /* END OF FUNCTION SetStdClientResourceValues */
 

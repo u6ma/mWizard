@@ -1,8 +1,13 @@
 # Common Makefile part, included in every platform scpecific Makefile
 
-SYSLIBS =  -lm -lXm -lXt -lXext -lXrandr -lXinerama -lX11
+# -lXss (libXScrnSaver) is needed only by the idle lock timer. Drop it here
+# together with -DIDLE_LOCK below to build without that feature; nothing else
+# in mWizard uses it.
+SYSLIBS =  -lm -lXm -lXt -lXext -lXrandr -lXinerama -lXss -lX11
 
-DEFINES = -DUNMAP_ON_RESTART -DNO_OL_COMPAT -DRCDIR='"$(RCDIR)"'
+# IDLE_LOCK enables the lockTimeout idle lock timer, which reads the X idle
+# counter through the MIT-SCREEN-SAVER extension and therefore needs -lXss.
+DEFINES = -DUNMAP_ON_RESTART -DNO_OL_COMPAT -DIDLE_LOCK -DRCDIR='"$(RCDIR)"'
 
 CFLAGS += $(DEFINES)
 
@@ -11,7 +16,7 @@ mwm_objs = \
 	WmEvent.o WmFeedback.o WmFunction.o	WmGraphics.o WmIDecor.o WmIPlace.o \
 	WmIconBox.o WmKeyFocus.o WmMain.o WmManage.o WmProperty.o WmResCvt.o\
 	WmResParse.o WmResource.o WmSignal.o WmWinConf.o WmWinInfo.o WmWinList.o \
-	WmWinState.o WmXSMP.o WmImage.o WmInitWs.o WmMenu.o	WmProtocol.o \
+	WmWinState.o WmSession.o WmImage.o WmInitWs.o WmMenu.o	WmProtocol.o \
 	WmPresence.o WmWrkspace.o WmXinerama.o WmEwmh.o WmRequest.o
 
 mwizard: $(mwm_objs)

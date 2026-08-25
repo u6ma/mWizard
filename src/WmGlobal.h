@@ -161,6 +161,10 @@ extern Pixel		FPselectcolor;
 #define CUSTOM_BEHAVIOR_ACTION		1
 #define RESTART_ACTION		2
 #define QUIT_MWM_ACTION		3
+#define REBOOT_ACTION		4
+#define SHUTDOWN_ACTION		5
+#define SUSPEND_ACTION		6
+#define NUM_CONFIRM_ACTIONS	7
 
 /* icon frame shadow widths */
 #define ICON_EXTERNAL_SHADOW_WIDTH	(wmGD.iconExternalShadowWidth)
@@ -622,37 +626,6 @@ typedef struct _WsPresenceData *PtrWsPresenceData;
 
 /*************************************<->*************************************
  *
- *  Session save/restore support data structures
- *
- *  Description:
- *  -----------
- *
- *************************************<->***********************************/
-
-typedef struct _WmSessionItem
-{
-    Boolean                processed;
-    int                    clientState;
-    String                 workspaces;
-    String                 clientMachine;
-    String                 command;
-    int                    commandArgc;
-    char                   **commandArgv;
-    struct _SessionGeom    *sessionGeom;
-} WmSessionItem;
-
-typedef struct _SessionGeom
-{
-    int          flags;
-    int          clientX;
-    int          clientY;
-    int          clientWidth;
-    int          clientHeight;
-} SessionGeom;
-
-
-/*************************************<->*************************************
- *
  *  Menu specification data structures ...
  *
  *
@@ -1067,7 +1040,7 @@ typedef struct _WmScreenData
     Window	rootWindow;
     Widget	screenTopLevelW;
     Widget	screenTopLevelW1;       /* for internal WM components */
-    Widget      confirmboxW[4];
+    Widget      confirmboxW[NUM_CONFIRM_ACTIONS];
     WsPresenceData	presence;	/* workspace presence dialog*/
     Window	wmWorkspaceWin;		/* holds wm properties */
     Window	feedbackWin;
@@ -1203,9 +1176,6 @@ typedef struct _WmScreenData
     ClientListEntry 	*lastClient;
 
     /* Session data for clients */
-    struct _WmSessionItem     *pSessionItems;
-    int                        totalSessionItems;
-    int                        remainingSessionItems;
 
 
     /* workspace list for this screen */
@@ -1420,7 +1390,6 @@ typedef struct _ClientData
     Pixel	iconImageTopShadowColor;	/* resource */
     String	iconImageTopShadowPStr;		/* resource */
     Pixmap	iconImageTopShadowPixmap;
-    Boolean	ignoreWMSaveHints;		/* resource */
     int		internalBevel;			/* resource */
     Pixel	matteBackground;		/* resource */
     Pixel	matteBottomShadowColor;		/* resource */
@@ -1432,12 +1401,10 @@ typedef struct _ClientData
     Pixmap	matteTopShadowPixmap;
     int		matteWidth;			/* resource */
     WHSize	maximumClientSize;		/* resource */
-    String	smClientID;			/* SM_CLIENT_ID */
     String	systemMenu;			/* resource */
     MenuItem    *mwmMenuItems;			/* custom menu items or NULL */
     MenuSpec	*systemMenuSpec;
     Boolean	useClientIcon;			/* resource */
-    int		wmSaveHintFlags;		/* WMSAVE_HINT */
 	String  overrideGeometry;
 	String  occupyWorkspaces;
 
@@ -1583,12 +1550,6 @@ typedef struct _ClientData *PtrClientData;
 #define ICON_BOX                        (1L << 11)  /* one of our icon boxes */
 #define CONFIRM_BOX                     (1L << 12)  /* a confirmation box */
 
-#define SM_LAUNCHED                     (1L << 17) /* launched by session manager */
-#define SM_X                     	(1L << 18) /* X from DB/dtsession */
-#define SM_Y                     	(1L << 19) /* Y from DB/dtsession */
-#define SM_WIDTH                     	(1L << 20) /* width fm DB */
-#define SM_HEIGHT                    	(1L << 21) /* height fm DB */
-#define SM_CLIENT_STATE                	(1L << 22) /* clientState fm DB */
 #define SM_ICON_X                       (1L << 23) /* icon X from DB */
 #define SM_ICON_Y                       (1L << 24) /* icon Y from DB */
 
@@ -1757,9 +1718,7 @@ typedef struct _WmGlobalData
     Window	systemModalWindow;
 
     /* Resource database used to restore client geometries, etc. */
-    XrmDatabase clientResourceDB;
     char	*dbFileName;
-    String	sessionClientDB;		/* resource */
 
     /* atoms used in inter-client communication: */
 
@@ -1778,8 +1737,6 @@ typedef struct _WmGlobalData
     Atom	xa_MWM_CLIENT_LIST;
     Atom	xa_MOTIF_BINDINGS;
     Atom	xa_COMPOUND_TEXT;
-    Atom	xa_SM_CLIENT_ID;
-    Atom	xa_WMSAVE_HINT;
     Atom	xa_MWM_WM_REQUEST;
 
 
@@ -1838,6 +1795,11 @@ typedef struct _WmGlobalData
     Boolean	passSelectButton;		/* resource */
     Boolean	positionOnScreen;		/* resource */
     int		quitTimeout;			/* resource */
+    String	shutdownCommand;		/* resource */
+    String	rebootCommand;			/* resource */
+    String	suspendCommand;			/* resource */
+    String	lockCommand;			/* resource */
+    int		lockTimeout;			/* resource, minutes; 0 disables */
     Boolean     raiseKeyFocus;                  /* resource */
     Boolean     multiScreen;                  	/* resource */
     String	screenList;			/* resource */

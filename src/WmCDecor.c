@@ -27,7 +27,7 @@
  */
 
 #include "WmGlobal.h"
-#include "WmXSMP.h"
+#include "WmSession.h"
 
 
 #include <X11/cursorfont.h>

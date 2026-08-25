@@ -780,14 +780,6 @@ void HandleCPropertyNotify (ClientData *pCD, XPropertyEvent *propertyEvent)
 		    ProcessMwmMessages (pCD);
 		}
 	    }
-	    else if (propertyEvent->atom == wmGD.xa_SM_CLIENT_ID)
-	    {
-		ProcessSmClientID(pCD);
-	    }
-	    else if (propertyEvent->atom == wmGD.xa_WMSAVE_HINT)
-	    {
-		ProcessWmSaveHint(pCD);
-	    }
 	    else if (propertyEvent->atom == wmGD.xa_WM_COLORMAP_WINDOWS)
 	    {
 		if (propertyEvent->state == PropertyNewValue)

@@ -78,7 +78,7 @@
 #include "WmError.h"
 #include "WmFunction.h"
 #include "WmImage.h"
-#include "WmXSMP.h"
+#include "WmSession.h"
 
 #ifdef MOTIF_ONE_DOT_ONE
 extern char   *getenv ();
@@ -319,6 +319,11 @@ FunctionTableEntry functionTable[] = {
 			MWM_FUNC_CLOSE,
 			F_Kill,
 			(FunctionTableParseProcT)ParseWmFuncNoArg},
+    {"f.logout",	0,
+			CRS_ANY,
+			0,
+			F_Logout,
+			(FunctionTableParseProcT)ParseWmFuncNoArg},
     {"f.lower",		F_SUBCONTEXT_IB_IICON|F_SUBCONTEXT_IB_WICON,
 			CRS_ANY,
 			0,
@@ -444,6 +449,11 @@ FunctionTableEntry functionTable[] = {
 			0,
 			F_Raise_Lower,
 			(FunctionTableParseProcT)ParseWmFuncNoArg},
+    {"f.reboot",	0,
+			CRS_ANY,
+			0,
+			F_Reboot,
+			(FunctionTableParseProcT)ParseWmFuncNoArg},
     {"f.refresh",	0,
 			CRS_ANY,
 			0,
@@ -506,6 +516,16 @@ FunctionTableEntry functionTable[] = {
 			0,
 			F_Set_Context,
 			(FunctionTableParseProcT)ParseWmFuncNbrArg},
+    {"f.shutdown",	0,
+			CRS_ANY,
+			0,
+			F_Shutdown,
+			(FunctionTableParseProcT)ParseWmFuncNoArg},
+    {"f.suspend",	0,
+			CRS_ANY,
+			0,
+			F_Suspend,
+			(FunctionTableParseProcT)ParseWmFuncNoArg},
     {"f.title",		0,
 			CRS_MENU,
 			0,
@@ -700,473 +720,6 @@ GetNopIndex (int tableSize, int *nopIndex)
 
 
 
-/*************************************<->*************************************
- *
- *  FindSessionMatch(commandArgc, commandArgv, pCD, pSD, pWorkSpaceList,
- *                      clientMachine)
- *
- *  Description:
- *  -----------
- *  Try to find a match for this client in the session hints.
- *  Set up client-session data.
- *
- *
- *  Inputs:
- *  ------
- *  commandArgc    -  argument count
- *  commandArgv    -  WM_COMMAND argument vector
- *  pCD            -  pointer to client data
- *  pSD            -  pointer to screen data
- *  pWorkspaceList -  pointer to a list of workspaces (to be returned)
- *  clientMachine  -  string for -host option in session hints
- *
- *  Outputs:
- *  -------
- *  *pCD            -  client data (may be modified)
- *  FindSessionMatch - returns True if a match for this client
- *                        was found in the session hints.
- *  *pWorkspaceList - list of workspaces this client should be put 
- *                    into.  (needs to be freed)
- *
- *
- *  Comments:
- *  --------
- *  Various pieces of client state (in pCD) are reset when a match
- *     is found.
- *
- *  The caller must free *pWorkspaceList when done.
- * 
- *************************************<->***********************************/
-Boolean FindSessionMatch(int commandArgc, char **commandArgv,
-			    ClientData *pCD, WmScreenData *pSD,
-			    char **pWorkSpaceList, char *clientMachine)
-
-{
-    int count;
-    int relCount;
-    int argNum;
-    SessionGeom *sessionGeom;
-
-
-    for (count = 0; count < pSD->totalSessionItems; count++)
-    {
-	if (!pSD->pSessionItems[count].processed &&
-            pSD->pSessionItems[count].commandArgc == commandArgc)
-	{
-	    if ((clientMachine) &&
-		(pSD->pSessionItems[count].clientMachine) &&
-		(strcmp(clientMachine, 
-			pSD->pSessionItems[count].clientMachine)))
-	    {
-		/*
-		 * This item has clientMachine string but the 
-		 * clientMachine does not match.
-		 */
-		continue;
-	    }
-            for (argNum = 0; argNum < commandArgc ; argNum++)
-            {
-                if(strcmp(commandArgv[argNum],
-                          pSD->pSessionItems[count].commandArgv[argNum]))
-
-                {
-                    /*
-                     * One mismatch and we quit looking at this item.
-		     * Decrement argNum so a mismatch on the last item
-		     * will not look like a match below when comparing
-		     * argNum == commandArgc
-                     */
-		    argNum--;
-                    break;
-                }
-	    }		
-            if (argNum == commandArgc)
-            {
-                /*
-                 * Made it through all strings so this is a match
-                 */
-		
-                pSD->pSessionItems[count].processed = True;
-                pSD->remainingSessionItems --;
-                pCD->clientFlags |= SM_LAUNCHED;
-		
-		/*
-		 * Free strings malloc'd for commandArgv for this item 
-		 */
-		
-		for (relCount = 0; relCount < commandArgc; relCount++)
-		{
-		    XtFree(pSD->pSessionItems[count].commandArgv[relCount]);
-		}
-		XtFree((char *)pSD->pSessionItems[count].commandArgv);
-
-                if(pSD->pSessionItems[count].clientState)
-                {
-                    pCD->clientState =
-                        pSD->pSessionItems[count].clientState;
-		    pCD->clientFlags |= SM_CLIENT_STATE;
-                }
-		
-                if(pSD->pSessionItems[count].sessionGeom)
-                {
-                    sessionGeom = pSD->pSessionItems[count].sessionGeom;
-                    if (sessionGeom->flags & XValue)
-                    {
-                        pCD->clientX = sessionGeom->clientX;
-			pCD->clientFlags |= SM_X;
-                    }
-                    if (sessionGeom->flags & YValue)
-                    {
-                        pCD->clientY = sessionGeom->clientY;
-			pCD->clientFlags |= SM_Y;
-                    }
-                    if (sessionGeom->flags & WidthValue)
-                    {
-                        pCD->clientWidth = sessionGeom->clientWidth;
-			pCD->clientFlags |= SM_WIDTH;
-                    }
-                    if (sessionGeom->flags & HeightValue)
-                    {
-                        pCD->clientHeight = sessionGeom->clientHeight;
-			pCD->clientFlags |= SM_HEIGHT;
-                    }
-
-		    /*
-		     * Free SessionGeom malloc'd space for this item 
-		     */
-		    
-		    XtFree((char *)pSD->pSessionItems[count].sessionGeom); 
-                }
-
-                if(pSD->pSessionItems[count].clientMachine)
-                {
-		    /*
-		     * Free clientMachine malloc'd space for this item 
-		     */
-		    
-		    XtFree((char *)
-			   pSD->pSessionItems[count].clientMachine); 
-		    pSD->pSessionItems[count].clientMachine = NULL;
-                }
-		
-		
-                if(pSD->pSessionItems[count].workspaces)
-                {
-		    /*
-		     * The caller is responsible for freeing this
-		     * data.
-		     */
-		    *pWorkSpaceList = pSD->pSessionItems[count].workspaces;
-                }
-
-
-		if(pSD->remainingSessionItems == 0)
-		{
-		    /*
-		     * Free the whole pSD->pSessionItems structure 
-		     */
-		    XtFree((char *)pSD->pSessionItems);
-		}
-		
-		return (True);
-            }
-
-        } /* not processed and argc's are the same */
-
-    } /* for */
-    
-    return (False);
-    
-} /* END OF FUNCTION FindSessionMatch */
-
-
-
-
-
-
-/*************************************<->*************************************
- *
- *  ParseSessionClientState (pSD, count, string);
- *
- *  Description:
- *  -----------
- *  Inputs:
- *  ------
- *  Outputs:
- *  -------
- *  Comments:
- *  --------
- *
- *************************************<->***********************************/
-void ParseSessionClientState (WmScreenData *pSD, int count,
-			      unsigned char *string)
-
-
-
-{
-
-    if(!strcmp((char *)string, "NormalState"))
-    {
-	pSD->pSessionItems[count].clientState = NORMAL_STATE;
-    }
-    else if(!strcmp((char *)string, "IconicState"))
-    {
-	pSD->pSessionItems[count].clientState = MINIMIZED_STATE;
-    }
-    
-
-} /* END OF FUNCTION ParseSessionClientState */
-
-
-/*************************************<->*************************************
- *
- *  ParseSessionGeometry (pSD, count, string)
- *
- *  Description:
- *  -----------
- *  Inputs:
- *  ------
- *  Outputs:
- *  -------
- *  Comments:
- *  --------
- *
- *************************************<->***********************************/
-void ParseSessionGeometry (WmScreenData *pSD, int count,
-			   unsigned char *string)
-
-{
-    SessionGeom *pTmpSessionGeom;
-    int mask /* = 0 */;
-    int X, Y, width, height;
-    X = Y = width = height = 0;
-    
-    /*
-     *  XParseGeometry
-     */
-
-    mask = XParseGeometry((char *)string, &X, &Y, (unsigned int *)&width, 
-			  (unsigned int *)&height);
-    if (mask)
-    {
-	/*
-	 * Allocate space for the geometry structure
-	 */
-
-	if ((pTmpSessionGeom = 
-	     (SessionGeom *)XtMalloc (sizeof (SessionGeom))) == NULL)
-	{
-	    Warning (((char *)GETMESSAGE(60, 1, "Insufficient memory for session geometry item")));
-	    return;
-
-	}
-
-	pTmpSessionGeom->flags = mask;
-	pTmpSessionGeom->clientX = X;
-	pTmpSessionGeom->clientY = Y;
-	pTmpSessionGeom->clientWidth = width;
-	pTmpSessionGeom->clientHeight = height;
-
-	pSD->pSessionItems[count].sessionGeom = pTmpSessionGeom;
-    }
-    
-} /* END OF FUNCTION  ParseSessionGeometry */
-
-
-/*************************************<->*************************************
- *
- * void
- * ParseSessionWorkspaces (pSD, count, string)
- *
- *  Description:
- *  -----------
- *  Inputs:
- *  ------
- *  Outputs:
- *  -------
- *  Comments:
- *  --------
- *
- *************************************<->***********************************/
-void ParseSessionWorkspaces (WmScreenData *pSD,  int count,
-			     unsigned char *string)
-
-{
-
-    /*
-     * Allocate space for the workspaces string
-     */
-
-    if ((pSD->pSessionItems[count].workspaces =
-         (String)XtMalloc ((unsigned int) (strlen((char *)string) + 1))) == NULL)
-    {
-        Warning (((char *)GETMESSAGE(60, 2, "Insufficient memory for workspaces list in sesssion item")));
-        return;
-
-    }
-
-    strcpy(pSD->pSessionItems[count].workspaces, (char *)string);
-    
-} /* END OF FUNCTION ParseSessionWorkspaces */
-
-
-#ifdef CDE_COMPAT
-/*************************************<->*************************************
- *
- * void
- * ParseSessionCommand (pSD, count, string)
- *
- *  Description:
- *  -----------
- *  Inputs:
- *  ------
- *  Outputs:
- *  -------
- *  Comments:
- *  --------
- *
- *************************************<->***********************************/
-void ParseSessionCommand (WmScreenData *pSD,  int count,
-			  unsigned char **commandString)
-{
-#define ARG_AMT	100
-    int xindex;
-    unsigned char **argv;
-    int  argc = 0;
-    int  iSizeArgv;
-    
-    unsigned char *string;
-    
-    argv = (unsigned char **) XtMalloc (ARG_AMT * sizeof(char *));
-    iSizeArgv = ARG_AMT;
-    
-    while ((string = GetSmartSMString (commandString)) != NULL)
-    {
-        /*
-         * Get pointers to strings in command line and count them
-         */
-        argv[argc] = string;
-        argc ++;
-
-	if (argc >= iSizeArgv)
-	{
-	    iSizeArgv += ARG_AMT;
-	    argv = (unsigned char **) 
-		   XtRealloc ((char *)argv, (iSizeArgv * sizeof(char *)));
-	}
-    }
-    if ((pSD->pSessionItems[count].commandArgv =
-         (char **)XtMalloc ((argc) * sizeof(char * ))) == NULL)
-    {
-        /*
-         * Allocate space for saved argv
-         */
-	
-        Warning (((char *)GETMESSAGE(60, 3, "Insufficient memory for commandArgv array")));
-    }
-    else
-    {
-        pSD->pSessionItems[count].commandArgc = argc;
-        for (xindex = 0; xindex < argc ; xindex++)
-        {
-            if ((pSD->pSessionItems[count].commandArgv[xindex] =
-                 (String) XtMalloc
-                 ((unsigned int) (strlen((char *)argv[xindex]) + 1))) == NULL)
-            {
-                /*
-                 * Allocate space for the next command segment.
-                 */
-                Warning (((char *)GETMESSAGE(60, 4, "Insufficient memory for commandArgv item")));
-            }
-            else
-            {
-                strcpy(pSD->pSessionItems[count].commandArgv[xindex],
-                       (char *)argv[xindex]);
-            }
-        }
-    }
-
-    XtFree ((char *) argv);
-    
-} /* END OF FUNCTION ParseSessionCommand */
-#endif /* CDE_COMPAT */
-
-
-/*************************************<->*************************************
- *
- * void
- * ParseSessionHost (pSD, count, string)
- *
- *  Description:
- *  -----------
- *  Inputs:
- *  ------
- *  Outputs:
- *  -------
- *  Comments:
- *  --------
- *
- *************************************<->***********************************/
-void ParseSessionHost (WmScreenData *pSD,  int count,
-			     unsigned char *string)
-
-{
-
-    /*
-     * Allocate space for the workspaces string
-     */
-
-    if ((pSD->pSessionItems[count].clientMachine =
-         (String)XtMalloc ((unsigned int) (strlen((char *)string) + 1))) == 
-	NULL)
-    {
-        Warning (((char *)GETMESSAGE(60, 38, 
-		"Insufficient memory for host name in sesssion item")));
-        return;
-    }
-
-    strcpy(pSD->pSessionItems[count].clientMachine, (char *)string);
-    
-} /* END OF FUNCTION ParseSessionHost */
-
-
-
-/*************************************<->*************************************
- *
- *  GetSessionHintsInfo (pSD, numItems)
- *
- *  Description:
- *  -----------
- *  Inputs:
- *  ------
- *  Outputs:
- *  -------
- *  Comments:
- *  --------
- *
- *************************************<->***********************************/
-Boolean GetSessionHintsInfo (WmScreenData *pSD, long numItems)
-
-{
-   
-    if ((pSD->pSessionItems =
-	 (WmSessionItem *)XtMalloc (numItems * sizeof (WmSessionItem)))
-        == NULL)
-    {
-        Warning (((char *)GETMESSAGE(60, 5, "Insufficient memory for WM Session Hints")));
-        return(False);
-    }
-    
-    memset ((char *)pSD->pSessionItems, 0,
-	    numItems * sizeof (WmSessionItem));
-
-    return(True);
-    
-    
-} /* END OF FUNCTION  GetSessionHintsInfo  */ 
-
-
-
 
 /*************************************<->*************************************
  *

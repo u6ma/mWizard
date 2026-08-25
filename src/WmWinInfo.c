@@ -57,7 +57,7 @@
 #include "WmWrkspace.h"
 #include "WmWinList.h"
 #include "WmPresence.h"
-#include "WmXSMP.h"
+#include "WmSession.h"
 #include "WmXinerama.h"
 #include "WmEwmh.h"
 
@@ -205,7 +205,6 @@ GetClientInfo (WmScreenData *pSD, Window clientWindow, long manageFlags)
     pCD->clientEntry.prevSibling = NULL;
     pCD->clientEntry.pCD = NULL;
 
-    pCD->smClientID = (String)NULL;
     pCD->fullScreenXineramaIndices[0] = (-1);
 
      /*
@@ -284,41 +283,19 @@ GetClientInfo (WmScreenData *pSD, Window clientWindow, long manageFlags)
 
     /*
      * Get client window resource data (from resources, .mwmrc):
-     *  Moved prior to GetClientWorkspaceInfo() because the
-     *  ignoreWMSaveHints resource may affect that function.
      */
 
     ProcessClientResources (pCD);
 
     /*
-     * Retreive and process SM_CLIENT_ID client window property info
-     * and WMSAVE_HINT client window property info:
-     * must be done prior to calling GetClientWorkspaceInfo().
-     */
-    ProcessSmClientID (pCD);
-    ProcessWmSaveHint (pCD);
-
-    /*
      *  Set client's workspace information.  NOTE: this also may
-     *  set the geometry, initial state, etc.  For Sm-aware clients,
-     *  this info will be in private DB.
+     *  set the geometry, initial state, etc.
      */
     if (!GetClientWorkspaceInfo (pCD, manageFlags))
     {
 	XtFree ((char *)pCD);
 	return (NULL);
     }
-
-    /*
-     *  Restore client's per-workspace icon information.
-     */
-    LoadClientIconPositions(pCD);
-
-    /*
-     * For Sm-aware clients, retrieve geometry and initial state
-     * from private DB.
-     */
-    FindClientDBMatch(pCD, (char **)NULL);
 
     /*
      * Retrieve and process M_CLIENT_DECOR client window property info:
@@ -810,109 +787,7 @@ ProcessWmClass (ClientData *pCD)
 
 
 
-/*************************************<->*************************************
- *
- *  ProcessSmClientID (pCD)
- *
- *
- *  Description:
- *  -----------
- *  This function retrieves the contents of the SM_CLIENT_ID property on the
- *  cient window.  The value is saved in the ClientData structure
- *  (note that the space for the strings is allocated using Xmalloc).
- *
- *
- *  Inputs:
- *  ------
- *  pCD		- pointer to client data
- *
- * 
- *  Outputs:
- *  -------
- *
- *  Comments:
- *  --------
- * 
- *************************************<->***********************************/
-
-void 
-ProcessSmClientID (ClientData *pCD)
-{
-    Atom actualType;
-    int actualFormat;
-    unsigned long nitems, leftover;
-    char *clientID;
-
-    if (pCD->smClientID != (String)NULL)
-    {
-	XFree(pCD->smClientID);
-	pCD->smClientID = (String)NULL;
-    }
-
-    if ((XGetWindowProperty(DISPLAY, pCD->client, wmGD.xa_SM_CLIENT_ID,
-			    0L, (long)1000000, False, AnyPropertyType,
-			    &actualType, &actualFormat, &nitems,
-			    &leftover, (unsigned char **)&clientID)
-	 == Success) &&
-	(actualType != None) && (actualFormat == 8))
-    {
-	/* the SM_CLIENT_ID property exists for the client window */
-	pCD->smClientID = clientID;
-    }
-
-} /* END OF FUNCTION ProcessSmClientID */
-
-
 
-/*************************************<->*************************************
- *
- *  ProcessWmSaveHint (pCD)
- *
- *
- *  Description:
- *  -----------
- *  This function retrieves the contents of the WMSAVE_HINT property on the
- *  cient window.  The value is saved in the ClientData structure.
- *
- *
- *  Inputs:
- *  ------
- *  pCD		- pointer to client data
- *
- * 
- *  Outputs:
- *  -------
- *
- *  Comments:
- *  --------
- * 
- *************************************<->***********************************/
-
-void 
-ProcessWmSaveHint (ClientData *pCD)
-{
-    Atom actualType;
-    int actualFormat;
-    unsigned long nitems, leftover;
-    BITS32 *saveHintFlags = (BITS32 *)NULL;
-
-    if ((XGetWindowProperty(DISPLAY, pCD->client, wmGD.xa_WMSAVE_HINT,
-			    0L, (long)1000000, False, AnyPropertyType,
-			    &actualType, &actualFormat, &nitems,
-			    &leftover, (unsigned char **)&saveHintFlags)
-	 == Success) &&
-	(actualType != None) && (actualFormat == 32))
-    {
-	/* the WMSAVE_HINT property exists for the client window */
-	pCD->wmSaveHintFlags = (int)*saveHintFlags;
-    }
-    else pCD->wmSaveHintFlags = 0;
-
-    if (saveHintFlags)
-	XFree(saveHintFlags);
-
-} /* END OF FUNCTION ProcessWmSaveHint */
-
 
 /*************************************<->*************************************
  *
@@ -1054,15 +929,6 @@ ProcessWmHints (ClientData *pCD, Boolean firstTime)
          *  that the NORMAL_STATE is to be used.
          */
 
-	if (pCD->clientFlags & SM_CLIENT_STATE)
-	{
-	     if ((pCD->clientState == MINIMIZED_STATE) &&
-	    	(!(pCD->clientFunctions & MWM_FUNC_MINIMIZE)))
-	     {
-	         pCD->clientState = NORMAL_STATE;
-	     }
-	}
-	else
         if ((flags & StateHint) && (pXWMHints->initial_state == IconicState) &&
 	    (pCD->clientFunctions & MWM_FUNC_MINIMIZE))
         {

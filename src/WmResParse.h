@@ -22,47 +22,6 @@
  * Floor, Boston, MA 02110-1301 USA
 */ 
 
-void ProcessWmFile (WmScreenData *pSD);
-void ProcessCommandLine (int argc,  char *argv[]);
-void ProcessMotifBindings (void);
-Boolean FindSessionMatch(int commandArgc, char **commandArgv, ClientData *pCD,
-	WmScreenData *pSD, char **pWorkSpaceList, char *clientMachine);
-void GetActionIndex (int tableSize, int *actionIndex);
-void GetFunctionTableValues (int *execIndex, int *nopIndex, int *actionIndex);
-void GetNopIndex (int tableSize, int *nopIndex);
-void GetExecIndex (int tableSize, int *execIndex);
-Boolean GetSessionHintsInfo (WmScreenData *pSD, long numItems);
-FILE          * FopenConfigFile (void);
-void            FreeMenuItem (MenuItem *menuItem);
-
-unsigned char * GetNextLine (void);
-unsigned char * GetStringC (unsigned char **linePP, Boolean SmBehavior);
-void SystemCmd (char *pchCmd);
-unsigned char * GetString (unsigned char **linePP);
-unsigned int PeekAhead(unsigned char *currentChar,
-		       unsigned int currentLev);
-Boolean ParseBtnEvent (unsigned char  **linePP,
-                              unsigned int *eventType,
-                              unsigned int *button,
-                              unsigned int *state,
-                              Boolean      *fClick);
-
-void            ParseButtonStr (WmScreenData *pSD, unsigned char *buttonStr);
-void            ParseKeyStr (WmScreenData *pSD, unsigned char *keyStr);
-Boolean ParseKeyEvent (unsigned char **linePP, unsigned int *eventType,
-		       KeyCode *keyCode,  unsigned int *state);
-MenuItem      * ParseMwmMenuStr (WmScreenData *pSD, unsigned char *menuStr);
-void ParseSessionClientState (WmScreenData *pSD, int count,
-			      unsigned char *string);
-void ParseSessionCommand (WmScreenData *pSD,  int count,
-			  unsigned char **commandString);
-void ParseSessionGeometry (WmScreenData *pSD, int count,
-			   unsigned char *string);
-void ParseSessionItems (WmScreenData *pSD);
-void ParseSessionWorkspaces (WmScreenData *pSD,  int count,
-			     unsigned char *string);
-void ParseSessionHost (WmScreenData *pSD,  int count,
-			     unsigned char *string);
 int             ParseWmFunction (unsigned char **linePP, unsigned int res_spec, WmFunction *pWmFunction);
 void            PWarning (char *message);
 void            SaveMenuAccelerators (WmScreenData *pSD, MenuSpec *newMenuSpec);

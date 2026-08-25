@@ -29,7 +29,7 @@
 #include "WmGlobal.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "WmXSMP.h"
+#include "WmSession.h"
 
 /*
  * Function Declarations:

@@ -136,23 +136,35 @@ void initMesg()
     }
 }
 #else
-static char *confirm_mesg[4] = {"Toggle to Default Behavior?",
+static char *confirm_mesg[NUM_CONFIRM_ACTIONS] = {
+				"Toggle to Default Behavior?",
 				"Toggle to Custom Behavior?",
                                 "Restart Window Manager?",
-                                "QUIT Window Manager?"};
+                                "QUIT Window Manager?",
+                                "Reboot the system?",
+                                "Shut down the system?",
+                                "Suspend the system?"};
 
 #endif
-static char *confirm_widget[4] = {"confirmDefaultBehavior",
+static char *confirm_widget[NUM_CONFIRM_ACTIONS] = {
+				  "confirmDefaultBehavior",
 				  "confirmCustomBehavior",
 				  "confirmRestart",
-				  "confirmQuit"};
+				  "confirmQuit",
+				  "confirmReboot",
+				  "confirmShutdown",
+				  "confirmSuspend"};
 
 
 typedef void (*ConfirmFunc)(Boolean);
-static ConfirmFunc confirm_func[4] = {Do_Set_Behavior,
+static ConfirmFunc confirm_func[NUM_CONFIRM_ACTIONS] = {
+				      Do_Set_Behavior,
 				      Do_Set_Behavior,
 				      Do_Restart,
-				      Do_Quit_Mwm};
+				      Do_Quit_Mwm,
+				      Do_Reboot,
+				      Do_Shutdown,
+				      Do_Suspend};
 
 
 /*************************************<->*************************************
