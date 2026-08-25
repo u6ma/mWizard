@@ -208,47 +208,4 @@ static unsigned char slant2_bits[] = {
 #endif /* MWM_NEED_SLANT2 */
 
 
-#ifdef WSM
-/*
- * Backdrop bitmap patterns
- */
-
-#ifdef DTWM_NEED_BACKBITS
-#define bits0_width 8
-#define bits0_height 8
-static unsigned char bits0_bits[] = {
-   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
-#define bits1_width 8
-#define bits1_height 8
-static unsigned char bits1_bits[] = {
-   0x11, 0x00, 0x44, 0x00, 0x11, 0x00, 0x44, 0x00};
-
-#define bits2_width 8
-#define bits2_height 8
-static unsigned char bits2_bits[] = {
-   0x55, 0x00, 0x55, 0x00, 0x55, 0x00, 0x55, 0x00};
-
-#define bits3_width 8
-#define bits3_height 8
-static unsigned char bits3_bits[] = {
-   0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa};
-
-#define bits4_width 8
-#define bits4_height 8
-static unsigned char bits4_bits[] = {
-   0xff, 0xaa, 0xff, 0xaa, 0xff, 0xaa, 0xff, 0xaa};
-
-#define bits5_width 8
-#define bits5_height 8
-static unsigned char bits5_bits[] = {
-   0xff, 0xbb, 0xff, 0xee, 0xff, 0xbb, 0xff, 0xee};
-
-#define bits6_width 8
-#define bits6_height 8
-static unsigned char bits6_bits[] = {
-   0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-#endif /* DTWM_NEED_BACKBITS */
-
-#endif /* WSM */
 /****************************   eof    ***************************/

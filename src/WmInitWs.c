@@ -47,7 +47,6 @@
 /*
  * include extern functions
  */
-#include "WmBackdrop.h"
 #include "WmCDInfo.h"
 #include "WmColormap.h"
 #include "WmError.h"
@@ -81,7 +80,6 @@
 
 #include "WmInitWs.h"
 
-static void InsureDefaultBackdropDir(char **ppchBackdropDirs);
 void InitWmDisplayEnv (void);
 
 #ifndef NO_MESSAGE_CATALOG
@@ -493,32 +491,6 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
     ProcessCommandLine (argc, argv);
 
     /*
-     * Make sure backdrops are in our icon search path. 
-     * This call MUST occur before ANY icons are looked up either
-     * explicitly or through resource processing!!!
-     * Uses variables set by ProcessGlobalScreenResources and
-     * ProcessCommandLine.
-     */
-    {
-	int sNum;
-	Boolean         useMaskRtn;
-	Boolean         useMultiColorIcons;
-	Boolean         useIconFileCacheRtn;
-	String		sBdPath;
-
-	sNum = (wmGD.numScreens == 1) ? DefaultScreen(DISPLAY) : 0;
-
-	XmeGetIconControlInfo(ScreenOfDisplay(DISPLAY, sNum), &useMaskRtn,
-		    &useMultiColorIcons, &useIconFileCacheRtn);
-
-        sBdPath = wmGD.backdropDirs;
-	InsureDefaultBackdropDir ((char **) &sBdPath);
-
-        XtFree(sBdPath);
-    }
-
-
-    /*
      * Allocate data and initialize for screens we manage:
      */
 
@@ -918,7 +890,6 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
 		{
 			ACTIVE_PSD = &wmGD.Screens[scr];
 			MapIconBoxes (pSD->pActiveWS);
-			ChangeBackdrop (pSD->pActiveWS);
 #ifdef HP_VUE
 			UpdateWorkspaceInfoProperty (pSD); /* backward compatible */
 #endif /* HP_VUE */
@@ -1039,7 +1010,6 @@ void InitWmScreen (WmScreenData *pSD, int sNum)
     pSD->workspaceList = NULL;
     pSD->numWorkspaces = 0;
     pSD->numWsDataAllocated = 0;
-    pSD->lastBackdropWin = None;
     pSD->pSessionItems = NULL;
     pSD->totalSessionItems = 0;
     pSD->remainingSessionItems = 0;
@@ -1242,202 +1212,6 @@ void InitWmScreen (WmScreenData *pSD, int sNum)
 } /* END OF FUNCTION  InitWmScreen */
 
 
-/*************************************<->*************************************
- *
- *  InitWmWorkspace
- *
- *
- *  Description:
- *  -----------
- *  This function initializes a workspace data block.
- *
- *  Inputs:
- *  -------
- *  pWS = pointer to preallocated workspace data block
- *  pSD = ptr to parent screen data block
- *
- *  Outputs:
- *  -------
- *************************************<->***********************************/
-
-void InitWmWorkspace (WmWorkspaceData *pWS, WmScreenData *pSD)
-{
-	Arg args[10];
-	int argnum;
-
-	pWS->pSD = pSD;
-	pWS->pIconBox = NULL;
-	pWS->dataType = WORKSPACE_DATA_TYPE;
-	pWS->IPData = NULL;
-
-	pWS->backdrop.window = 0;
-	pWS->backdrop.nameAtom = 0;
-	pWS->backdrop.image = NULL;
-	pWS->numClients = 0;
-	pWS->sizeClientList = 0;
-	pWS->ppClients = 0;
-	pWS->buttonW = NULL;
-	pWS->keyFocus = NULL;
-	pWS->nextKeyFocus = NULL;
-
-	/*
-	 * Create widget for workspace resource hierarchy
-	 */
-	argnum = 0;
-	XtSetArg (args[argnum], XtNdepth, 
-		DefaultDepth(DISPLAY, pSD->screen));	argnum++;
-	XtSetArg (args[argnum], XtNscreen, 
-		ScreenOfDisplay(DISPLAY, pSD->screen)); 	argnum++;
-	XtSetArg (args[argnum], XtNcolormap, 
-		DefaultColormap(DISPLAY, pSD->screen)); 	argnum++;
-	XtSetArg (args[argnum], XtNwidth,  5);		argnum++;
-	XtSetArg (args[argnum], XtNheight,  5);		argnum++;
-
-	pWS->workspaceTopLevelW = XtCreateWidget (	pWS->name,
-						xmPrimitiveWidgetClass,
-    					pSD->screenTopLevelW,
-						args,
-						argnum);
-
-	/* Window handles required for EWMH virtual roots */
-	XtRealizeWidget(pWS->workspaceTopLevelW);
-
-	/* internalize the workspace name */
-	pWS->id = XInternAtom (DISPLAY, pWS->name, False);
-
-	/*
-	 * Process workspace based resources
-	 */
-	ProcessWorkspaceResources (pWS);	
-
-	/* setup icon placement */
-	if (wmGD.iconAutoPlace)
-	{
-		InitIconPlacement (pWS); 
-	}
-
-} /* END OF FUNCTION  InitWmWorkspace */
-
-/******************************<->*************************************
- *
- *  InsureDefaultBackdropDir(char **ppchBackdropDirs)
- *
- *
- *  Description:
- *  -----------
- *  This function checks and edits a directory path to insure
- *  that the system backdrop directroy (/usr/share/backdrops) is in the 
- *  path. If not it adds it to the end. Further, it always adds the user's 
- *  backdrop directory ($HOME/.backdrops) to the beginning of the path.
- *
- *  Inputs:
- *  -------
- *  ppchBackdropDirs  - Pointer to a pointer to a directory path 
- *			(must be allocated memory)
- *
- *  Outputs:
- *  -------
- *  *ppchBackdropDirs - Directory path may be modified, path 
- *			pointer may be realloc'ed.
- * 
- *  Comments:
- *  --------
- *  Assumes that the default directory does not start with a
- *  multi-byte character.
- * 
- ******************************<->***********************************/
-static void
-InsureDefaultBackdropDir(char **ppchBackdropDirs)
-{
-  int len;
-  Boolean bFound = False;
-  char *pch, *pchEnd, *pch2, *tmpptr;
-  char *pchD = DEFAULT_BACKDROP_DIR;
-  unsigned int chlen;
-  char * homeDir;
-
-  /*
-   * Set up initial stuff
-   */
-  pch = *ppchBackdropDirs;
-  len = strlen (pchD);
-  pchEnd = pch + strlen(pch);
-  
-  while (!bFound && (pch != NULL) && (*pch != '\0'))
-  {
-      if (strncmp (pch, pchD, len) == 0)
-	{
-	  /* found partial match, confirm complete match ...
-	   * complete match if char off end of partial match
-	   * is a NULL or a colon 
-	   */
-	  pch2 = pch + len;	
-	  if ((pch2 <= pchEnd) && ((*pch2 == '\0') ||
-	       (((mblen (pch2, MB_CUR_MAX) == 1) && (*pch2 == ':')))))
-	    {
-	      bFound = True;
-	    }
-	}
-      else 
-	{
-	  /* find next path component */
-	  pch = strchr (pch, (int) ':'); 
-	  if ((pch != NULL) && (*pch != '\0'))
-	    { 
-	      /* skip path separator */
-	      chlen = mblen (pch, MB_CUR_MAX);
-	      pch += chlen;
-	    }
-	}
-  }
-  
-
-  /*
-   * Always add the user's home directory to the beginning of the string
-   */
-  homeDir = (char *) XmeGetHomeDirName();  
-    
-  /*
-   * If found add the user's home directory ($HOME/.backdrops) and the 
-   * admin directory /usr/share/backdrops to the beginning of the string
-   */
-  
-  if (bFound)  
-    {
-      len = strlen (homeDir) + strlen("/.backdrops") + 
-	    strlen (*ppchBackdropDirs) + strlen("/usr/share/backdrops") + 3;
-      tmpptr = XtMalloc (len * sizeof (char *));
-      strcpy (tmpptr, homeDir);
-      strcat (tmpptr, "/.backdrops");
-      strcat (tmpptr, ":");
-      strcat (tmpptr, "/usr/share/backdrops");
-      strcat (tmpptr, ":");
-      strcat (tmpptr, *ppchBackdropDirs);
-      *ppchBackdropDirs = tmpptr;
-    }
-  else
-    /*
-     * If string not found, then add home directory to the beginning of 
-     * string and the admin directory and system directory to the end.
-     */
-    {
-      len = strlen (homeDir) + strlen("/.backdrops") + 
-	    strlen (*ppchBackdropDirs) + strlen(pchD) + 
-	    strlen("/usr/share/backdrops") + 4;
-      tmpptr = XtMalloc (len * sizeof (char *));
-      strcpy (tmpptr, homeDir);
-      strcat (tmpptr, "/.backdrops");
-      strcat (tmpptr, ":");
-      strcat (tmpptr, *ppchBackdropDirs); 
-      strcat (tmpptr, ":");
-      strcat (tmpptr, "/usr/share/backdrops"); 
-      strcat (tmpptr, ":");
-      strcat (tmpptr, pchD);
-      *ppchBackdropDirs = tmpptr;
-    }
-  
-} /* END OF FUNCTION InsureDefaultBackdropDirs */
-
 
 /*************************************<->*************************************
  *

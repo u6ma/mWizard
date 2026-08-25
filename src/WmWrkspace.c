@@ -50,7 +50,6 @@
 #include "WmWinList.h"
 #include "WmWinState.h"
 #include "WmXSMP.h"
-#include "WmBackdrop.h"
 #include "WmKeyFocus.h"
 #include "WmEwmh.h"
 
@@ -171,7 +170,6 @@ void ChangeToWorkspace(WmWorkspaceData *pNewWS )
 	 * Set new active workspace 
 	 */
 	pSD->pActiveWS = pNewWS;
-	ChangeBackdrop (pNewWS);
 
 	/*
 	 * Go through client list of new workspace and show windows
@@ -607,22 +605,6 @@ void DeleteWorkspace(WmWorkspaceData *pWS)
 	/*
 	 * Delete the workspace data structures
 	 */
-	if (pWS->backdrop.imagePixmap)
-	{
-	    if (!XmDestroyPixmap (XtScreen(pWS->workspaceTopLevelW),
-			    pWS->backdrop.imagePixmap))
-	    {
-		/* not in Xm pixmap cache */
-	    }
-	}
-
-	/* free pWS->backdrop.image */
-	if ((pWS->backdrop.flags & BACKDROP_IMAGE_ALLOCED) &&
-	    (pWS->backdrop.image))
-	{
-	    free (pWS->backdrop.image);
-	}
-
     /* 
      * Free up icon placement data
      */

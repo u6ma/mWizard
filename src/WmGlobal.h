@@ -48,15 +48,15 @@
  */
 
 /* Version info */
-#define MWM_NAME "EMWM"
-#define MWM_VERSION  2
-#define MWM_REVISION 1
+#define MWM_NAME "mWizard"
+#define MWM_VERSION  1
+#define MWM_REVISION 0
 
 #define NO_MESSAGE_CATALOG
 
 /* window manager name and class used to get resources: */
-#define	WM_RESOURCE_CLASS	"Emwm"
-#define WM_RESOURCE_NAME	"emwm"
+#define	WM_RESOURCE_CLASS	"MWizard"
+#define WM_RESOURCE_NAME	"mwizard"
 
 /*
  * Color server defines
@@ -1214,7 +1214,6 @@ typedef struct _WmScreenData
     int				numWorkspaces;
     int				numWsDataAllocated;
     struct _WmWorkspaceData	*pWS;
-    Window			lastBackdropWin;
     Boolean	bMarqueeSelectionInitialized;
 
 } WmScreenData;
@@ -1262,44 +1261,6 @@ typedef struct _WmScreenData *PtrScreenData;
 
 /*************************************<->*************************************
  *
- *  BackdropData
- *
- *
- *  Description:
- *  -----------
- *  This structure hold information for the workspace background
- * 
- *************************************<->***********************************/
-
-typedef struct _WmBackdropData
-{
-    String		image;			/* resource */
-    Atom		nameAtom;
-    Pixmap		imagePixmap;
-    int			colorSet;		/* resource */
-    Pixel 		background;		/* resource */
-    Pixel 		foreground;		/* resource */
-	Pixel       defBackground;  /* resource */
-    unsigned int	flags;
-    Window		window;
-} BackdropData;
-
-
-/*
- * bit definiton for "flags" member of BackdropData
- */
-#define BACKDROP_NONE		0
-#define BACKDROP_CLIENT		(1L<<1)
-#define BACKDROP_BITMAP		(1L<<2)
-#define BACKDROP_IMAGE_ALLOCED	(1L<<3)	 /* image string can be freed */
-
-typedef struct _WmBackdropData *PtrBackdropData;
-
-#define DEFAULT_BACKDROP_DIR "/usr/share/backdrops"
-
-
-/*************************************<->*************************************
- *
  *  WmWorkspaceData
  *
  *
@@ -1316,7 +1277,6 @@ typedef struct _WmWorkspaceData
     int			dataType;
     WorkspaceID		id;
     int         	map_state;
-    BackdropData	backdrop;
     Widget		buttonW;
     XmString		title;		/* resource (visible name) */
     String	        iconBoxGeometry;/* resource */
@@ -1856,7 +1816,6 @@ typedef struct _WmGlobalData
     Boolean	autoKeyFocus;			/* resource */
     int		autoRaiseDelay;			/* resource */
     String	bitmapDirectory;		/* resource */
-    String	backdropDirs;			/* resource */
     Boolean	clientAutoPlace;		/* resource */
     int		colormapFocusPolicy;		/* resource */
     String	configFile;			/* resource */

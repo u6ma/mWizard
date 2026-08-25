@@ -1,0 +1,91 @@
+mWizard
+=======
+
+mWizard is a fork of EMWM (https://github.com/alx210/emwm), which is itself
+derived from the Motif Window Manager (mwm), originally published by
+The Open Group.
+
+mWizard is not affiliated with, sponsored by, or endorsed by alx@fastestcode.org
+or The Open Group. "Motif" is a trademark of The Open Group; mWizard links
+against Motif but is not a Motif product and does not claim to be one.
+
+
+LICENSE
+-------
+
+The project as a whole is distributed under the GNU Lesser General Public
+License, version 2.1 or (at your option) any later version. The full text is
+in the file COPYING.
+
+Individual files retain their original copyright and license headers:
+
+  * Files derived from Motif / EMWM carry
+        Copyright (c) 1987-2012, The Open Group
+        Copyright (c) 2018-2026, alx@fastestcode.org
+    and are licensed LGPL-2.1-or-later.
+
+  * A small number of files written for EMWM by alx@fastestcode.org
+    (WmEwmh.c/.h, WmXinerama.c/.h, WmXmP.h) are licensed under the MIT
+    license.
+
+  * Files written for mWizard (WmSession.c/.h, WmSettings.c/.h) carry
+        Copyright (c) 2026, 845 <vinci845@icloud.com>
+    and are licensed under the MIT license, which is compatible with the
+    LGPL and matches the precedent already set by the newer EMWM files.
+
+As required by section 2(a) of the LGPL 2.1, every file modified for mWizard
+carries a prominent notice stating that it was changed and when.
+
+
+CHANGES RELATIVE TO EMWM 2.1
+----------------------------
+
+Removed:
+
+  * The backdrop subsystem (WmBackdrop.c/.h) and all associated resources.
+    EMWM mapped a full-screen, override-redirect window over the root window
+    of every workspace, which permanently hid anything drawn on the root by
+    xsetroot(1), feh(1), hsetroot(1) or xwallpaper(1). mWizard does not create
+    that window, so those tools work normally.
+
+  * X Session Management Protocol support (WmXSMP.c/.h), which only did
+    anything when an external session manager was running, together with the
+    client resource database it maintained.
+
+  * The _MWM_WM_REQUEST root-window property protocol (WmRequest.c/.h), which
+    existed so that a separate helper program could drive workspaces from
+    outside. Its functionality is available directly as rc-file functions.
+
+  * The "standard behavior" mode (useStandardBehavior) and the four duplicate
+    resource tables that supported it.
+
+  * Code guarded by preprocessor macros that no makefile defined:
+    MOTIF_ONE_DOT_ONE, HP_VUE, DESKTOP, WSM, OLD_CODE, NOTDONE, PORT_OLDXLIB,
+    SGI_FOCUS_PATCH, ICCC_COMPLIANT, FIX_1193, NO_MESSAGE_CATALOG and the
+    OPEN LOOK compatibility layer (WmOL.h).
+
+  * The cppCommand resource, which was wired to a preprocessing routine that
+    was already compiled out.
+
+Added:
+
+  * An internal session facility (WmSession.c/.h) providing f.logout,
+    f.reboot, f.shutdown and f.suspend, each backed by a user-configurable
+    command so that mWizard has no hard dependency on systemd or any other
+    particular service manager. An optional idle-lock timer runs a
+    user-provided locker such as xscreensaver or i3lock.
+
+  * f.rename_workspace, replacing the NAMWKSPC request of the removed
+    property protocol.
+
+  * An extended rc-file format (WmSettings.c/.h) with Settings and Client
+    blocks, so that window manager behaviour is configured in one file
+    instead of being split between the rc file and the X resource database.
+    The X resource database now carries appearance settings only.
+
+Unchanged on purpose:
+
+  * X atom names. _MOTIF_WM_HINTS, _MWM_WM_HINTS, _MWM_WORKSPACE_*, WM_STATE,
+    WM_PROTOCOLS and the _NET_* set are the interoperability contract that
+    Motif and other toolkits rely on. Renaming them would break every client
+    that speaks them, so mWizard keeps them exactly as EMWM had them.

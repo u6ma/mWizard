@@ -1,3 +1,23 @@
+mWizard
+=======
+
+mWizard is a lightweight window manager for the X Window System, built on the
+Motif toolkit.
+
+It is a fork of EMWM (https://github.com/alx210/emwm), which derives from The
+Open Group's Motif Window Manager. mWizard removes the parts of EMWM that
+depended on, or interfered with, other software, and consolidates configuration
+into a single rc file.
+
+Notably, mWizard does not draw a backdrop over the root window, so root-window
+wallpaper setters such as feh(1), xsetroot(1), hsetroot(1) and xwallpaper(1)
+work as expected. See NOTICE for the full list of changes and for licensing
+information.
+
+mWizard is distributed under the GNU Lesser General Public License, version 2.1
+or later; see COPYING.
+
+
 PREREQUISITES
 =============
 
@@ -6,12 +26,21 @@ POSIX compliant make
 
 Libraries and Headers required for building:
 
-libX11 
+libX11
 libXt
 libXext
 libXrandr
 libXinerama
 libXm (open-motif/motif)
+
+Optional, only when the idle-lock timer is enabled (-DIDLE_LOCK, on by
+default in src/common.mf):
+
+libXScrnSaver (libXss)
+
+To build without it, remove -DIDLE_LOCK from DEFINES and -lXss from SYSLIBS in
+src/common.mf. Everything else in mWizard builds with no additional
+dependencies beyond those EMWM already required.
 
 BUILDING AND INSTALLING
 =======================
@@ -26,19 +55,32 @@ Run 'make' in the top-level directory of the source distribution.
 When the build process finishes, run 'make install' as root.
 
 CONFIGURATION
-=============
+=======================
 
-The app-defaults file installed in PREFIX/X11/app-defaults/Emwm includes basic
-font and color configuration for window decorations. See emwm(1) Component
-Appearance Resources section for more information.
+mWizard is configured from a single rc file. A sample is installed as
+PREFIX/X11/system.mwizardrc; copy it to $HOME/.mwizardrc to customize. It
+defines key and mouse bindings, menus, and, in its Settings and Client blocks,
+window manager behaviour.
 
-A sample emwmrc, which defines key bindings and root/window menus, is installed
-in PREFIX/X11/system.emwmrc. This file may be copied to $HOME/.emwmrc for
-customization. The emwmrc(4) man-page describes the syntax in detail.
+doc/CONFIGURATION.md is the full guide to that file, including a table
+mapping every former X resource to its new rc setting.
 
-IMPORTANT NOTE ON EXISTING RC FILES
------------------------------------
+The app-defaults file installed in PREFIX/X11/app-defaults/MWizard now carries
+appearance settings only: colors, shadows and fonts. Behaviour settings that
+EMWM read from the X resource database are read from the rc file instead, and
+the rc file takes precedence over any leftover entries in .Xdefaults.
 
-Any existing EMWM 1.3 (or earlier) configuration files will interfere with the
-workspace functionality, since they don't have any related bindings (window and
-root menu) defined. The distribution archive includes an updated template file.
+The mwizardrc(4) man page describes the file syntax in detail, and mwizard(1)
+documents the remaining appearance resources.
+
+MIGRATING FROM EMWM
+=======================
+
+An existing ~/.emwmrc will not be read; copy it to ~/.mwizardrc. Bindings and
+menus carry over unchanged, except that f.set_behavior no longer exists.
+
+Behaviour settings in ~/.Xdefaults or an old Emwm app-defaults file are no
+longer consulted; move them into a Settings block in ~/.mwizardrc. Backdrop
+resources have no replacement -- use a root-window wallpaper setter instead.
+
+See the "Migrating from EMWM" section of doc/CONFIGURATION.md for the details.

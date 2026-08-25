@@ -1,5 +1,5 @@
-! Default menu and keybinding configuration for EMWM.
-! Copy this file to ~/.emwmrc for customization.
+! Default menu and keybinding configuration for mWizard.
+! Copy this file to ~/.mwizardrc for customization.
 
 ! Root Menu
 Menu DefaultRootMenu

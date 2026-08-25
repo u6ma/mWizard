@@ -37,15 +37,13 @@
 #include "WmCEvent.h"
 #include "WmEvent.h"
 #include "WmInitWs.h"
-#include "WmBackdrop.h"
 
 
 /*
  * Function Declarations:
  */
 #define ManagedRoot(w) (!XFindContext (DISPLAY, (w), wmGD.screenContextType, \
-(char**)&pSD) ? (SetActiveScreen (pSD), True) : \
-(IsBackdropWindow (ACTIVE_PSD, (w))))
+(char**)&pSD) ? (SetActiveScreen (pSD), True) : False)
 
 WmScreenData *pSD;
 

@@ -49,7 +49,6 @@
 #include "WmGraphics.h"
 #include "WmMenu.h"
 #include "WmResParse.h"
-#include "WmBackdrop.h"
 #include "WmIconBox.h"
 #include "WmWrkspace.h"
 #include "WmXSMP.h"
@@ -98,10 +97,6 @@ void SetStdClientResourceValues (ClientData *pCD);
 void SetStdScreenResourceValues (WmScreenData *pSD);
 GC GetHighlightGC (WmScreenData *pSD, Pixel fg, Pixel bg, Pixmap pixmap);
 static void WriteOutXrmColors (WmScreenData *pSD);
-void ProcessDefaultBackdropImages (WmScreenData *pSD);
-void _WmBackdropBgDefault (Widget widget, int offset, XrmValue *value);
-void _WmBackdropFgDefault (Widget widget, int offset, XrmValue *value);
-void _WmBackdropColorSetDefault (Widget widget, int offset, XrmValue *value);
 void _WmIconImageMaximumDefault (Widget widget, int offset, XrmValue *value);
 void _WmSecondariesOnTopDefault (Widget widget, int offset, XrmValue *value);
 int DefaultWsColorSetId (WmWorkspaceData *pWS);
@@ -934,14 +929,6 @@ XtResource wmGlobalScreenResources[] =
 	(XtPointer)NULL
     },
 
-    {   WmNbackdropDirectories, 
-	WmCBackdropDirectories, 
-	XmRString, 
-	sizeof(char *),
-	XtOffsetOf(WmGlobalData, backdropDirs), 
-	XmRString,
-	DEFAULT_BACKDROP_DIR
-    },
 };
 
 
@@ -1518,79 +1505,6 @@ XtResource wmStdWorkspaceResources[] =
 };
 
 
-/*************************************<->*************************************
- *
- *  wmBackdropResources
- *
- *
- *  Description:
- *  -----------
- *  This data structure is used in the processing of workspace specific
- *  resources that apply to the backdrop.
- *
- *  These resources are specified with the following syntax:
- *
- *      "Mwm*[screen*][workspace*]backdrop*<resource_id>:"
- *
- *  NOTE: The order of these resources is important for correct
- *        dynamic processing!!!!
- *
- *************************************<->***********************************/
-
-XtResource wmBackdropResources[] =
-{
-    {
-	WmNcolor,
-	WmCColor,
-	XtRPixel,
-	sizeof (Pixel),
-	XtOffsetOf (BackdropData, defBackground),
-	XtRString,
-	(XtPointer) "#4C719E"
-    },
-
-    {
-	WmNcolorSetId,
-	WmCColorSetId,
-	XtRInt,
-	sizeof (int),
-	XtOffsetOf (BackdropData, colorSet),
-	XtRCallProc,
-	(XtPointer) _WmBackdropColorSetDefault
-    },
-
-    {
-	WmNimageBackground,
-	WmCImageBackground,
-	XtRPixel,
-	sizeof (Pixel),
-	XtOffsetOf (BackdropData, background),
-	XtRCallProc,
-	(XtPointer) _WmBackdropBgDefault
-    },
-
-    {
-	WmNimageForeground,
-	WmCImageForeground,
-	XtRPixel,
-	sizeof (Pixel),
-        XtOffsetOf (BackdropData, foreground),
-	XtRCallProc,
-	(XtPointer) _WmBackdropFgDefault
-    },
-
-    {
-	WmNimage,
-	WmCImage,
-	XtRString,
-	sizeof (String),
-	XtOffsetOf (BackdropData, image),
-	XtRString,
-	(XtPointer)NULL
-    },
-
-};
-
 
 /*************************************<->*************************************
  *
@@ -1633,7 +1547,7 @@ XtResource wmWsPresenceResources[] =
  *  window manager resources.  These resources are specified with the
  *  following syntax:
  *
- *      "Emwm*<client_name_or_class>*<resource_identifier>"
+ *      "MWizard*<client_name_or_class>*<resource_identifier>"
  *
  *************************************<->***********************************/
 
@@ -2610,109 +2524,6 @@ _WmATopShadowPixmapDefault (Widget widget, int offset, XrmValue *value)
     
 } /* END OF FUNCTION _WmATopShadowPixmapDefault */
 
-
-void _WmBackdropBgDefault (Widget widget, int offset, XrmValue *value)
-{
-    static Pixel pixValue;
-    unsigned int colorSetId = (unsigned int) pResWS->backdrop.colorSet;
-
-    if (wmGD.statusColorServer == CSERVE_NORMAL)
-    {
-	if ((colorSetId == 0) || (colorSetId > XmCO_MAX_NUM_COLORS))
-	{
-	    colorSetId = (unsigned int) DefaultWsColorSetId (pResWS);
-	}
-
-	switch (pResWS->pSD->colorUse)
-	{
-	    case XmCO_BLACK_WHITE:
-		pixValue = pResWS->pSD->pPixelData[colorSetId-1].bg;
-		break;
-
-	    default:
-	    case XmCO_LOW_COLOR:
-	    case XmCO_MEDIUM_COLOR:
-	    case XmCO_HIGH_COLOR:
-		pixValue = pResWS->pSD->pPixelData[colorSetId-1].bs;
-		break;
-	}
-    }
-    else
-    {
-	/*
-	 *  Color server is unavailable.  Has user specified a colorset?
-	 *
-	 *  If not, use fallback.
-	 *
-	 */
-	    pixValue = pResWS->backdrop.defBackground;
-    }
-
-    /* return the dynamic default */
-    value->addr = (char *) &pixValue;
-    value->size = sizeof (Pixel);
-
-} /* END OF FUNCTION _WmBackdropBgDefault */
-
-void _WmBackdropFgDefault (Widget widget, int offset, XrmValue *value)
-{
-    static Pixel pixValue;
-    unsigned int colorSetId = (unsigned int) pResWS->backdrop.colorSet;
-
-
-    if (wmGD.statusColorServer == CSERVE_NORMAL)
-    {
-	if ((colorSetId == 0) || (colorSetId > XmCO_MAX_NUM_COLORS))
-	{
-	    colorSetId = (unsigned int) DefaultWsColorSetId (pResWS);
-	}
-
-	switch (pResWS->pSD->colorUse)
-	{
-	    case XmCO_BLACK_WHITE:
-		pixValue = pResWS->pSD->pPixelData[colorSetId-1].fg;
-		break;
-
-	    default:
-	    case XmCO_LOW_COLOR:
-	    case XmCO_MEDIUM_COLOR:
-	    case XmCO_HIGH_COLOR:
-		pixValue = pResWS->pSD->pPixelData[colorSetId-1].bg;
-		break;
-	}
-    }
-    else
-    {
-	/*
-	 *  Color server is unavailable.  Has user specified a colorset?
-	 *
-	 *  If not, use fallback.
-	 *
-	 */
-	    pixValue = BlackPixel (DISPLAY, pResWS->pSD->screen);
-    }
-    value->addr = (char *) &pixValue;
-    value->size = sizeof (Pixel);
-
-} /* END OF FUNCTION _WmBackdropFgDefault */
-
-void _WmBackdropColorSetDefault (Widget widget, int offset, XrmValue *value)
-{
-    static unsigned int colorSetId;
-
-    if (wmGD.statusColorServer == CSERVE_NORMAL)
-    {
-	colorSetId = (unsigned int) DefaultWsColorSetId (pResWS);
-    }
-    else
-    {
-	colorSetId = 0; /* invalid color set */
-    }
-
-    value->addr = (char *) &colorSetId;
-    value->size = sizeof (Pixel);
-
-} /* END OF FUNCTION _WmBackdropColorSetIdDefault */
 
 void _WmIconImageMaximumDefault (Widget widget, int offset, XrmValue *value)
 {
@@ -4724,12 +4535,6 @@ ProcessScreenResources (WmScreenData *pSD, unsigned char *screenName)
 
      ProcessWorkspaceList (pSD);
 
-     /*
-      * Process default backdrop images to be used in low-color
-      * situations
-      */
-     ProcessDefaultBackdropImages (pSD);
-    
     /*
      * Save the default icon pixmap in global data. We'll use it only
      * as a last resort.
@@ -4743,38 +4548,6 @@ ProcessScreenResources (WmScreenData *pSD, unsigned char *screenName)
 
 
 
-/*************************************<->*************************************
- *
- *  ProcessDefaultBackdropImages (pSD)
- *
- *
- *  Description:
- *  -----------
- *  This function processes the default backdrop images to be used
- *  in low color or black and white workspaces.
- *
- *
- *  Inputs:
- *  ------
- *  pSD = pointer to screen data
- *
- * 
- *  Outputs:
- *  -------
- *  pSD = resource data for screen is set
- *
- *
- *  Comments:
- *  --------
- * 
- *************************************<->***********************************/
-
-void 
-ProcessDefaultBackdropImages (WmScreenData *pSD)
-{
-} /* END OF FUNCTION ProcessDefaultBackdropImages */
-
-
 
 /*************************************<->*************************************
  *
@@ -5017,16 +4790,6 @@ ProcessWorkspaceResources (WmWorkspaceData *pWS)
     {
 	pWS->iconBoxGeometry = XtNewString (pWS->iconBoxGeometry);
     }
-
-    /*
-     * Get backdrop resources
-     */
-    XtGetSubresources (pWS->workspaceTopLevelW, 
-	(XtPointer) &(pWS->backdrop), 
-	WmNbackdrop, WmCBackdrop, wmBackdropResources, 
-	XtNumber (wmBackdropResources), NULL, 0);
-
-    ProcessBackdropResources (pWS, 0);
 
 } /* END OF FUNCTION ProcessWorkspaceResources */
 

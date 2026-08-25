@@ -30,7 +30,6 @@
  * include extern functions
  */
 #include "WmEvent.h"
-#include "WmBackdrop.h"
 #include "WmCDInfo.h"
 #include "WmCDecor.h"
 #include "WmCEvent.h"

@@ -1200,16 +1200,13 @@ SetCurrentWorkspaceProperty (WmScreenData *pSD)
  * 
  *
  *************************************<->***********************************/
-#define WIP_NUMBER_SIZE		16
-
 void SetWorkspaceInfoProperty (WmWorkspaceData *pWS)
 {
     char *pch;
     Atom aProperty;
     String sTitle;
-    char **ppchList;
+    char *ppchList[1];
     int iNumStrings;
-    int count,  i, ix;
     Status status;
     XTextProperty tp;
 
@@ -1223,70 +1220,16 @@ void SetWorkspaceInfoProperty (WmWorkspaceData *pWS)
     XtFree ((char *) pch);
 
     /*
-     * Determine the number of strings in our vector. One for each of
-     *
-     *     workspace title
-     *     pixel set id
-     *     backdrop background
-     *     backdrop foreground
-     *     backdrop name
-     *     number of backdrop windows
-     *     list of backdrop windows
+     * Our property is a single-element string vector holding the
+     * workspace title. EMWM also published the backdrop color set,
+     * background, foreground, name atom and window list here; mWizard
+     * has no backdrop, so those fields are gone.
      */
-    iNumStrings =  6;	/* number of fields minus backdrop window(s) */
-    count = 1;		/* number of backdrop windows */
-    iNumStrings += count;
-
-    /* allocate string vector */
-    ppchList = (char **) XtMalloc (iNumStrings * sizeof (char *));
-    pch = (char *) XtMalloc (iNumStrings * WIP_NUMBER_SIZE * sizeof(char));
-    
-    i = 0;
+    iNumStrings = 1;
 
     /* Convert workspace title to ascii */
     sTitle = WmXmStringToString (pWS->title);
-	ppchList[i++] = (char *) sTitle;
-
-    /*  Pixel set id */
-    ix = (i * WIP_NUMBER_SIZE);
-    sprintf (&pch[ix], "%d", pWS->backdrop.colorSet);
-    ppchList[i++] = &pch[ix];
-
-    /* backdrop background */
-    ix = (i * WIP_NUMBER_SIZE);
-    sprintf (&pch[ix], "0x%lx", pWS->backdrop.background);
-    ppchList[i++] = &pch[ix];
-
-    /* backdrop foreground */
-    ix = (i * WIP_NUMBER_SIZE);
-    sprintf (&pch[ix], "0x%lx", pWS->backdrop.foreground);
-    ppchList[i++] = &pch[ix];
-
-    /* backdrop name */
-    ix = (i * WIP_NUMBER_SIZE);
-    sprintf (&pch[ix], "0x%lx", pWS->backdrop.nameAtom);
-    ppchList[i++] = &pch[ix];
-
-    /* number of backdrop windows */
-    ix = (i * WIP_NUMBER_SIZE);
-    if(pWS->backdrop.window == None)
-    {
-	strcpy (&pch[ix], "0");
-    }
-    else
-    {
-	sprintf (&pch[ix], "%d", count);
-    }
-    ppchList[i++] = &pch[ix];
-
-    /* backdrop windows */
-    /* 
-     * One or zero backdrop windows 
-     * (NULL written if zero)
-     */
-    ix = (i * WIP_NUMBER_SIZE);
-    sprintf (&pch[ix], "0x%lx", pWS->backdrop.window);
-    ppchList[i++] = &pch[ix];
+    ppchList[0] = (char *) sTitle;
 
     /*
      * Write out the property
@@ -1302,8 +1245,6 @@ void SetWorkspaceInfoProperty (WmWorkspaceData *pWS)
         XFree (tp.value);
     }
 
-    XtFree ((char *) ppchList);
-    XtFree (pch);
     if (sTitle) XtFree ((char *)sTitle);
 
 } /* END OF FUNCTION SetWorkspaceInfoProperty */

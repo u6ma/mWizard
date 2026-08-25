@@ -1677,8 +1677,8 @@ FILE *FopenConfigFile (void)
      * First try HOME_MWMRC, then try SYS_MWMRC .
      */
 
-#define HOME_MWMRC "/.emwmrc"
-#define SLASH_MWMRC "/system.emwmrc"
+#define HOME_MWMRC "/.mwizardrc"
+#define SLASH_MWMRC "/system.mwizardrc"
 
 #ifdef MOTIF_ONE_DOT_ONE
     GetHomeDirName(cfileName);

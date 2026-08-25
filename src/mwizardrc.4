@@ -1,20 +1,20 @@
 .ta 8n 16n 24n 32n 40n 48n 56n 64n 72n 
-.TH "emwmrc" "special file"
+.TH "mwizardrc" "special file"
 .SH "NAME"
-\fBemwmrc\fP \(em the
+\fBmwizardrc\fP \(em the
 Enhanced Motif Window Manager Resource Description File
 .SH "DESCRIPTION"
 .PP
-The \fBemwmrc\fP file is a supplementary resource
-file that controls much of the behavior of the Enhanced Motif window manager \fBemwm\fP\&. 
+The \fBmwizardrc\fP file is a supplementary resource
+file that controls much of the behavior of the Enhanced Motif window manager \fBmwizard\fP\&. 
 It contains descriptions of resources that cannot easily be
 written using standard X Window System, Version 11 resource syntax\&. The resource
 description file contains entries that are referred to by X resources in
-defaults files (for example, \fB/etc/X11/app-defaults/Emwm\fP)
+defaults files (for example, \fB/etc/X11/app-defaults/MWizard\fP)
 or in the \fBRESOURCE_MANAGER\fP property on the
 root window\&. For example, the resource description file enables you to specify
 different types of window menus; however, an X resource is used to specify
-which of these window menus \fBemwm\fP should use for a particular
+which of these window menus \fBmwizard\fP should use for a particular
 window\&. 
 .SS "Location"
 .PP
@@ -23,10 +23,10 @@ files, where \fI$LANG\fP is the value of the language environment
 on a per-user basis:
 .PP
 .nf
-\f(CW$HOME/$LANG/\&.emwmrc
-$HOME/\&.emwmrc
-/etc/X11/$LANG/system\&.emwmrc \(dg
-/etc/X11/system\&.emwmrc\fR \(dg
+\f(CW$HOME/$LANG/\&.mwizardrc
+$HOME/\&.mwizardrc
+/etc/X11/$LANG/system\&.mwizardrc \(dg
+/etc/X11/system\&.mwizardrc\fR \(dg
 .fi
 .PP
 \(dg Paths may vary depending on system/distribution.
@@ -38,12 +38,12 @@ resource\&. The following shows how a different resource description file can
 be specified from the command line:
 .PP
 .nf
-\f(CWemwm -xrm "emwm*configFile: mymwmrc"\fR
+\f(CWmwizard -xrm "mwizard*configFile: mymwmrc"\fR
 .fi
 .PP
 .SS "Resource Types"
 .PP
-The following types of resources can be described in the emwm resource
+The following types of resources can be described in the mwizard resource
 description file:
 .IP "\fBButtons\fP" 10
 Window manager functions can be bound (associated) with button events\&.
@@ -53,9 +53,9 @@ events\&.
 .IP "\fBMenus\fP" 10
 Menu panes can be used for the window menu and other menus posted with
 key bindings and button bindings\&.
-.SH "EMWM RESOURCE DESCRIPTION FILE SYNTAX"
+.SH "mWizard RESOURCE DESCRIPTION FILE SYNTAX"
 .PP
-The \fBemwm\fP resource description file is a standard
+The \fBmwizard\fP resource description file is a standard
 text file that contains items of information separated by blanks, tabs, and
 new lines characters\&. Blank lines are ignored\&. Items or characters can be
 quoted to avoid special interpretation (for example, the comment character
@@ -82,7 +82,7 @@ has the following syntax:
 .PP
 .PP
 The following functions are supported\&. If a function is specified that
-isn\&'t one of the supported functions then it is interpreted by \fBemwm\fP as \fBf\&.nop\fP\&.
+isn\&'t one of the supported functions then it is interpreted by \fBmwizard\fP as \fBf\&.nop\fP\&.
 .IP "\fBf\&.beep\fP" 10
 This function causes a beep\&.
 .IP "\fBf\&.circle_down\fP [ \fIicon\fP | \fIwindow\fP]" 10
@@ -117,7 +117,7 @@ executed (using the value of the \fI$MWMSHELL\fP or \fI$SHELL\fP environment var
 .IP "\fBf\&.focus_color\fP" 10
 This function sets the colormap focus to a client window\&. If this function
 is done in a root context, then the default colormap (setup by the X Window
-System for the screen where \fBemwm\fP is running) is installed
+System for the screen where \fBmwizard\fP is running) is installed
 and there is no specific client window colormap focus\&. This function is treated
 as \fBf\&.nop\fP if \fIcolormapFocusPolicy\fP
 is not explicit\&.
@@ -153,7 +153,7 @@ does not lower the client family in the global window stack\&. Specifying \fIfre
 stack from its local family stack\&.
 .IP "\fBf\&.maximize\fP" 10
 This function causes a client window to be displayed with its maximum
-size\&. Refer to the \fImaximumClientSize\fP, \fImaximumMaximumSize\fP, and \fIlimitResize\fP resources in \fBemwm\fP(1)\&.
+size\&. Refer to the \fImaximumClientSize\fP, \fImaximumMaximumSize\fP, and \fIlimitResize\fP resources in \fBmwizard\fP(1)\&.
 .IP "\fBf\&.menu\fP \fImenu_name\fP" 10
 This function associates a cascading (pull-right) menu with a menu
 pane entry or a menu with a button or key binding\&. The \fImenu_name\fP function argument identifies the menu to be used\&.
@@ -235,7 +235,7 @@ applies only to windows\&.
 This function activates the previous workspace in the workspace list, wrapping
 around to the last one at the beginning of the list.
 .IP "\fBf\&.quit_wm\fP" 10
-This function terminates emwm (but NOT the X window system)\&.
+This function terminates mwizard (but NOT the X window system)\&.
 .IP "\fBf\&.raise\fP\ [\fI-\fP\fIclient\fP | \fIwithin\fP | \fIfreeFamily\fP]" 10
 This function raises a primary window to the top of the global window
 stack (where it is obscured by no other window) and raises the secondary window
@@ -279,9 +279,9 @@ its maximized state and raises it to the top of the window stack\&. If a normal
 window is iconified, then \fBf\&.restore_and_raise\fP restores
 it to its normalized state and raises it to the top of the window stack\&.
 .IP "\fBf\&.restart\fP" 10
-This function causes emwm to be restarted (effectively terminated and
-re-executed)\&. Restart is necessary for \fBemwm\fP to incorporate
-changes in both the \fBemwmrc\fP file and X resources\&.
+This function causes mwizard to be restarted (effectively terminated and
+re-executed)\&. Restart is necessary for \fBmwizard\fP to incorporate
+changes in both the \fBmwizardrc\fP file and X resources\&.
 .IP "\fBf\&.screen\fP\ [ \fInext\fP | \fIprev\fP | \fIback\fP | \fIscreen_number\fP]" 10
 This function causes the pointer to be warp to a specific screen number
 or to the \fInext\fP, \fIprevious\fP, or last visited (\fIback\fP)
@@ -512,7 +512,7 @@ key binding syntax is:
 .PP
 .PP
 If an \fBf\&.nop\fP function is specified for a key binding,
-the key binding is not done\&. If an \fBf\&.post_wmenu\fP or \fBf\&.menu\fP function is bound to a key, \fBemwm\fP automatically
+the key binding is not done\&. If an \fBf\&.post_wmenu\fP or \fBf\&.menu\fP function is bound to a key, \fBmwizard\fP automatically
 uses the same key for removing the menu from the screen after it has been
 popped up\&. The \fBcontext\fP specification syntax is the same
 as for button bindings with one addition\&. The context \fIifkey\fP
@@ -579,37 +579,37 @@ key\&. The \fBaccelerator\fP specification is a key event specification
 with the same syntax as is used for key bindings to window manager functions\&.
 .SH "INCLUDING FILES"
 .PP
-You may include other files into your emwmrc file by using the
+You may include other files into your mwizardrc file by using the
 \fIinclude\fP construct\&. For example,
 .PP
 .nf
 \f(CWINCLUDE
 {
-    /usr/local/shared/emwm\&.menus
+    /usr/local/shared/mwizard\&.menus
     /home/kmt/personal/my\&.bindings
 }\fR
 .fi
 .PP
 .PP
 causes the files named to be read in and interpreted in order as an
-additional part of the emwmrc file\&. \fIInclude\fP is a top-level
+additional part of the mwizardrc file\&. \fIInclude\fP is a top-level
 construct\&. It cannot be nested inside another construct\&.
 .SH "WARNINGS"
 .PP
 Errors that occur during the processing of the resource description
 file are printed to \fBstderr(3)\fP. Be sure to check session manager log file if
-the appearance or behavior of \fBemwm\fP is not what you expect\&.
+the appearance or behavior of \fBmwizard\fP is not what you expect\&.
 .SH "FILES"
 .PP
 .nf
-\fB$HOME/$LANG/\&.emwmrc
-$HOME/\&.emwmrc
-/etc/X11/$LANG/system\&.emwmrc \(dg
-/etc/X11/system\&.emwmrc\fP \(dg
+\fB$HOME/$LANG/\&.mwizardrc
+$HOME/\&.mwizardrc
+/etc/X11/$LANG/system\&.mwizardrc \(dg
+/etc/X11/system\&.mwizardrc\fP \(dg
 .fi
 .PP
 \(dg Paths may vary depending on system/distribution.
 .SH "RELATED INFORMATION"
 .PP
-\fBemwm\fP(1),
+\fBmwizard\fP(1),
 \fBX\fP(1)\&.

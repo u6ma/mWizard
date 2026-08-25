@@ -1,0 +1,54 @@
+!! EMWM application defaults
+
+!! Display outlines when moving windows
+MWizard*moveOpaque: False
+
+!! Move/Resize outline width in pixels
+MWizard*outlineWidth: 4
+
+!! Number of workspaces to create at startup
+MWizard*workspaceCount: 4
+
+!! Icon layout. Defaults to left to right, bottom to top.
+MWizard*iconPlacement: left bottom
+
+!! If False, the root menu will be unposted when the mouse button is released
+MWizard*rootButtonClick: False
+
+!! Whether the active Xinerama screen follows the pointer or keyboard focus
+MWizard*xineramaScreenFocus: pointer
+
+!! Whether windows should always be iconified to the primary Xinerama screen
+MWizard*xineramaIconifyToPrimary: False
+
+!! Primary Xinerama screen index
+MWizard*primaryXineramaScreen: 0
+
+!! Window decoration colors
+MWizard*client*background: #8C8C8C
+MWizard*client*activeBackground: #7399BA
+MWizard*icon*activeBackground: #7399BA
+
+!! The Workspace Presence dialog
+MWizard*feedback*XmPushButton.marginWidth: 5
+MWizard*feedback*XmPushButton.marginHeight: 5
+
+!! Default font (menus and dialogs)
+MWizard*renderTable: variable
+MWizard*renderTable.variable.fontType: FONT_IS_XFT
+MWizard*renderTable.variable.fontName: Liberation Sans
+MWizard*renderTable.variable.fontSize: 10
+
+!! Title bar font
+MWizard*title.renderTable: title
+MWizard*renderTable.title.fontType: FONT_IS_XFT
+MWizard*renderTable.title.fontName: Liberation Sans
+MWizard*renderTable.title.fontSize: 10
+MWizard*renderTable.title.fontStyle: Bold
+
+!! Icon label font
+MWizard*icon.renderTable: icon
+MWizard*renderTable.icon.fontType: FONT_IS_XFT
+MWizard*renderTable.icon.fontName: Liberation Sans
+MWizard*renderTable.icon.fontSize: 10
+MWizard*renderTable.icon.fontStyle: Italic

@@ -12,9 +12,9 @@ mwm_objs = \
 	WmIconBox.o WmKeyFocus.o WmMain.o WmManage.o WmProperty.o WmResCvt.o\
 	WmResParse.o WmResource.o WmSignal.o WmWinConf.o WmWinInfo.o WmWinList.o \
 	WmWinState.o WmXSMP.o WmImage.o WmInitWs.o WmMenu.o	WmProtocol.o \
-	WmBackdrop.o WmPresence.o WmWrkspace.o WmXinerama.o WmEwmh.o WmRequest.o
+	WmPresence.o WmWrkspace.o WmXinerama.o WmEwmh.o WmRequest.o
 
-emwm: $(mwm_objs)
+mwizard: $(mwm_objs)
 	$(CC) $(LDFLAGS) $(LIBDIRS) -o $@ $(mwm_objs) $(SYSLIBS)
 
 .depend:
@@ -23,24 +23,24 @@ emwm: $(mwm_objs)
 .PHONY: clean install common_install
 
 clean:
-	-rm -f $(mwm_objs) $(wsm_objs) emwm
+	-rm -f $(mwm_objs) $(wsm_objs) mwizard
 	-rm .depend
 
 common_install:
-	install -m 755 emwm $(PREFIX)/bin/emwm
+	install -m 755 mwizard $(PREFIX)/bin/mwizard
 	install -m 755 -d $(MANDIR)/man1
-	install -m 644 emwm.1 $(MANDIR)/man1/emwm.1
+	install -m 644 mwizard.1 $(MANDIR)/man1/mwizard.1
 	install -m 755 -d $(MANDIR)/man4
-	install -m 644 emwmrc.4 $(MANDIR)/man4/emwmrc.4
+	install -m 644 mwizardrc.4 $(MANDIR)/man4/mwizardrc.4
 	install -m 755 -d $(RCDIR)
-	install -m 644 system.emwmrc $(RCDIR)/system.emwmrc
+	install -m 644 system.mwizardrc $(RCDIR)/system.mwizardrc
 	install -m 755 -d $(APPLRESDIR)
-	install -m 644 Emwm.ad $(APPLRESDIR)/Emwm
+	install -m 644 MWizard.ad $(APPLRESDIR)/MWizard
 
 uninstall:
-	rm -f $(PREFIX)/bin/emwm
-	rm -f $(MANDIR)/man1/emwm.1
-	rm -f $(MANDIR)/man4/emwmrc.4
-	rm -f $(RCDIR)/system.emwmrc
-	rm -f $(APPLRESDIR)/Emwm
+	rm -f $(PREFIX)/bin/mwizard
+	rm -f $(MANDIR)/man1/mwizard.1
+	rm -f $(MANDIR)/man4/mwizardrc.4
+	rm -f $(RCDIR)/system.mwizardrc
+	rm -f $(APPLRESDIR)/MWizard
 
