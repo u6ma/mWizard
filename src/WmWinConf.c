@@ -1750,13 +1750,44 @@ Boolean WindowIsOnScreen (ClientData *pCD, int *dx, int *dy)
 void RecomputeMaxConfig(ClientData *pCD)
 {
 	XineramaScreenInfo si;
+	int waX, waY, waWidth, waHeight;
+	int x1, y1, x2, y2;
+	Boolean clipped = False;
  
     int frmWidth = pCD->clientOffset.x * 2;
     int frmHeight = pCD->clientOffset.x + pCD->clientOffset.y;
     
    	if(!GetXineramaScreenFromLocation(pCD->clientX, pCD->clientY, &si)) {
+        si.x_org = 0;
+        si.y_org = 0;
         si.width = DisplayWidth(DISPLAY, SCREEN_FOR_CLIENT(pCD));
         si.height = DisplayHeight(DISPLAY, SCREEN_FOR_CLIENT(pCD));
+    }
+
+    /*
+     * Clip the monitor rectangle to the area not reserved by docked clients
+     * such as a system tray, so that maximizing does not put windows under
+     * them. Struts are screen relative, hence the intersection rather than a
+     * plain subtraction: on a multi-monitor setup a strut on one edge of the
+     * screen must not shrink a monitor it does not touch.
+     */
+    GetEwmhWorkArea(pCD->pSD, &waX, &waY, &waWidth, &waHeight);
+
+    x1 = (si.x_org > waX) ? si.x_org : waX;
+    y1 = (si.y_org > waY) ? si.y_org : waY;
+    x2 = ((si.x_org + si.width) < (waX + waWidth)) ?
+	    (si.x_org + si.width) : (waX + waWidth);
+    y2 = ((si.y_org + si.height) < (waY + waHeight)) ?
+	    (si.y_org + si.height) : (waY + waHeight);
+
+    /* Ignore the struts entirely rather than produce an unusable rectangle */
+    if((x2 - x1) > frmWidth && (y2 - y1) > frmHeight) {
+	clipped = ((x1 != si.x_org) || (y1 != si.y_org) ||
+		((x2 - x1) != si.width) || ((y2 - y1) != si.height));
+	si.x_org = x1;
+	si.y_org = y1;
+	si.width = x2 - x1;
+	si.height = y2 - y1;
     }
 
     pCD->oldMaxWidth = pCD->maxWidth;
@@ -1773,11 +1804,22 @@ void RecomputeMaxConfig(ClientData *pCD)
     pCD->maxWidth -= ((pCD->maxWidth - pCD->baseWidth) % pCD->widthInc);
     pCD->maxHeight -= ((pCD->maxHeight - pCD->baseHeight) % pCD->heightInc);
 
+    if(clipped) {
+	/*
+	 * Space is reserved on this monitor, so pin the maximized window to
+	 * the usable origin. Leaving it at the client position and relying on
+	 * PlaceFrameOnScreen would only keep it on screen, which is no longer
+	 * the same thing as keeping it clear of the tray.
+	 */
+	pCD->maxX = si.x_org + pCD->clientOffset.x;
+	pCD->maxY = si.y_org + pCD->clientOffset.y;
+    } else {
 	pCD->maxX = pCD->clientX;
 	pCD->maxY = pCD->clientY;
 
-    PlaceFrameOnScreen(pCD, &pCD->maxX, &pCD->maxY,
-	    pCD->maxWidth, pCD->maxHeight);
+	PlaceFrameOnScreen(pCD, &pCD->maxX, &pCD->maxY,
+		pCD->maxWidth, pCD->maxHeight);
+    }
 }
 
 

@@ -1177,6 +1177,10 @@ typedef struct _WmScreenData
     int				numWorkspaces;
     int				numWsDataAllocated;
     struct _WmWorkspaceData	*pWS;
+    unsigned long		strutLeft;	/* _NET_WM_STRUT reserved edges */
+    unsigned long		strutRight;
+    unsigned long		strutTop;
+    unsigned long		strutBottom;
     Boolean	bMarqueeSelectionInitialized;
 
 } WmScreenData;

@@ -33,6 +33,8 @@ void HandleEwmhClientMessage(ClientData*, XClientMessageEvent*);
 Boolean HandleEwmhRootClientMessage(WmScreenData*, XClientMessageEvent*);
 void ConfigureEwmhFullScreen(ClientData*, Boolean);
 void UpdateEwmhClientList(WmScreenData*);
+void RecomputeStruts(WmScreenData*);
+void GetEwmhWorkArea(WmScreenData*, int *x, int *y, int *width, int *height);
 void UpdateEwmhClientState(ClientData*);
 void UpdateEwmhWorkspaceProperties(WmScreenData*);
 void UpdateEwmhActiveWorkspace(WmScreenData*, WorkspaceID);

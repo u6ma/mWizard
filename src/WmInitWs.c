@@ -989,6 +989,10 @@ void InitWmScreen (WmScreenData *pSD, int sNum)
     pSD->workspaceList = NULL;
     pSD->numWorkspaces = 0;
     pSD->numWsDataAllocated = 0;
+    pSD->strutLeft = 0;
+    pSD->strutRight = 0;
+    pSD->strutTop = 0;
+    pSD->strutBottom = 0;
 
     pSD->bMarqueeSelectionInitialized = False;
     pSD->woN = (Window) 0L;

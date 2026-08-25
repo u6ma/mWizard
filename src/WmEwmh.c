@@ -49,6 +49,8 @@ static void ProcessMoveResize(ClientData *pCD,
 	int x_root, int y_root, int dir, int button, int source);
 static Boolean GetMultiscreenCoords(ClientData *pCD,
 	int *xorg, int *yorg, int *width, int *height);
+static Boolean IsEwmhDock(ClientData *pCD);
+static void SetEwmhSticky(ClientData *pCD, Boolean set);
 
 enum ewmh_atom {
 	_NET_SUPPORTED, _NET_SUPPORTING_WM_CHECK, _NET_CLOSE_WINDOW,
@@ -66,6 +68,8 @@ enum ewmh_atom {
 	_NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_SPLASH,
 	_NET_WM_WINDOW_TYPE_TOOLBAR, _NET_WM_WINDOW_TYPE_UTILITY,
 	_NET_WM_WINDOW_TYPE_DIALOG, _NET_WM_FULL_PLACEMENT,
+	_NET_WM_WINDOW_TYPE_DOCK, _NET_WM_STATE_STICKY,
+	_NET_WM_STRUT, _NET_WM_STRUT_PARTIAL, _NET_WORKAREA,
 
 	_NUM_EWMH_ATOMS
 };
@@ -86,7 +90,9 @@ static char *ewmh_atom_names[_NUM_EWMH_ATOMS]={
 	"_NET_WM_ACTION_CLOSE", "_NET_WM_FULLSCREEN_MONITORS",
 	"_NET_WM_WINDOW_TYPE", "_NET_WM_WINDOW_TYPE_SPLASH",
 	"_NET_WM_WINDOW_TYPE_TOOLBAR", "_NET_WM_WINDOW_TYPE_UTILITY",
-	"_NET_WM_WINDOW_TYPE_DIALOG", "_NET_WM_FULL_PLACEMENT"
+	"_NET_WM_WINDOW_TYPE_DIALOG", "_NET_WM_FULL_PLACEMENT",
+	"_NET_WM_WINDOW_TYPE_DOCK", "_NET_WM_STATE_STICKY",
+	"_NET_WM_STRUT", "_NET_WM_STRUT_PARTIAL", "_NET_WORKAREA"
 
 };
 
@@ -167,7 +173,81 @@ void ProcessEwmh(ClientData *pCD)
 		}
 	}
 
+	/*
+	 * A dock is sticky by definition; anything else may ask via
+	 * _NET_WM_STATE_STICKY. This runs here rather than in
+	 * ProcessEwmhWindowType because workspaces are not assigned to the
+	 * client until after that has run.
+	 */
+	if(IsEwmhDock(pCD)) {
+		SetEwmhSticky(pCD, True);
+	} else {
+		Atom *st = FetchWindowProperty(pCD->client,
+			ewmh_atoms[_NET_WM_STATE], XA_ATOM, &size);
+		if(st) {
+			unsigned long i;
+			for(i = 0; i < size; i++) {
+				if(st[i] == ewmh_atoms[_NET_WM_STATE_STICKY]) {
+					SetEwmhSticky(pCD, True);
+					break;
+				}
+			}
+			XFree(st);
+		}
+	}
+
 	UpdateFrameExtents(pCD);
+}
+
+/*
+ * True if the client asks to be a dock (system tray, panel).
+ */
+static Boolean IsEwmhDock(ClientData *pCD)
+{
+	Atom *atoms;
+	unsigned long count;
+	Boolean dock = False;
+
+	atoms = FetchWindowProperty(
+		pCD->client, ewmh_atoms[_NET_WM_WINDOW_TYPE], XA_ATOM, &count);
+	if(atoms) {
+		if(count && atoms[0] == ewmh_atoms[_NET_WM_WINDOW_TYPE_DOCK])
+			dock = True;
+		XFree(atoms);
+	}
+	return dock;
+}
+
+/*
+ * _NET_WM_STATE_STICKY means "show on every desktop", which mWizard already
+ * has as occupy-all-workspaces. Rather than inventing a second mechanism this
+ * drives the same functions f.occupy_all and f.remove use.
+ */
+static void SetEwmhSticky(ClientData *pCD, Boolean set)
+{
+	WmScreenData *pSD = pCD->pSD;
+	WorkspaceID *ids;
+	int i, n;
+
+	if(set) {
+		if(!pCD->putInAll) F_AddToAllWorkspaces(NULL, pCD, NULL);
+		return;
+	}
+
+	if(!pCD->putInAll) return;
+
+	/* Drop back to the active workspace by removing it from every other */
+	ids = (WorkspaceID*)XtMalloc(sizeof(WorkspaceID) * pSD->numWorkspaces);
+	if(!ids) return;
+
+	for(i = 0, n = 0; i < pSD->numWorkspaces; i++) {
+		if(pSD->pWS[i].id != pSD->pActiveWS->id)
+			ids[n++] = pSD->pWS[i].id;
+	}
+	if(n) RemoveSingleClientFromWorkspaces(pCD, ids, n);
+
+	XtFree((char*)ids);
+	pCD->putInAll = False;
 }
 
 /*
@@ -194,6 +274,12 @@ void ProcessEwmhWindowType(ClientData *pCD)
 		} else if(atoms[0] == ewmh_atoms[_NET_WM_WINDOW_TYPE_SPLASH]) {
 			pCD->clientDecoration = WM_DECOR_MINIMIZE | WM_DECOR_BORDER;
 			pCD->clientFunctions = MWM_FUNC_MINIMIZE | MWM_FUNC_MOVE;
+		} else if(atoms[0] == ewmh_atoms[_NET_WM_WINDOW_TYPE_DOCK]) {
+			/* A dock (system tray, panel) gets no frame and may only be
+			 * moved. It is also made sticky, which happens in ProcessEwmh
+			 * because workspaces are not assigned until after this runs. */
+			pCD->clientDecoration = WM_DECOR_NONE;
+			pCD->clientFunctions = MWM_FUNC_MOVE;
 		}
 		XtFree((char*)atoms);
 	}
@@ -231,6 +317,10 @@ void HandleEwmhCPropertyNotify(ClientData *pCD, XPropertyEvent *evt)
 			RedisplayIconTitle(pCD);
 		}
 		if(sz) XFree(sz);
+	}
+	else if(evt->atom == ewmh_atoms[_NET_WM_STRUT] ||
+		evt->atom == ewmh_atoms[_NET_WM_STRUT_PARTIAL]) {
+		RecomputeStruts(pCD->pSD);
 	}
 	else if(evt->atom == ewmh_atoms[_NET_WM_ICON]) {
 		Pixmap icon;
@@ -294,6 +384,23 @@ void HandleEwmhClientMessage(ClientData *pCD, XClientMessageEvent *evt)
 				break;
 			}
 			UpdateEwmhClientState(pCD);	
+		}
+		else if(evt->data.l[1] == ewmh_atoms[_NET_WM_STATE_STICKY]) {
+			Boolean set = False;
+
+			switch(action) {
+				case TOGGLE:
+				set = pCD->putInAll ? False : True;
+				break;
+				case ADD:
+				set = True;
+				break;
+				case REMOVE:
+				set = False;
+				break;
+			}
+			SetEwmhSticky(pCD, set);
+			UpdateEwmhClientState(pCD);
 		}
 		else if(evt->data.l[1] == ewmh_atoms[_NET_WM_STATE_HIDDEN]) {
 			switch(action) {
@@ -686,6 +793,84 @@ static void UpdateFrameExtents(ClientData *pCD)
 /*
  * Sets the _NET_CLIENT_LIST property on pSD's root window.
  */
+/*
+ * Recomputes the space reserved along the screen edges by panels and trays,
+ * and publishes the result as _NET_WORKAREA.
+ *
+ * Struts are read from _NET_WM_STRUT_PARTIAL, falling back to the older
+ * four-element _NET_WM_STRUT. Only the first four values of either matter
+ * here: mWizard reserves whole edges rather than the partial spans
+ * _NET_WM_STRUT_PARTIAL can describe, which is what a tray docked to one
+ * edge needs and is far simpler to reason about.
+ */
+void RecomputeStruts(WmScreenData *pSD)
+{
+	ClientListEntry *e;
+	unsigned long left = 0, right = 0, top = 0, bottom = 0;
+	long workarea[4];
+	int screenWidth = DisplayWidth(DISPLAY, pSD->screen);
+	int screenHeight = DisplayHeight(DISPLAY, pSD->screen);
+
+	for(e = pSD->clientList; e; e = e->nextSibling) {
+		unsigned long *v;
+		unsigned long count = 0;
+
+		if(e->type == MINIMIZED_STATE || !e->pCD) continue;
+
+		v = FetchWindowProperty(e->pCD->client,
+			ewmh_atoms[_NET_WM_STRUT_PARTIAL], XA_CARDINAL, &count);
+		if(!v || count < 4) {
+			if(v) XFree(v);
+			count = 0;
+			v = FetchWindowProperty(e->pCD->client,
+				ewmh_atoms[_NET_WM_STRUT], XA_CARDINAL, &count);
+		}
+		if(!v) continue;
+
+		if(count >= 4) {
+			if(v[0] > left) left = v[0];
+			if(v[1] > right) right = v[1];
+			if(v[2] > top) top = v[2];
+			if(v[3] > bottom) bottom = v[3];
+		}
+		XFree(v);
+	}
+
+	/*
+	 * Refuse struts that would leave nothing usable. A client asking for
+	 * the whole screen is either broken or malicious, and honouring it
+	 * would make every window unmaximizable.
+	 */
+	if((long)(left + right) >= screenWidth) left = right = 0;
+	if((long)(top + bottom) >= screenHeight) top = bottom = 0;
+
+	pSD->strutLeft = left;
+	pSD->strutRight = right;
+	pSD->strutTop = top;
+	pSD->strutBottom = bottom;
+
+	workarea[0] = left;
+	workarea[1] = top;
+	workarea[2] = screenWidth - left - right;
+	workarea[3] = screenHeight - top - bottom;
+
+	XChangeProperty(DISPLAY, pSD->rootWindow, ewmh_atoms[_NET_WORKAREA],
+		XA_CARDINAL, 32, PropModeReplace, (unsigned char*)workarea, 4);
+}
+
+/*
+ * Returns the screen area not reserved by panels or trays.
+ */
+void GetEwmhWorkArea(WmScreenData *pSD, int *x, int *y, int *width, int *height)
+{
+	*x = pSD->strutLeft;
+	*y = pSD->strutTop;
+	*width = DisplayWidth(DISPLAY, pSD->screen)
+		- pSD->strutLeft - pSD->strutRight;
+	*height = DisplayHeight(DISPLAY, pSD->screen)
+		- pSD->strutTop - pSD->strutBottom;
+}
+
 void UpdateEwmhClientList(WmScreenData *pSD)
 {
 	ClientListEntry *e = pSD->clientList;
@@ -696,6 +881,7 @@ void UpdateEwmhClientList(WmScreenData *pSD)
 		XChangeProperty(DISPLAY,pSD->rootWindow,
 			ewmh_atoms[_NET_CLIENT_LIST],
 			XA_WINDOW,32,PropModeReplace,NULL,0);
+		RecomputeStruts(pSD);
 		return;
 	}
 	
@@ -723,6 +909,8 @@ void UpdateEwmhClientList(WmScreenData *pSD)
 		XA_WINDOW,32,PropModeReplace,(unsigned char*)wlist,n);
 
 	free(wlist);
+
+	RecomputeStruts(pSD);
 }
 
 /*
@@ -731,7 +919,7 @@ void UpdateEwmhClientList(WmScreenData *pSD)
  */
 void UpdateEwmhClientState(ClientData *pCD)
 {
-	Atom state[4];
+	Atom state[6];
 	Atom actions[10];
 	unsigned int i = 0;
 
@@ -749,6 +937,9 @@ void UpdateEwmhClientState(ClientData *pCD)
 
 	if(pCD->inputMode == MWM_INPUT_PRIMARY_APPLICATION_MODAL)
 		state[i++] = ewmh_atoms[_NET_WM_STATE_MODAL];
+
+	if(pCD->putInAll)
+		state[i++] = ewmh_atoms[_NET_WM_STATE_STICKY];
 
 	XChangeProperty(DISPLAY,pCD->client,ewmh_atoms[_NET_WM_STATE],
 		XA_ATOM,32,PropModeReplace,(unsigned char*)state,i);
