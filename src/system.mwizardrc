@@ -82,19 +82,62 @@ Buttons PointerButtonBindings
 	Alt<Btn1Down>	window|icon	f.lower
 }
 
-! Window manager behaviour. Everything below is read from this file rather
-! than the X resource database; see doc/CONFIGURATION.md for the full list.
+! Window manager behaviour.
 !
-! Settings
+! Everything in this block used to live in the X resource database
+! (Emwm*name in app-defaults or .Xdefaults). It is read from here now, and
+! what is set here overrides any leftover X resource of the same name.
+! See doc/CONFIGURATION.md for every available setting.
+
+Settings
+{
+	! Draw window contents while moving, rather than an outline
+	moveOpaque		False
+	outlineWidth		4
+
+	! Number of workspaces to create at startup
+	workspaceCount		4
+
+	! Icon layout. Defaults to left to right, bottom to top.
+	iconPlacement		left bottom
+
+	! If False, the root menu is unposted when the button is released
+	rootButtonClick		False
+
+	! Whether the active Xinerama screen follows the pointer or the focus
+	xineramaScreenFocus	pointer
+
+	! Whether windows are always iconified to the primary Xinerama screen
+	xineramaIconifyToPrimary	False
+
+	! Primary Xinerama screen index
+	primaryXineramaScreen	0
+
+	! Commands run by f.shutdown, f.reboot and f.suspend. Point these at
+	! whatever your system uses; leave one empty to disable its function.
+	shutdownCommand		"systemctl poweroff"
+	rebootCommand		"systemctl reboot"
+	suspendCommand		"systemctl suspend"
+
+	! Run lockCommand after this many idle minutes. 0 disables the timer.
+	! Locking is left to a program of your choosing; mWizard only runs it.
+	! Bind f.exec to the same command to lock on demand.
+	lockCommand		""
+	lockTimeout		0
+}
+
+! Per-application overrides. The name is the client's resource name or
+! class, as reported by xprop(1) WM_CLASS.
+!
+! Client XTerm
 ! {
-!     ! Commands run by f.shutdown, f.reboot and f.suspend. Point these at
-!     ! whatever your system uses; leave one empty to disable its function.
-!     shutdownCommand   "systemctl poweroff"
-!     rebootCommand     "systemctl reboot"
-!     suspendCommand    "systemctl suspend"
+!	clientDecoration	-resizeh
+!	focusAutoRaise		False
+! }
+
+! Per-workspace settings. Workspaces are named ws0, ws1 and so on.
 !
-!     ! Run lockCommand after this many idle minutes. 0 disables the timer.
-!     ! Locking is left to a program of your choosing; mWizard only runs it.
-!     lockCommand       "i3lock -c 000000"
-!     lockTimeout       10
+! Workspace ws0
+! {
+!	title			Web
 ! }

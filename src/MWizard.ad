@@ -1,28 +1,14 @@
-!! EMWM application defaults
-
-!! Display outlines when moving windows
-MWizard*moveOpaque: False
-
-!! Move/Resize outline width in pixels
-MWizard*outlineWidth: 4
-
-!! Number of workspaces to create at startup
-MWizard*workspaceCount: 4
-
-!! Icon layout. Defaults to left to right, bottom to top.
-MWizard*iconPlacement: left bottom
-
-!! If False, the root menu will be unposted when the mouse button is released
-MWizard*rootButtonClick: False
-
-!! Whether the active Xinerama screen follows the pointer or keyboard focus
-MWizard*xineramaScreenFocus: pointer
-
-!! Whether windows should always be iconified to the primary Xinerama screen
-MWizard*xineramaIconifyToPrimary: False
-
-!! Primary Xinerama screen index
-MWizard*primaryXineramaScreen: 0
+!! mWizard application defaults
+!!
+!! This file carries APPEARANCE ONLY: colors, shadows and fonts.
+!!
+!! Window manager behaviour -- focus policy, placement, workspaces, icon
+!! handling, session commands and so on -- is configured in the rc file
+!! (~/.mwizardrc), not here. See doc/CONFIGURATION.md, and the Settings
+!! block in system.mwizardrc for the list.
+!!
+!! Behaviour settings left in this file or in .Xdefaults are overridden by
+!! the rc file and will appear to have no effect.
 
 !! Window decoration colors
 MWizard*client*background: #8C8C8C

@@ -31,3 +31,6 @@ void            ToLower (unsigned char  *string);
 void		SyncModifierStrings(void);
 
 #define GetSmartString(s)	GetString (s)
+
+#include <stdio.h>
+FILE *FopenConfigFile (void);

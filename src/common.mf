@@ -16,7 +16,7 @@ mwm_objs = \
 	WmEvent.o WmFeedback.o WmFunction.o	WmGraphics.o WmIDecor.o WmIPlace.o \
 	WmIconBox.o WmKeyFocus.o WmMain.o WmManage.o WmProperty.o WmResCvt.o\
 	WmResParse.o WmResource.o WmSignal.o WmWinConf.o WmWinInfo.o WmWinList.o \
-	WmWinState.o WmSession.o WmImage.o WmInitWs.o WmMenu.o	WmProtocol.o \
+	WmWinState.o WmSession.o WmSettings.o WmImage.o WmInitWs.o WmMenu.o	WmProtocol.o \
 	WmPresence.o WmWrkspace.o WmXinerama.o WmEwmh.o
 
 mwizard: $(mwm_objs)

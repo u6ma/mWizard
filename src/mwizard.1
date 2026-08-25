@@ -314,15 +314,33 @@ The arguments \fIwithin\fP and \fIfreeFamily\fP can also be used with \fBf\&.rai
 and \fBf\&.raise_lower\fP\&.
 .SS "Session Management"
 .PP
-The window manager is an X Session Management Protocol aware client\&. It responds to SaveYourself
-(and other associated messages) by saving the geometries of its clients to a state file\&. 
-\fBmwizard\fP can then be restarted by the XSMP session manager\&.
-The default location for the state file is \fB$HOME/\&.mwizardclientdb\fP\&.
-This location can be overridden with the resource \fBsessionClientDB\fP\&.
+Unlike \fBemwm\fP, \fBmwizard\fP is not an X Session Management Protocol
+client and keeps no client state file\&. Ending the session, rebooting,
+shutting down and suspending are handled by the \fBf\&.logout\fP,
+\fBf\&.reboot\fP, \fBf\&.shutdown\fP and \fBf\&.suspend\fP functions,
+each of which runs a command named by a setting in the rc file\&. See
+\fBmwizardrc\fP(4)\&.
 .SS "X Resources"
 .PP
-The \fBmwizard\fP command is configured from its resource
-database\&. This database is built from the following sources\&. They are listed
+\fBmwizard\fP reads its \fIappearance\fP from the X resource database: colors,
+shadows, pixmaps and fonts\&. Its \fIbehavior\fP -- focus policy, placement,
+window and icon decoration, workspaces, session commands and everything else
+described below as an "appearance and behavior" resource -- is read from the
+rc file instead, in a \fBSettings\fP block\&. See \fBmwizardrc\fP(4)\&.
+.PP
+The resource names and values are unchanged, so a resource documented here as
+\fIMWizard*moveOpaque: True\fP is written in the rc file as \fImoveOpaque True\fP
+inside a \fBSettings\fP block, \fIMWizard*XTerm*clientDecoration\fP becomes a
+\fBClient XTerm\fP block, and \fIMWizard*ws0*title\fP becomes a
+\fBWorkspace ws0\fP block\&.
+.PP
+A behavior resource left in the X database has no effect: the rc file is
+merged into the resource database at higher precedence than any file below,
+so an rc setting always wins\&. The one exception is \fIconfigFile\fP, which
+names the rc file itself and so must come from the X database or from
+\fI-xrm\fP on the command line\&.
+.PP
+The database is built from the following sources\&. They are listed
 in order of precedence, low to high:
 .PP
 \fB/etc/X11/app-defaults/MWizard\fP
@@ -334,6 +352,8 @@ in order of precedence, low to high:
 \fBXENVIRONMENT\fP variable or \fB$HOME/\&.Xdefaults-host\fP
 .PP
 \fBmwizard\fP command line options
+.PP
+the \fBSettings\fP, \fBClient\fP and \fBWorkspace\fP blocks of the rc file
 .PP
 The file names \fB/etc/X11/app-defaults/MWizard\fP and \fB$HOME/MWizard\fP represent customary locations for these files\&. The actual
 location of the system-wide class resource file may depend on the \fBXFILESEARCHPATH\fP environment variable and the
@@ -591,7 +611,6 @@ raiseKeyFocusRaiseKeyFocusTrue/FalseFalse
 refreshByClearingRefreshByClearingTrue/FalseTrue
 rootButtonClickRootButtonClickTrue/FalseFalse
 screensScreensstringvaries
-sessionClientDBSessionClientDBstring$HOME/\&.mwizardclientdb
 showFeedbackShowFeedbackstringall
 startupKeyFocusStartupKeyFocusTrue/FalseTrue
 useWindowOutlineUseWindowOutlineTrue/FalseTrue
@@ -784,10 +803,6 @@ screen, only the first name in the list is used\&. If \fBmwizard\fP
 is managing multiple screens, the names are assigned to the screens in order,
 starting with screen 0\&. Screen 0 gets the first name, screen 1 the second
 name, and so on\&. The default screen names are 0, 1, and so on\&.
-.IP "\fIsessionClientDB\fP\ (class\  \fISessionClientDB\fP)" 10
-This resource identifies a file name to use as a root when saving state
-at the request of an XSMP session manager\&. When the session is saved, the window manager will then reuse
-the file name by automatically incrementing a suffix\&.
 .IP "\fIshowFeedback\fP\ (class\  \fIShowFeedback\fP)" 10
 This resource controls whether or not feedback windows or confirmation
 dialogs are displayed\&. A feedback window shows a client window\&'s initial

@@ -66,6 +66,7 @@
 #include "stdio.h"
 #include "WmResParse.h"
 #include "WmSession.h"
+#include "WmSettings.h"
 #include "WmXmP.h"
 #include "WmXinerama.h"
 #include "WmEwmh.h"
@@ -469,6 +470,27 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
     /* allocate namespace for screens */
     InitScreenNames();
     
+    /*
+     * Read behaviour settings out of the rc file and merge them into the
+     * screen resource databases. This has to happen before anything is
+     * fetched from those databases, which is why configFile -- the resource
+     * that names the rc file -- is looked up on its own first. configFile
+     * itself therefore stays an X resource (or a -xrm argument); everything
+     * else belongs in the rc file.
+     */
+    {
+	static XtResource configFileResource[] = {
+	    { WmNconfigFile, WmCConfigFile, XtRString, sizeof (String),
+	      XtOffsetOf (WmGlobalData, configFile), XtRImmediate,
+	      (XtPointer)NULL }
+	};
+
+	XtGetApplicationResources (wmGD.topLevelW, (XtPointer) &wmGD,
+	    configFileResource, XtNumber (configFileResource), NULL, 0);
+
+	LoadRcSettings ();
+    }
+
     /* 
      * Determine the screen management policy (all or none)
      * Process command line arguments that we handle 

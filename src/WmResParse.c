@@ -71,6 +71,7 @@
 #include "WmResParse.h"
 #include "WmWrkspace.h"
 #include "WmError.h"
+#include "WmSettings.h"
 #include "WmFunction.h"
 #include "WmImage.h"
 #include "WmSession.h"
@@ -153,6 +154,7 @@ static Boolean ParseContext (unsigned char **linePP, Context *context,
 void
 ParseKeyStr (WmScreenData *pSD, unsigned char *keyStr);
 static void ParseKeySet (WmScreenData *pSD, unsigned char *lineP);
+static void SkipBracedBlock (unsigned char *lineP);
 Boolean ParseBtnEvent (unsigned char  **linePP,
 		       unsigned int *eventType,
 		       unsigned int *button,
@@ -949,6 +951,15 @@ void ProcessWmFile (WmScreenData *pSD)
 	{
 	    ParseKeySet (pSD, lineP);
 	}
+	else if (IsSettingsKeyword ((char *) string))
+	{
+	    /*
+	     * Settings and Client blocks were already consumed by
+	     * LoadRcSettings() before any resources were fetched. Step over
+	     * the block so its entries are not mistaken for anything here.
+	     */
+	    SkipBracedBlock (lineP);
+	}
     }
 
     fclose (cfileP);
@@ -1315,6 +1326,63 @@ void SaveMenuAccelerators (WmScreenData *pSD, MenuSpec *newMenuSpec)
  *  This means custom menu specifications can be distinguished by NULL name.
  * 
  *************************************<->***********************************/
+
+/*************************************<->*************************************
+ *
+ *  SkipBracedBlock (lineP)
+ *
+ *  Description:
+ *  -----------
+ *  Consumes a "{ ... }" block from the configuration file without
+ *  interpreting it.
+ *
+ *  Used for the Settings and Client blocks, which LoadRcSettings() has
+ *  already read during startup -- before any resource was fetched, which is
+ *  earlier than this parse can run. Stepping over them here keeps their
+ *  entries from being mistaken for menu, key or button specifications.
+ *
+ *  Inputs:
+ *  ------
+ *  lineP = remainder of the header line, which may already hold the '{'
+ *
+ *************************************<->***********************************/
+
+static void SkipBracedBlock (unsigned char *lineP)
+{
+    int depth = 0;
+    Boolean opened = False;
+    unsigned char *p;
+
+    /*
+     * The opening brace may sit on the header line or on a later one, and a
+     * short block may open and close on the header line itself.
+     */
+    for (p = lineP; p && *p; p++)
+    {
+        if (*p == '!') break;                 /* rest of line is a comment */
+        if (*p == '{') { depth++; opened = True; }
+        else if (*p == '}') depth--;
+    }
+
+    while (!opened || depth > 0)
+    {
+        if (GetNextLine () == NULL) return;   /* EOF or read error */
+
+        for (p = line; *p; p++)
+        {
+            if (*p == '!') break;
+            if (*p == '{') { depth++; opened = True; }
+            else if (*p == '}') depth--;
+        }
+
+        /*
+         * Give up if the header was not followed by a block at all, rather
+         * than swallowing the rest of the file.
+         */
+        if (!opened && *line && *line != '!') return;
+    }
+}
+
 
 static void ParseMenuSet (WmScreenData *pSD, unsigned char *lineP)
 {

@@ -53,6 +53,13 @@ events\&.
 .IP "\fBMenus\fP" 10
 Menu panes can be used for the window menu and other menus posted with
 key bindings and button bindings\&.
+.IP "\fBSettings\fP" 10
+Window manager behavior\&. In \fBemwm\fP these were X resources; in
+\fBmwizard\fP they belong here\&.
+.IP "\fBClient\fP" 10
+Behavior overrides for one application\&.
+.IP "\fBWorkspace\fP" 10
+Settings for one workspace\&.
 .SH "mWizard RESOURCE DESCRIPTION FILE SYNTAX"
 .PP
 The \fBmwizard\fP resource description file is a standard
@@ -485,6 +492,89 @@ that only the specified modifiers can be present when the key event occurs)\&.
 Modifiers for keys are the same as those that apply to buttons\&. The \fBkey_name\fP is an X11 keysym name\&. Keysym names can be found in the
 \fBkeysymdef\&.h\fP file (remove the \fBXK_\fP
 prefix)\&.
+.SH "SETTINGS"
+.PP
+\fBmwizard\fP reads its behavior from this file rather than from the X
+resource database\&. The database is left holding appearance only -- colors,
+shadows, pixmaps and fonts -- as described in \fBmwizard\fP(1)\&.
+.PP
+The syntax for a settings specification is:
+.PP
+.nf
+Settings
+{
+    \fIname\fP \fIvalue\fP
+    \fIname\fP \fIvalue\fP
+    \fI...\fP
+}
+.fi
+.PP
+One setting per line\&. The value is everything after the name, so an
+unquoted multi-word value such as \fBleft bottom\fP is taken whole\&. Quote a
+value to keep leading or trailing spaces, or when it contains a comment
+character\&. Lines beginning with \fB!\fP are comments\&.
+.PP
+The names and values are exactly those documented in the "General Appearance
+and Behavior Resources" and "Screen Specific Resources" sections of
+\fBmwizard\fP(1), minus the \fIMWizard*\fP prefix\&. A name that is not one of
+them -- including an appearance resource, which belongs in the X database --
+is reported as an error at startup rather than being ignored\&.
+.PP
+For example:
+.PP
+.nf
+Settings
+{
+    keyboardFocusPolicy   explicit
+    moveOpaque            True
+    workspaceCount        4
+    iconPlacement         left bottom
+    shutdownCommand       "systemctl poweroff"
+    lockCommand           "i3lock -c 000000"
+    lockTimeout           10
+}
+.fi
+.SS "Session and Lock Settings"
+.PP
+These settings have no equivalent in \fBemwm\fP and back the session
+functions described above\&.
+.IP "\fIshutdownCommand\fP" 10
+Command run by \fBf\&.shutdown\fP\&. Default \fBsystemctl poweroff\fP\&.
+.IP "\fIrebootCommand\fP" 10
+Command run by \fBf\&.reboot\fP\&. Default \fBsystemctl reboot\fP\&.
+.IP "\fIsuspendCommand\fP" 10
+Command run by \fBf\&.suspend\fP\&. Default \fBsystemctl suspend\fP\&.
+.IP "\fIlockCommand\fP" 10
+Command used to lock the screen\&. \fBmwizard\fP does not lock the screen
+itself; this should name a locker such as \fBxscreensaver-command -lock\fP or
+\fBi3lock\fP\&. Empty by default\&.
+.IP "\fIlockTimeout\fP" 10
+Idle time in minutes after which \fIlockCommand\fP is run\&. \fB0\fP, the
+default, disables the timer\&. Requires \fIlockCommand\fP to be set, and a
+build with the MIT-SCREEN-SAVER extension enabled\&. To lock on demand
+rather than on a timer, bind \fBf\&.exec\fP to the same command\&.
+.SS "Per Client and Per Workspace Settings"
+.PP
+A \fBClient\fP block overrides behavior for one application, named by its
+resource name or class as reported by \fBxprop\fP(1) for \fBWM_CLASS\fP\&. The
+names accepted inside it are the "Client Specific Resources" of
+\fBmwizard\fP(1)\&.
+.PP
+A \fBWorkspace\fP block sets resources for one workspace, named \fBws0\fP,
+\fBws1\fP and so on\&.
+.PP
+.nf
+Client XTerm
+{
+    clientDecoration      -resizeh
+    focusAutoRaise        False
+}
+
+Workspace ws0
+{
+    title                 Web
+}
+.fi
 .SH "BUTTON BINDINGS"
 .PP
 The \fBbuttonBindings\fP resource value is the name of

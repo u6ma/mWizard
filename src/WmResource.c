@@ -639,7 +639,10 @@ XtResource wmGlobalResources[] =
 	(XtPointer)False
 	}
 
-}; /* END OF wmGlobalResources[] */
+};
+
+Cardinal wmNumGlobalResources = XtNumber (wmGlobalResources);
+ /* END OF wmGlobalResources[] */
 
 
 /*
@@ -669,6 +672,9 @@ XtResource wmGlobalScreenResources[] =
     },
 
 };
+
+Cardinal wmNumGlobalScreenResources = XtNumber (wmGlobalScreenResources);
+
 
 
 
@@ -982,6 +988,9 @@ XtResource wmScreenResources[] =
 
 };
 
+Cardinal wmNumScreenResources = XtNumber (wmScreenResources);
+
+
 
 
 /******************************<->*************************************
@@ -1021,6 +1030,9 @@ XtResource wmWorkspaceResources[] =
     }
 
 };
+
+Cardinal wmNumWorkspaceResources = XtNumber (wmWorkspaceResources);
+
 
 
 
@@ -1264,7 +1276,10 @@ XtResource wmClientResources[] =
 	}
 
 
-}; /* END OF STRUCTURE wmClientResources */
+};
+
+Cardinal wmNumClientResources = XtNumber (wmClientResources);
+ /* END OF STRUCTURE wmClientResources */
 
 
 

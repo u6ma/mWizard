@@ -28,7 +28,6 @@ void MakeAppearanceResources (WmScreenData *pSD, AppearanceData *pAData, Boolean
 Boolean Monochrome (Screen *screen);
 void ProcessWmColors (WmScreenData *pSD);
 void ProcessWmResources (void);
-void SetStdGlobalResourceValues (void);
 void ProcessScreenListResource (void);
 void ProcessAppearanceResources (WmScreenData *pSD);
 void ProcessGlobalScreenResources (void);
@@ -36,8 +35,6 @@ void ProcessScreenResources (WmScreenData *pSD, unsigned char *screenName);
 void ProcessWorkspaceList (WmScreenData *pSD);
 void ProcessWorkspaceResources (WmWorkspaceData *pWS);
 void ProcessClientResources (ClientData *pCD);
-void SetStdClientResourceValues (ClientData *pCD);
-void SetStdScreenResourceValues (WmScreenData *pSD);
 char *WmRealloc (char *ptr, unsigned size);
 char *WmMalloc (char *ptr, unsigned size);
 void SetupDefaultResources (WmScreenData *pSD);
@@ -45,6 +42,22 @@ Boolean SimilarAppearanceData (AppearanceData *pAD1, AppearanceData *pAD2);
 String ResCat (String s1, String s2, String s3, String s4);
 void CheckForNoDither (AppearanceData *pAD);
 void ProcessPresenceResources (WmScreenData *pSD);
+
+/*
+ * The behaviour resource tables, exported so that WmSettings.c can validate
+ * rc setting names against them instead of keeping a second list in sync.
+ */
+extern XtResource wmGlobalResources[];
+extern XtResource wmGlobalScreenResources[];
+extern XtResource wmScreenResources[];
+extern XtResource wmWorkspaceResources[];
+extern XtResource wmClientResources[];
+
+extern Cardinal wmNumGlobalResources;
+extern Cardinal wmNumGlobalScreenResources;
+extern Cardinal wmNumScreenResources;
+extern Cardinal wmNumWorkspaceResources;
+extern Cardinal wmNumClientResources;
 
 extern char builtinSystemMenu[];
 extern char builtinKeyBindings[];
