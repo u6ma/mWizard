@@ -1,0 +1,52 @@
+!! mWand application defaults
+!!
+!! This file carries APPEARANCE ONLY: fonts and render tables.
+!!
+!! Behaviour -- title, layout, hotkey, which parts are shown, and the session
+!! commands -- is configured in the rc file (~/.mwandrc), not here. See
+!! doc/MWAND.md and the Settings block in system.mwandrc.
+!!
+!! Behaviour settings left here or in .Xdefaults are overridden by the rc
+!! file and will appear to have no effect.
+
+!! Initial position
+MWand.x: 8
+MWand.y: 28
+
+!! Motif does not define friendly names for window decorations, so these are
+!! composed from bits (see MwmUtil.h). Some precalculated values:
+!!   Borderless, title buttons:     56
+!!   Borderless, no title buttons:   8
+!!   Borders and title buttons:     58
+!!   Borders, no title buttons:     10
+MWand.mwmDecorations: 58
+
+!! For borderless decorations a thicker frame shadow tends to look better
+!! *mainFrame.shadowThickness: 2
+
+!! Fonts. Xft is used by default.
+*XmPushButtonGadget.renderTable: menu
+*renderTable.menu.fontType: FONT_IS_XFT
+*renderTable.menu.fontName: Liberation Sans
+*renderTable.menu.fontSize: 10
+
+*XmCascadeButtonGadget*renderTable: cascade
+*renderTable.cascade.fontType: FONT_IS_XFT
+*renderTable.cascade.fontName: Liberation Sans
+*renderTable.cascade.fontStyle: Italic
+*renderTable.cascade.fontSize: 10
+
+*dateTime.renderTable: small
+*renderTable.small.fontType: FONT_IS_XFT
+*renderTable.small.fontName: Liberation Sans
+*renderTable.small.fontSize: 9
+
+*renderTable: default
+*renderTable.default.fontType: FONT_IS_XFT
+*renderTable.default.fontName: Liberation Sans
+*renderTable.default.fontSize: 10
+
+!! To specify core fonts, replace fontType with FONT_IS_FONT and fontName
+!! with an XLFD (fontSize is only used for Xft fonts). E.g:
+!! *renderTable.menu.fontType: FONT_IS_FONT
+!! *renderTable.menu.fontName: -adobe-helvetica-medium-r-normal-*-12-*-*-*-*-*-*-*

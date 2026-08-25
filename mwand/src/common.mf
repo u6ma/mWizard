@@ -1,0 +1,38 @@
+# Common Makefile part, included by every platform specific makefile
+
+CFLAGS += -DPREFIX='"$(PREFIX)"' -DRCDIR='"$(RCDIR)"' $(INCDIRS)
+
+# mWand links only what Motif itself needs. It talks to the window manager
+# through EWMH properties, so there is nothing else to link against.
+mwand_libs = -lXm -lXt -lX11
+
+mwand_objs = main.o launcher.o switcher.o clock.o session.o \
+	dialogs.o config.o rcparse.o wswitch.o common.o
+
+mwand: $(mwand_objs)
+	$(CC) -o $@ $(LDFLAGS) $(LIBDIRS) $(mwand_objs) $(mwand_libs)
+
+.depend:
+	$(CC) -MM $(INCDIRS) $(mwand_objs:.o=.c) > $@
+
+.PHONY: clean install common_install uninstall
+
+common_install:
+	install -m 755 -d $(PREFIX)/bin
+	install -m 755 mwand $(PREFIX)/bin/mwand
+	install -m 755 -d $(MANDIR)/man1
+	install -m 644 mwand.1 $(MANDIR)/man1/mwand.1
+	install -m 755 -d $(RCDIR)
+	install -m 644 system.mwandrc $(RCDIR)/system.mwandrc
+	install -m 755 -d $(APPLRESDIR)
+	install -m 644 MWand.ad $(APPLRESDIR)/MWand
+
+uninstall:
+	rm -f $(PREFIX)/bin/mwand
+	rm -f $(MANDIR)/man1/mwand.1
+	rm -f $(RCDIR)/system.mwandrc
+	rm -f $(APPLRESDIR)/MWand
+
+clean:
+	-rm -f $(mwand_objs) mwand
+	-rm -f .depend

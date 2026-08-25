@@ -1,0 +1,23 @@
+# mWand FreeBSD Makefile
+
+# Installation prefix. Typically /usr or /usr/local.
+PREFIX = /usr
+MANDIR = $(PREFIX)/share/man
+
+# X11 configuration directory. Should match the one mWizard was built with.
+RCDIR = /usr/local/lib/X11
+
+# Default application resources directory.
+APPLRESDIR = $(RCDIR)/app-defaults
+
+# Usually nothing needs to be changed beyond this point
+INCDIRS = -I/usr/local/include -I/usr/X11R6/include
+LIBDIRS = -L/usr/local/lib -L/usr/X11R6/lib
+
+CFLAGS = -O2 -Wall $(INCDIRS)
+
+include common.mf
+
+install: common_install
+
+-include .depend

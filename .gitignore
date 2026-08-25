@@ -6,6 +6,10 @@ src/Makefile
 src/.depend
 src/*.o
 src/mwizard
+mwand/src/Makefile
+mwand/src/.depend
+mwand/src/*.o
+mwand/src/mwand
 
 # unpacked/built goodies -- the tarballs themselves are tracked
 goodies/build/

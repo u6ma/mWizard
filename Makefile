@@ -1,10 +1,14 @@
+# Sub-makes inherit MAKEFLAGS automatically. Passing $(MAKEFLAGS)
+# explicitly turns a flag like -n into a literal target ("n") and
+# breaks dry runs, so it is deliberately absent below.
+
 all:
 	@if [ -e src/Makefile ]; then \
-		$(MAKE) -C src $(MAKEFLAGS); \
+		$(MAKE) -C src; \
 	else \
 		if [ -e mf/Makefile.$$(uname) ]; then \
 			ln -s ../mf/Makefile.$$(uname) src/Makefile && \
-			$(MAKE) -C src $(MAKEFLAGS); \
+			$(MAKE) -C src; \
 		else \
 			echo "Run: make <target>" && \
 			echo "Available targets are:" && \
@@ -13,7 +17,8 @@ all:
 	fi
 
 .PHONY: clean install uninstall distclean \
-	goodies install-goodies uninstall-goodies clean-goodies
+	goodies install-goodies uninstall-goodies clean-goodies \
+	mwand install-mwand uninstall-mwand clean-mwand
 
 # Where the goodies get unpacked and built. These paths come from the
 # platform makefile, so pull them in the same way src/ does.
@@ -24,18 +29,19 @@ GOODIES_BLD = goodies/build
 # the bottom treats any unknown target as a platform name and fails.
 
 install:
-	$(MAKE) -C src $(MAKEFLAGS) install
+	$(MAKE) -C src install
 
 uninstall:
-	$(MAKE) -C src $(MAKEFLAGS) uninstall
+	$(MAKE) -C src uninstall
 
 clean:
-	$(MAKE) -C src $(MAKEFLAGS) clean
+	$(MAKE) -C src clean
 
 distclean:
-	-$(MAKE) -C src $(MAKEFLAGS) clean
+	-$(MAKE) -C src clean
 	-rm src/Makefile
 	-rm -rf $(GOODIES_BLD)
+	-$(MAKE) -C mwand distclean
 
 # --- goodies -------------------------------------------------------------
 #
@@ -62,17 +68,34 @@ goodies:
 install-goodies:
 	@if [ ! -d $(GOODIES_BLD) ]; then \
 		echo "Run 'make goodies' first." && exit 1; fi
-	$(MAKE) -C src $(MAKEFLAGS) install-goodies GOODIES_BLD=../$(GOODIES_BLD)
+	$(MAKE) -C src install-goodies GOODIES_BLD=../$(GOODIES_BLD)
 
 uninstall-goodies:
-	$(MAKE) -C src $(MAKEFLAGS) uninstall-goodies
+	$(MAKE) -C src uninstall-goodies
 
 clean-goodies:
 	-rm -rf $(GOODIES_BLD)
+
+# --- mWand ---------------------------------------------------------------
+#
+# The optional launcher. Built and installed separately; nothing in the
+# window manager depends on it.
+
+mwand:
+	$(MAKE) -C mwand
+
+install-mwand:
+	$(MAKE) -C mwand install
+
+uninstall-mwand:
+	$(MAKE) -C mwand uninstall
+
+clean-mwand:
+	-$(MAKE) -C mwand distclean
 	
 .DEFAULT:
 	@if [ -e src/Makefile ]; then rm src/Makefile; fi
 	@if ! [ -f mf/Makefile.$@ ]; then \
 		echo "Invalid target name: $@" && exit 1; fi
 	ln -s ../mf/Makefile.$@ src/Makefile
-	$(MAKE) -C src $(MAKEFLAGS)
+	$(MAKE) -C src

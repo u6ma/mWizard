@@ -1,0 +1,88 @@
+# Sample mwandrc. See mwand(1) and doc/MWAND.md for the full syntax.
+# Copy this file to ~/.mwandrc for per-user configuration.
+
+# Behaviour settings. Everything here used to live in the X resource
+# database as XmToolbox*name; it is read from this file now, and what is set
+# here overrides any leftover X resource of the same name.
+
+Settings
+{
+	# Window title. Defaults to <user>@<host> when unset.
+	# title              Toolbox
+
+	# Lay the toolbox out horizontally rather than vertically
+	horizontal           False
+
+	# Draw separators between the launcher, command menu and gadgets
+	separators           True
+
+	# Show the workspace switcher. It needs an EWMH window manager, and is
+	# hidden anyway when there is only one workspace.
+	workspaceSwitcher    True
+
+	# Show the date and time, and how to format it (see strftime(3))
+	dateTimeDisplay      True
+	dateTimeFormat       "%m/%d %l:%M %p"
+
+	# Ask the window manager to put mWand on every workspace
+	occupyAllWorkspaces  True
+
+	# Key that raises and focuses mWand. Unset by default.
+	# hotkey             Super_L
+
+	# The Session menu. With this off, the menu keeps "Execute..." and is
+	# labelled "Commands" instead.
+	sessionMenu          True
+
+	# Commands the session menu runs. An entry with an empty command is not
+	# shown at all, so leave one blank to hide it. Logout, reboot and
+	# shutdown ask for confirmation first.
+	# lockCommand        "i3lock -c 000000"
+	# logoutCommand      "pkill mwizard"
+	suspendCommand       "systemctl suspend"
+	rebootCommand        "systemctl reboot"
+	shutdownCommand      "systemctl poweroff"
+}
+
+
+# Launcher menus.
+#
+# Every top-level menu is defined by its title followed by an opening brace.
+# The & character marks the keyboard mnemonic.
+&Programs
+{
+	# A menu item is a title and a command separated by a colon.
+
+	&File Manager: xfile
+	&NEdit: nedit
+	&GIMP: gimp
+	&Web-Browser: links -g
+	&E-Mail: xterm -title "E-Mail" -geometry 96x40 -e mutt
+}
+
+
+# Menus may contain menus. SEPARATOR places a separator between items.
+&Utilities
+{
+	&XTerm: xterm
+	X&OSView: xosview
+	X&pdf: xpdf
+	SEPARATOR
+	X11 &Utilities 
+	{
+		&Text Editor: xedit
+		&Clipboard: xclipboard
+		&Magnifier: xmag
+		&Icon Editor: bitmap
+		M&anpage Viewer: xman
+		Ca&lculator: xcalc
+	}
+}
+
+# Command strings may contain environment variables in sh(1) syntax,
+# $name or ${name}.
+&Locations
+{
+	&Home: xfile $HOME
+	&Media: xfile /media/$LOGNAME
+}

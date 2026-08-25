@@ -1,0 +1,115 @@
+.TH mWand 1
+.SH "NAME"
+\fBmwand\fP \(em application launcher, workspace switcher and clock for mWizard
+.SH "SYNOPSIS"
+.PP
+\fBmwand\fP [\fI-rcfile\fP \fBfile\fP] [\fI-title\fP \fBtitle\fP]
+[\fI-hotkey\fP \fBkeysym\fP] [\fI-horizontal\fP | \fI+horizontal\fP]
+[\fI-version\fP]
+.SH "DESCRIPTION"
+.PP
+\fBmwand\fP is a small panel holding user defined launcher menus, a workspace
+switcher, a clock, and optionally a menu of session commands\&. It is an
+optional companion to \fBmwizard\fP(1) and is built and installed separately\&.
+.PP
+The workspace switcher and the "occupy all workspaces" behavior use standard
+EWMH properties, so \fBmwand\fP works with any window manager that implements
+them\&. It speaks no private protocol to \fBmwizard\fP and needs no session
+manager\&.
+.SS "Options"
+.IP "\fI-rcfile\fP\ \fBfile\fP" 10
+Read configuration from \fBfile\fP instead of searching the usual locations\&.
+.IP "\fI-title\fP\ \fBtitle\fP" 10
+Set the window title\&. Defaults to \fIuser\fP@\fIhost\fP\&.
+.IP "\fI-hotkey\fP\ \fBkeysym\fP" 10
+Grab this key to raise and focus \fBmwand\fP\&.
+.IP "\fI-horizontal\fP, \fI+horizontal\fP" 10
+Force horizontal or vertical layout\&.
+.IP "\fI-version\fP" 10
+Print version information and exit\&.
+.SH "CONFIGURATION"
+.PP
+\fBmwand\fP is configured from one file, searched for in this order:
+.PP
+.nf
+$HOME/\&.mwandrc
+$RCDIR/system\&.mwandrc
+.fi
+.PP
+That file holds both the launcher menus and, in a \fBSettings\fP block, every
+behavior setting\&. See \fBdoc/MWAND\&.md\fP for the full reference\&.
+.PP
+Unlike \fBxmtoolbox\fP, from which \fBmwand\fP derives, behavior is not read
+from the X resource database\&. The database carries appearance only -- fonts
+and render tables, as installed in \fBapp-defaults/MWand\fP\&. A behavior
+setting left in \fB\&.Xdefaults\fP has no effect, because the rc file is merged
+over it\&.
+.PP
+The one exception is \fIrcFile\fP, which names the file the settings live in
+and so must come from the X database or from \fI-rcfile\fP\&.
+.SS "Settings"
+.IP "\fItitle\fP" 10
+Window title\&. Defaults to \fIuser\fP@\fIhost\fP\&.
+.IP "\fIhorizontal\fP" 10
+Lay out horizontally rather than vertically\&. Default \fBFalse\fP\&.
+.IP "\fIseparators\fP" 10
+Draw separators between the parts\&. Default \fBTrue\fP\&.
+.IP "\fIworkspaceSwitcher\fP" 10
+Show the workspace switcher\&. Default \fBTrue\fP\&. It is hidden regardless
+when there is only one workspace\&.
+.IP "\fIdateTimeDisplay\fP" 10
+Show the clock\&. Default \fBTrue\fP\&.
+.IP "\fIdateTimeFormat\fP" 10
+Clock format, as for \fBstrftime\fP(3)\&. Default \fB"%m/%d %l:%M %p"\fP\&.
+.IP "\fIoccupyAllWorkspaces\fP" 10
+Ask the window manager to show \fBmwand\fP on every workspace\&. Default
+\fBTrue\fP\&.
+.IP "\fIhotkey\fP" 10
+Key that raises and focuses \fBmwand\fP\&. Unset by default\&.
+.IP "\fIsessionMenu\fP" 10
+Include the session actions in the command menu\&. Default \fBTrue\fP\&. With
+this off the menu keeps \fBExecute\&.\&.\&.\fP and is labelled \fBCommands\fP
+rather than \fBSession\fP\&.
+.IP "\fIlockCommand\fP, \fIlogoutCommand\fP, \fIsuspendCommand\fP, \fIrebootCommand\fP, \fIshutdownCommand\fP" 10
+Commands the session menu runs\&. An entry whose command is empty is not shown
+at all\&. \fIlogoutCommand\fP, \fIrebootCommand\fP and \fIshutdownCommand\fP
+ask for confirmation first\&. The last three default to \fBsystemctl\fP
+invocations; the first two are empty\&.
+.SS "Menus"
+.PP
+A top level menu is a title followed by a brace block\&. \fB&\fP marks the
+keyboard mnemonic, a colon separates an item's title from its command, and
+\fBSEPARATOR\fP places a separator\&. Menus may nest\&.
+.PP
+.nf
+&Programs
+{
+    &Terminal: xterm
+    SEPARATOR
+    &More
+    {
+        Ca&lculator: xcalc
+    }
+}
+.fi
+.PP
+Command strings may contain environment variables in \fBsh\fP(1) syntax\&.
+Lines beginning with \fB#\fP or \fB!\fP are comments\&.
+.PP
+A top level menu titled exactly \fBSettings\fP would be mistaken for the
+settings block\&. Write it with a mnemonic, \fB&Settings\fP, or give it any
+other title\&.
+.SH "SIGNALS"
+.IP "\fBSIGUSR1\fP" 10
+Re-read the configuration file\&. On a parse error the previous configuration
+stays active and the error is reported\&.
+.SH "FILES"
+.PP
+.nf
+$HOME/\&.mwandrc
+$RCDIR/system\&.mwandrc
+$APPLRESDIR/MWand
+.fi
+.SH "SEE ALSO"
+.PP
+\fBmwizard\fP(1), \fBmwizardrc\fP(4), \fBstrftime\fP(3)
