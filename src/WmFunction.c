@@ -124,42 +124,6 @@ Boolean F_Beep (String args, ClientData *pCD, XEvent *event)
 
 } /* END OF FUNCTION F_Beep */
 
-#if 0 /* UNUSED */
-/*
- * Handle Special case where the dirty window is the top most
- * transient window.  When this is the case, raising the window
- * that was on top (the window just below the dirty window) will
- * fail because Mwm stack database is out of sync.  So the solution
- * is to restack the dirty transient relative to the second to the
- * top transient.  This function is used to support freeFamily stacking.
- */
-static ClientData * FindSecondToTopTransient(ClientData *pcd)
-{
-    ClientData *pcdNext;
-    static ClientData *second;
-
-    pcdNext = pcd->transientChildren;
-    while (pcdNext)
-    {
-	if (pcdNext->transientChildren)
-	{
-	    if (!pcdNext->transientChildren->transientChildren)
-	    {
-		second = pcdNext;
-	    }
-	    FindSecondToTopTransient (pcdNext);
-	}
-	pcdNext = pcdNext->transientSiblings;
-	if (pcdNext && !pcdNext->transientSiblings)
-	{
-	    second = pcdNext;
-	}
-    }
-
-    return (second);
-
-} /* END OF FUNCTION */
-#endif
 
 static Boolean ForceLowerWindow (ClientData *pcd)
 {
@@ -207,16 +171,6 @@ static Boolean ForceLowerWindow (ClientData *pcd)
 	}
     }
 
-#if 0 /* TBD: what's up with that? */
-    if (pSD->lastClient->type == MINIMIZED_STATE)
-    {
-	stackWindow = ICON_FRAME_WIN(pSD->lastClient->pCD);
-    }
-    else
-    {
-	stackWindow = pSD->lastClient->pCD->clientFrameWin;
-    }
-#endif
 
     changes.stack_mode = Below;
 
@@ -1144,7 +1098,6 @@ static Window FindSomeReasonableClient(void)
 } /* END OF FUNCTION FindSomeReasonableClient */
 
 
-
 
 /*************************************<->*************************************
  *
@@ -1486,7 +1439,6 @@ F_Goto_Workspace (String args, ClientData *pCD, XEvent *event)
 }  /* END OF FUNCTION F_Goto_Workspace */
 
 
-
 /******************************<->*************************************
  *
  *  F_Next_Key (args, pCD, event)
@@ -1583,7 +1535,6 @@ Boolean F_Prev_Cmap (String args, ClientData *pCD, XEvent *event)
     return (True);
 
 } /* END OF FUNCTION F_Prev_Cmap */
-
 
 
 /*************************************<->*************************************
@@ -1712,7 +1663,6 @@ Boolean F_Maximize (String args, ClientData *pCD, XEvent *event)
     return (False);
 
 } /* END OF FUNCTION F_Maximize */
-
 
 
 /*************************************<->*************************************
@@ -1997,7 +1947,6 @@ Boolean F_Normalize (String args, ClientData *pCD, XEvent *event)
 } /* END OF FUNCTION F_Normalize */
 
 
-
 /*************************************<->*************************************
  *
  *  F_Normalize_And_Raise (args, pCD, event)
@@ -2051,7 +2000,6 @@ Boolean F_Normalize_And_Raise (String args, ClientData *pCD, XEvent *event)
     return (False);
 
 } /* END OF FUNCTION F_Normalize_And_Raise */
-
 
 
 /*************************************<->*************************************
@@ -2528,7 +2476,6 @@ Boolean F_Refresh (String args, ClientData *pCD, XEvent *event)
 } /* END OF FUNCTION F_Refresh */
 
 
-
 /*************************************<->*************************************
  *
  *  F_Resize (args, pCD, event)
@@ -2553,7 +2500,6 @@ Boolean F_Resize (String args, ClientData *pCD, XEvent *event)
     return (False);
 
 } /* END OF FUNCTION F_Resize */
-
 
 
 /*************************************<->*************************************
@@ -2850,23 +2796,9 @@ Boolean F_Separator (String args, ClientData *pCD, XEvent *event)
 
 static Boolean ForceRaiseWindow (ClientData *pcd)
 {
-#if 0
-    Window stackWindow;
-    WmScreenData *pSD = (ACTIVE_WS)->pSD;
-#endif
     XWindowChanges changes;
     Boolean restack = False;
 
-#if 0
-    if (pSD->clientList->type == MINIMIZED_STATE)
-    {
-	stackWindow = ICON_FRAME_WIN(pSD->clientList->pCD);
-    }
-    else
-    {
-	stackWindow = pSD->clientList->pCD->clientFrameWin;
-    }
-#endif
 
     /*
      * Windows did not raise on regular f.raise because the raise was
@@ -3222,7 +3154,6 @@ void Do_Raise (ClientData *pCD, ClientListEntry *pStackEntry, int flags)
 } /* END OF FUNCTION Do_Raise */
 
 
-
 /*************************************<->*************************************
  *
  *  F_Raise_Lower (args, pCD, event)
@@ -3300,7 +3231,6 @@ Boolean F_Raise_Lower (String args, ClientData *pCD, XEvent *event)
     return True;
 
 } /* END OF FUNCTION F_Raise_Lower */
-
 
 
 /*************************************<->*************************************
@@ -3557,7 +3487,6 @@ static unsigned int GetEventInverseMask(XEvent *event)
 }
 
 
-
 /*************************************<->*************************************
  *
  *  ClearDirtyStackEntry (pCD)
@@ -3723,7 +3652,6 @@ Boolean F_Prev_Workspace (String args, ClientData *pCD, XEvent *event)
     return (False);
 
 } /* END OF FUNCTION F_Prev_Workspace */
-
 
 
 /*************************************<->*************************************

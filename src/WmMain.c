@@ -52,9 +52,6 @@ WmScreenData *pSD;
  */
 
 WmGlobalData wmGD;
-#ifndef NO_MESSAGE_CATALOG
-NlsStrings wmNLS;
-#endif
 
 
 

@@ -52,8 +52,6 @@
 #define MWM_VERSION  1
 #define MWM_REVISION 0
 
-#define NO_MESSAGE_CATALOG
-
 /* window manager name and class used to get resources: */
 #define	WM_RESOURCE_CLASS	"MWizard"
 #define WM_RESOURCE_NAME	"mwizard"
@@ -182,7 +180,6 @@ extern Pixel		FPselectcolor;
 
 #define ICON_IMAGE_X_OFFSET ICON_INNER_X_OFFSET+ICON_INTERNAL_SHADOW_WIDTH
 #define ICON_IMAGE_Y_OFFSET ICON_INNER_Y_OFFSET+ICON_INTERNAL_SHADOW_WIDTH
-
 
 
 /* number of rectangles to allocate */
@@ -775,7 +772,6 @@ typedef struct _RList
 } RList;
 
 
-
 
 /*************************************<->*************************************
  *
@@ -959,8 +955,6 @@ typedef struct _BitmapCache
    PixmapCache  *pixmapCache;
 
 } BitmapCache;
-
-
 
 
 
@@ -1351,9 +1345,6 @@ typedef struct _ClientData
     ClientListEntry clientEntry;
     ClientListEntry iconEntry;
     XID		windowGroup;			/* WM_HINTS field */
-#ifndef NO_OL_COMPAT
-    Boolean	bPseudoTransient;		/* transientFor window group */
-#endif /* NO_OL_COMPAT */
 
     IconBoxData *pIconBox;			/* icon box for this win */
     IconBoxData *thisIconBox;			/* icon box data for self */
@@ -1662,12 +1653,6 @@ typedef struct _WmGlobalData
     Cursor	movePlacementCursor;
     Cursor	sizePlacementCursor;
 
-#ifndef NO_MESSAGE_CATALOG
-    XmString okLabel;
-    XmString cancelLabel;
-    XmString helpLabel;
-#endif
-
 
     /* wm state info: */
 
@@ -1744,24 +1729,6 @@ typedef struct _WmGlobalData
     Atom	xa_MWM_WORKSPACE_CURRENT;
     Atom	xa_ALL_WORKSPACES;
 
-#ifndef NO_OL_COMPAT
-    Atom	xa_OL_WIN_ATTR;
-    Atom	xa_OL_DECOR_RESIZE;
-    Atom	xa_OL_DECOR_HEADER;
-    Atom	xa_OL_DECOR_CLOSE;
-    Atom	xa_OL_DECOR_PIN;
-    Atom	xa_OL_DECOR_ADD;
-    Atom	xa_OL_DECOR_DEL;
-    Atom	xa_OL_WT_BASE;
-    Atom	xa_OL_WT_COMMAND;
-    Atom	xa_OL_WT_HELP;
-    Atom	xa_OL_WT_NOTICE;
-    Atom	xa_OL_WT_OTHER;
-    Atom	xa_OL_PIN_IN;
-    Atom	xa_OL_PIN_OUT;
-    Atom	xa_OL_MENU_LIMITED;
-    Atom	xa_OL_MENU_FULL;
-#endif /* NO_OL_COMPAT */
 
     /* mwm specific appearance and behavior resources and data: */
 
@@ -1771,7 +1738,6 @@ typedef struct _WmGlobalData
     Boolean	clientAutoPlace;		/* resource */
     int		colormapFocusPolicy;		/* resource */
     String	configFile;			/* resource */
-    String	cppCommand;			/* resource */
     Boolean	deiconifyKeyFocus;		/* resource */
     int		doubleClickTime;		/* resource */
     Boolean	enableWarp;			/* resource */
@@ -1933,33 +1899,6 @@ typedef struct _WmGlobalData
 #define SCREEN_DATA_TYPE		1003
 #define WORKSPACE_DATA_TYPE		1004
 
-#ifndef NO_MESSAGE_CATALOG
-/*************************************<->*************************************
- *
- *  NlsStrings
- *
- *
- *  Description:
- *  -----------
- *  This structure is used to hold message strings that used to
- *  be defines
- *
- *************************************<->***********************************/
-
-typedef struct _NlsStrings
-{
-    char *default_icon_box_title;
-    char *builtinSystemMenu;
-    char *defaultKeyBindings;
-    char *builtinKeyBindings;
-    char *defaultButtonBindings;
-    char *defaultVersionTitle;
-} NlsStrings;
-
-
-extern NlsStrings wmNLS;
-
-#endif
 
 /* Stacking functions */
 #define STACK_NORMAL			0
@@ -1982,11 +1921,7 @@ extern WmGlobalData	wmGD;
 extern char	defaultSystemMenuName[];
 extern char	defaultKeyBindings[];
 extern char	defaultKeyBindingsName[];
-#ifndef NO_MESSAGE_CATALOG
-extern char	*builtinSystemMenu;
-#else
 extern char	builtinSystemMenu[];
-#endif
 extern char	builtinKeyBindings[];
 
 extern const char	_75_foreground[];
@@ -1998,11 +1933,6 @@ void PrintVersionInfo(void); /* in WmMain.c */
 /*
  * macro to get message catalog strings
  */
-#ifndef NO_MESSAGE_CATALOG
-#define GETMESSAGE(set, number, string)\
-    catgets(_CLIENT_CAT, set, number, string)
-#else
 #define GETMESSAGE(set, number, string) (string)
-#endif
 
 #endif /* _WmGlobal_h */

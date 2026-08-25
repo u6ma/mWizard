@@ -106,7 +106,6 @@ Boolean MakeIcon (WmWorkspaceData *pWS, ClientData *pcd)
     WsClientData *pWsc = GetWsClientData (pWS, pcd);
 
 
-
     /*
      * Common to all icons
      */
@@ -351,9 +350,6 @@ static void MakeIconShadows (ClientData *pcd, int xOffset, int yOffset)
 } /* END OF FUNCTION MakeIconShadows */
 
 
-
-
-
 
 /*************************************<->*************************************
  *
@@ -388,7 +384,6 @@ void IconExposureProc (ClientData *pcd, Boolean expose)
     unsigned int width, height;
     GC iconGC, topGC, botGC;
     static XRectangle	shrinkRects[4];
-
 
 
     /*
@@ -666,7 +661,6 @@ void IconExposureProc (ClientData *pcd, Boolean expose)
 } /* END OF FUNCTION IconExposureProc */
 
 
-
 
 /*************************************<->*************************************
  *
@@ -737,7 +731,6 @@ static void GetIconTitleBox (ClientData *pcd, XRectangle *pBox)
 	    pBox->x -= ICON_INTERNAL_SHADOW_WIDTH;
 	    pBox->y -= ICON_INTERNAL_SHADOW_WIDTH;
 	}
-
 
 
 	pBox->width = ICON_IMAGE_MAXIMUM(pcd).width 
@@ -865,7 +858,6 @@ static void DrawIconTitle (ClientData *pcd)
 		   textBox.x, textBox.y, textBox.width, &textBox, True);
 
 } /* END OF FUNCTION DrawIconTitle */
-
 
 
 
@@ -1139,8 +1131,6 @@ void InitIconSize (WmScreenData *pSD)
     }
 
 
-
-
     switch (pSD->iconDecoration & (ICON_IMAGE_PART | ICON_LABEL_PART)) 
     {
 	case ICON_LABEL_PART:
@@ -1234,7 +1224,6 @@ void ShowActiveIcon (ClientData *pcd)
 	if ((!ACTIVE_PSD->useIconBox) || 
 	    (P_ICON_BOX(pcd) == NULL))
 	{
-#ifndef MOTIF_ONE_DOT_ONE
 	    if (ICON_DECORATION(pcd) & ICON_IMAGE_PART)
 	    {
 		Dimension dheight, dwidth;
@@ -1273,9 +1262,6 @@ void ShowActiveIcon (ClientData *pcd)
 			    (unsigned int) ICON_WIDTH(pcd), 
 			    (unsigned int) ICON_HEIGHT(pcd), False);
 	    }
-#else
-	    XClearWindow (DISPLAY, ICON_FRAME_WIN(pcd));
-#endif
 	}
 	else
 	{
@@ -1306,11 +1292,7 @@ void ShowActiveIcon (ClientData *pcd)
 	}
 
 	/* simulate exposure of window */
-#ifndef MOTIF_ONE_DOT_ONE
 	IconExposureProc(pcd, False);
-#else
-	IconExposureProc(pcd, True);
-#endif
 
     }
 
@@ -1379,7 +1361,6 @@ void ShowInactiveIcon (ClientData *pcd, Boolean refresh)
 	    if ((!ACTIVE_PSD->useIconBox) || 
 	        (P_ICON_BOX(pcd) == NULL))
 	    {
-#ifndef MOTIF_ONE_DOT_ONE
 		XmeClearBorder (DISPLAY, ICON_FRAME_WIN(pcd),
 				0, 0,
 				ICON_WIDTH(pcd), ICON_IMAGE_HEIGHT(pcd), 4);
@@ -1389,9 +1370,6 @@ void ShowInactiveIcon (ClientData *pcd, Boolean refresh)
 			    0, ICON_IMAGE_HEIGHT(pcd),
 			    (unsigned int) ICON_WIDTH(pcd), 
 			    (unsigned int) ICON_HEIGHT(pcd), False);
-#else
-		XClearWindow (DISPLAY, ICON_FRAME_WIN(pcd));
-#endif
 	    }
 	    else
 	    {
@@ -1409,11 +1387,7 @@ void ShowInactiveIcon (ClientData *pcd, Boolean refresh)
 	
 
         /* simulate exposure of window */
-#ifndef MOTIF_ONE_DOT_ONE
 	    IconExposureProc(pcd, False);
-#else
-	    IconExposureProc(pcd, True);
-#endif
 	}
 
     }
@@ -1512,8 +1486,6 @@ void ReparentIconWindow (ClientData *pcd, int xOffset, int yOffset)
 
     rpX = ((ICON_WIDTH(pcd) - width)/2)    + xOffset;
     rpY = ((ICON_IMAGE_HEIGHT(pcd) - height)/2) + yOffset;
-
-
 
 
     XReparentWindow (DISPLAY, pcd->iconWindow, ICON_FRAME_WIN(pcd), rpX, rpY);
@@ -1861,7 +1833,6 @@ void ShowActiveIconText (ClientData *pcd)
 
 	y = icon_y + ICON_IMAGE_HEIGHT(pcd);
 	x = icon_x - (activeIconTextWidth - ICON_WIDTH(pcd))/2;
-
 
 
 	if (!(P_ICON_BOX(pcd)))

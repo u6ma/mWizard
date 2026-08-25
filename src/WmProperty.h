@@ -37,10 +37,6 @@ MenuItem * GetMwmMenuItems (ClientData *pCD);
 void GetInitialPropertyList (ClientData *pCD);
 Status GetWorkspaceHints (Display *display,
 	Window window, Atom **ppWsAtoms, unsigned int *pCount, Boolean *pbAll);
-#ifdef HP_VUE
-void SetWorkspaceInfo (Window propWindow,
-	WorkspaceInfo *pWsInfo, unsigned long cInfo);
-#endif /* HP_VUE */
 void SetWorkspacePresence (Window propWindow,
 	Atom *pWsPresence, unsigned long cPresence);
 Boolean HasProperty(ClientData *pCD, Atom property);

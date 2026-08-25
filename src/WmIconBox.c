@@ -117,7 +117,6 @@ void InitIconBox (WmScreenData *pSD)
      */
 
 
-
     /*
      * Manage a separate icon box in every workspace
      * on this screen.
@@ -458,17 +457,14 @@ void MakeScrolledWindow (WmWorkspaceData *pWS, IconBoxData *pIBD)
 					pIBD->frameWidget,
 					(ArgList)setArgs, i);
 
-#ifndef MOTIF_ONE_DOT_ONE
     XtAddCallback(pIBD->scrolledWidget, XmNtraverseObscuredCallback,
 		  (XtCallbackProc) IconScrollVisibleCallback, (XtPointer)NULL);
-#endif
 
     XtAddEventHandler(pIBD->scrolledWidget, 
 			StructureNotifyMask, 
 			False, 
 			(XtEventHandler)UpdateIncrements, 
 			(XtPointer) pIBD);
-
 
 
 } /* END OF FUNCTION MakeScrolledWindow */
@@ -957,13 +953,8 @@ void InitializeClientData (ClientData *pCD, IconBoxData *pIBD)
     
     if (!(pCD->pSD->iconBoxTitle))
     {
-#ifndef NO_MESSAGE_CATALOG
-	pCD->pSD->iconBoxTitle = 
-	    XmStringCreateLocalized(wmNLS.default_icon_box_title);
-#else
 	pCD->pSD->iconBoxTitle = 
 	    XmStringCreateLocalized(DEFAULT_ICON_BOX_TITLE);
-#endif
     }
 
     pCD->clientTitle = pCD->pSD->iconBoxTitle;
@@ -1220,7 +1211,6 @@ void SetGeometry (WmWorkspaceData *pWS, ClientData *pCD, IconBoxData *pIBD)
     }
 
 
-
     if (pCD->clientWidth < pCD->minWidth)
     {
         pCD->clientWidth = pCD->minWidth;
@@ -1403,7 +1393,6 @@ void SetGranularity (WmWorkspaceData *pWS, ClientData *pCD, IconBoxData *pIBD)
     Arg getArgs[10]; 
 
     i=0;
-
 
 
     XtSetArg(getArgs[i], XmNspacing, (XtArgVal) &spacing ); i++;
@@ -2868,7 +2857,6 @@ void RealignIconList (IconBoxData *pIBD, int newCols, int newRows)
 } /* END OF FUNCTION RealignIconList */
 
 
-
 
 /*************************************<->*************************************
  *
@@ -2974,7 +2962,6 @@ void ShowClientIconState (ClientData *pCD, int newState)
 
 
 
-#ifndef MOTIF_ONE_DOT_ONE
 /*************************************<->*************************************
  *
  *  IconScrollVisibleCallback
@@ -3000,7 +2987,6 @@ void IconScrollVisibleCallback (Widget w, XtPointer client_data, XmAnyCallbackSt
 */
 } /* END OF FUNCTION IconScrollVisibleCallback */
 
-#endif
 
 
 /*************************************<->*************************************

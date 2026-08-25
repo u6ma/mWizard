@@ -61,11 +61,7 @@
 #include "WmXinerama.h"
 #include "WmEwmh.h"
 
-#ifndef NO_MESSAGE_CATALOG
-# define LOCALE_MSG GETMESSAGE(70, 7, "[XmbTextPropertyToTextList]:\n     Locale (%.100s) not supported. (Check $LANG).")
-#else
 # define LOCALE_MSG "[XmbTextPropertyToTextList]:\n     Locale (%.100s) not supported. (Check $LANG)."
-#endif
 
 /*
  * Global Variables:
@@ -190,9 +186,6 @@ GetClientInfo (WmScreenData *pSD, Window clientWindow, long manageFlags)
     pCD->piconBottomShadows = NULL;
     pCD->internalBevel = (wmGD.frameStyle == WmSLAB) ? 0 : 
 						FRAME_INTERNAL_SHADOW_WIDTH;
-#ifndef NO_OL_COMPAT
-    pCD->bPseudoTransient = False;
-#endif /* NO_OL_COMPAT */
 
     pCD->maxWidth = pCD->maxWidthLimit = BIGSIZE;
     pCD->maxHeight = pCD->maxHeightLimit = BIGSIZE;
@@ -542,9 +535,6 @@ GetWmClientInfo (WmWorkspaceData *pWS,
      */
     pCD->numInhabited = 0;
     pCD->windowGroup = 0L;
-#ifndef NO_OL_COMPAT
-    pCD->bPseudoTransient = False;
-#endif /* NO_OL_COMPAT */
 
 
     /*
@@ -717,7 +707,6 @@ GetWmClientInfo (WmWorkspaceData *pWS,
     }
 
 
-
     /*
      * Setup the colormap data.
      */
@@ -768,14 +757,8 @@ ProcessWmClass (ClientData *pCD)
     XClassHint classHint;
 
 
-#ifdef PORT_OLDXLIB
-    classHint.res_class = "";
-    classHint.res_name = "";
-    XGetClassHint (DISPLAY, pCD->client, &classHint);
-#else
     if ((HasProperty (pCD, XA_WM_CLASS)) &&
 	(XGetClassHint (DISPLAY, pCD->client, &classHint)))
-#endif
     {
 	/* the WM_CLASS property exists for the client window */
 	pCD->clientClass = classHint.res_class;
@@ -859,55 +842,6 @@ ProcessWmHints (ClientData *pCD, Boolean firstTime)
 
     if (firstTime)
     {
-#ifndef NO_OL_COMPAT
-        ClientData *leader;
-	Atom *pIDs;
-	unsigned int numIDs = 0;
-
-        /*
-         * Save the window group.
-         */
-
-        if (flags & WindowGroupHint)
-	{
-	    pCD->windowGroup = pXWMHints->window_group;
-	    /*
-	     * Pretend this is a transient window 
-	     */
-	    if ((pCD->bPseudoTransient) && 
-		(pCD->transientFor == (Window)0L))
-	    {
-		pCD->clientFlags |= CLIENT_TRANSIENT;
-
-		/*
-		 * Treat this like a transient window. This is transient
-		 * for the window group window.
-		 */
-
-		if ((pCD->client != pCD->windowGroup) &&
-		    !XFindContext (DISPLAY, pCD->windowGroup, 
-			wmGD.windowContextType, (XPointer*)&leader))
-		{
-		    pCD->transientFor = pCD->windowGroup;
-		    pCD->transientLeader = leader;
-
-		    /*
-		     * Insure it is in the same set of workspaces
-		     * as the leader.
-		     */
-		    if (pCD->transientLeader && 
-			GetLeaderPresence(pCD, &pIDs, &numIDs))
-		    {
-			ProcessWorkspaceHintList (pCD, pIDs, numIDs);
-		    }
-		}
-	    }
-	}
-	else
-	{
-	    pCD->windowGroup = 0L;
-	}
-#endif /* NO_OL_COMPAT */
         /*
          * The window manger does not do anything with the input hint.  Input
          * always goes to the selected window.
@@ -1110,7 +1044,6 @@ ProcessWmHints (ClientData *pCD, Boolean firstTime)
 	    }
 	}
 
-#ifdef NO_OL_COMPAT
         /*
          * Save the window group.
          */
@@ -1123,7 +1056,6 @@ ProcessWmHints (ClientData *pCD, Boolean firstTime)
 	{
 	    pCD->windowGroup = 0L;
 	}
-#endif /* NO_OL_COMPAT */
     }
     else /* not the first time the hints are processed */
     {
@@ -1914,12 +1846,10 @@ WmICCCMToXmString (XTextProperty *wmNameProp)
       switch (status)
       {
       case XConverterNotFound:
-#ifndef MOTIF_ONE_DOT_ONE
 	  sprintf(msg, GETMESSAGE (70,5,
 		    "Window manager cannot convert property %.100s as clientTitle/iconTitle: XmbTextPropertyToTextList"), 
 		  XGetAtomName (DISPLAY,wmNameProp->encoding));
 	  Warning(msg);
-#endif /* MOTIF_ONE_DOT_ONE */
 	  break;
 
       case XNoMemory:
@@ -2251,7 +2181,6 @@ MakeSystemMenu (ClientData *pCD)
        MakeMenu (PSD_FOR_CLIENT(pCD), pCD->systemMenu, F_CONTEXT_WINDOW,
 	         F_CONTEXT_WINDOW|F_CONTEXT_ICON, pCD->mwmMenuItems, TRUE);
 
-#ifdef NO_MESSAGE_CATALOG
     if (pCD->systemMenuSpec == NULL)
     {
         /*
@@ -2264,7 +2193,6 @@ MakeSystemMenu (ClientData *pCD)
 		    F_CONTEXT_WINDOW,
 		    F_CONTEXT_WINDOW|F_CONTEXT_ICON, pCD->mwmMenuItems, TRUE);
     }
-#endif
 
 } /* END OF FUNCTION MakeSystemMenu */
 
@@ -3547,12 +3475,6 @@ void ProcessMwmHints (ClientData *pCD, Boolean first_time)
 
 	XFree ((char*)pHints);
     }
-#ifndef NO_OL_COMPAT
-    else
-    {
-	ProcessOLDecoration (pCD);
-    }
-#endif /* NO_OL_COMPAT */
 
     /* 
      * If primary window can't move between workspaces, then

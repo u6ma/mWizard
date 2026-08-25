@@ -32,7 +32,4 @@ void MakeWmFunctionResources (WmScreenData *pSD);
 void MakeXorGC (WmScreenData *pSD);
 void CopyArgv (int argc, char *argv []);
 void InitScreenNames (void);
-#ifndef NO_MESSAGE_CATALOG
-void InitNlsStrings( void ) ;
-#endif
 void InitWmDisplayEnv( void ) ;

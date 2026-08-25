@@ -64,78 +64,6 @@ static Cursor  waitCursor = (Cursor)0L;
 
 /* see WmGlobal.h for index defines: */
 
-#ifndef NO_MESSAGE_CATALOG
-static char *confirm_mesg[4] = {"Switch to Default Behavior?",
-				"Switch to Custom Behavior?",
-                                "Restart Window Manager?",
-                                "QUIT Window Manager?"};
-
-
-void initMesg()
-{
-
-    char * tmpString;
-
-    /*
-     * catgets returns a pointer to an area that is over written
-     * on each call to catgets.  
-     */
-
-    tmpString = ((char *)GETMESSAGE(22, 12, "Switch to Default Behavior?"));
-    if ((confirm_mesg[0] =
-         (char *)XtMalloc ((unsigned int) (strlen(tmpString) + 1))) == NULL)
-    {
-        Warning (((char *)GETMESSAGE(22, 2, "Insufficient memory for local message string")));
-	confirm_mesg[0] = "Switch to Default Behavior?";
-    }
-    else
-    {
-	strcpy(confirm_mesg[0], tmpString);
-    }
-
-    tmpString = ((char *)GETMESSAGE(22, 13, "Switch to Custom Behavior?"));
-    if ((confirm_mesg[1] =
-         (char *)XtMalloc ((unsigned int) (strlen(tmpString) + 1))) == NULL)
-    {
-        Warning (((char *)GETMESSAGE(22, 2, "Insufficient memory for local message string")));
-	confirm_mesg[1] = "Switch to Custom Behavior?";
-    }
-    else
-    {
-	strcpy(confirm_mesg[1], tmpString);
-    }
-
-	tmpString = ((char *)GETMESSAGE(22, 3, "Restart Window Manager?"));
-
-    if ((confirm_mesg[2] =
-         (char *)XtMalloc ((unsigned int) (strlen(tmpString) + 1))) == NULL)
-    {
-        Warning (((char *)GETMESSAGE(22, 5, "Insufficient memory for local message string")));
-    
-	confirm_mesg[2] = "Restart Window Manager?";
-	
-	}
-    else
-    {
-	strcpy(confirm_mesg[2], tmpString);
-    }
-
-
-	tmpString = ((char *)GETMESSAGE(22, 6, "QUIT Window Manager?"));
-    
-    if ((confirm_mesg[3] =
-         (char *)XtMalloc ((unsigned int) (strlen(tmpString) + 1))) == NULL)
-    {
-        Warning (((char *)GETMESSAGE(22, 8, "Insufficient memory for local message string")));
-
-	    confirm_mesg[3] = "QUIT Window Manager?";
-	}
-    else
-    {
-	strcpy(confirm_mesg[3], tmpString);
-    }
-}
-#else
 static char *confirm_mesg[NUM_CONFIRM_ACTIONS] = {
                                 "Restart Window Manager?",
                                 "QUIT Window Manager?",
@@ -143,7 +71,6 @@ static char *confirm_mesg[NUM_CONFIRM_ACTIONS] = {
                                 "Shut down the system?",
                                 "Suspend the system?"};
 
-#endif
 static char *confirm_widget[NUM_CONFIRM_ACTIONS] = {
 				  "confirmRestart",
 				  "confirmQuit",
@@ -477,7 +404,6 @@ void HideFeedbackWindow (WmScreenData *pSD)
 }
 
 
-
 
 /*************************************<->*************************************
  *
@@ -516,13 +442,6 @@ void UpdateFeedbackInfo (WmScreenData *pSD, int x, int y, unsigned int width, un
      * configuration outline.
      */
 
-#ifdef NOTDONE
-    /* only update if something changed */
-    if (((pSD->fbStyle & FB_POSITION) &&
-	 ((pSD->fbLastX != x) || (pSD->fbLastY != y))) || 
-	((pSD->fbStyle & FB_SIZE) &&
-	 ((pSD->fbLastWidth != width) || (pSD->fbLastHeight != height))))
-#endif /* NOTDONE */
     {
 	pSD->fbLastX = x;
 	pSD->fbLastY = y;
@@ -534,7 +453,6 @@ void UpdateFeedbackInfo (WmScreenData *pSD, int x, int y, unsigned int width, un
 	PaintFeedbackWindow(pSD);
     }
 }
-
 
 
 
@@ -723,12 +641,6 @@ void ConfirmAction (WmScreenData *pSD, int nbr)
     {
 		Bool have_xinerama;
 		XineramaScreenInfo xsi;
-#ifndef NO_MESSAGE_CATALOG
-	/*
-	 * Initialize messages
-	 */
-	initMesg();
-#endif
 
 		have_xinerama=GetPrimaryXineramaScreen(&xsi);
 	
@@ -810,15 +722,8 @@ void ConfirmAction (WmScreenData *pSD, int nbr)
         XtSetArg (args[n], XmNtraversalOn, (XtArgVal) TRUE); n++;
         XtSetArg (args[n], XmNhighlightThickness, 
 		  (XtArgVal) CB_HIGHLIGHT_THICKNESS); n++;
-#ifndef NO_MESSAGE_CATALOG
-	    XtSetArg(args[n], XmNlabelString, wmGD.okLabel); n++;
-#endif
         XtSetValues ( XmMessageBoxGetChild (pSD->confirmboxW[nbr], 
 			    XmDIALOG_OK_BUTTON), args, n);
-#ifndef NO_MESSAGE_CATALOG
-	    n--;
-	    XtSetArg(args[n], XmNlabelString, wmGD.cancelLabel); n++;
-#endif
         XtSetValues ( XmMessageBoxGetChild (pSD->confirmboxW[nbr], 
 			    XmDIALOG_CANCEL_BUTTON), args, n);
         XtAddCallback (pSD->confirmboxW[nbr], XmNokCallback, 
@@ -1004,9 +909,5 @@ void InitCursorInfo (void)
     }
 
 } /* END OF FUNCTION InitCursorInfo */
-
-
-
-
 
 

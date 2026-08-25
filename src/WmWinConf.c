@@ -1282,10 +1282,6 @@ void CompleteFrameConfig (ClientData *pcd, XEvent *pev)
     {
 	UndoGrabs();
 
-#ifdef DESKTOP
-	SendMarqueeSelectionNotification((pcd ? pcd->pSD : ACTIVE_PSD),
-		WM_MARQUEE_SELECT_END, marqueeX, marqueeY, marqueeWidth, marqueeHeight);
-#endif /* DESKTOP */
     }
 
     /*
@@ -2691,10 +2687,6 @@ void CancelFrameConfig (ClientData *pcd)
     }
     if (wmGD.configAction == MARQUEE_SELECT)
     {
-#ifdef DESKTOP
-       SendMarqueeSelectionNotification(ACTIVE_PSD, WM_MARQUEE_SELECT_CANCEL, 
-			    marqueeX, marqueeY, 0, 0);
-#endif /* DESKTOP */
     }
 
     /* replace pointer if no motion events received */
@@ -3896,9 +3888,6 @@ StartMarqueeSelect(WmScreenData *pSD, XEvent *pev)
 	 *
 	 * (If we move off of ICCCM messaging, then this can go away.)
 	 */
-#ifdef DESKTOP
-	SendMarqueeSelectionNotification(pSD, WM_MARQUEE_SELECT_END, 0, 0, 0, 0);
-#endif  /* DESKTOP */
 	pSD->bMarqueeSelectionInitialized = True;
     }
 
@@ -3959,10 +3948,6 @@ StartMarqueeSelect(WmScreenData *pSD, XEvent *pev)
     wmGD.configAction = MARQUEE_SELECT;
     wmGD.configButton = pev ? pev->xbutton.button: 0;
 
-#ifdef DESKTOP
-    SendMarqueeSelectionNotification(pSD, WM_MARQUEE_SELECT_BEGIN, 
-	    marqueeX, marqueeY, marqueeWidth, marqueeHeight);
-#endif  /* DESKTOP */
 } /* END OF FUNCTION StartMarqueeSelect  */
 
 
@@ -4112,10 +4097,6 @@ void UpdateMarqueeSelectData (WmScreenData *pSD)
         ((ABS(marqueeWidth-marqueeWidth0) > wmGD.marqueeSelectGranularity) ||
 	 (ABS(marqueeHeight-marqueeHeight0)>wmGD.marqueeSelectGranularity)))
     {
-#ifdef DESKTOP
-	SendMarqueeSelectionNotification(pSD, WM_MARQUEE_SELECT_CONTINUE, 
-		marqueeX, marqueeY, marqueeWidth, marqueeHeight);
-#endif /* DESKTOP */
 	marqueeWidth0 = marqueeWidth;
 	marqueeHeight0 = marqueeHeight;
     }

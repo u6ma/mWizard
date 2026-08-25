@@ -1006,7 +1006,6 @@ void ProcessButtonGrabOnClient (ClientData *pCD, XButtonEvent *buttonEvent, Bool
     Boolean passButton;
 
 
-
     if ((buttonEvent->button == SELECT_BUTTON) && 
 	((buttonEvent->state == 0) ||
 	 (NOLOCKMOD(buttonEvent->state) == 0)))
@@ -1067,7 +1066,6 @@ void ProcessButtonGrabOnClient (ClientData *pCD, XButtonEvent *buttonEvent, Bool
     XAllowEvents (DISPLAY, AsyncKeyboard, CurrentTime);
 
 } /* END OF FUNCTION ProcessButtonGrabOnClient */
-
 
 
 /*************************************<->*************************************
@@ -1955,9 +1953,6 @@ void HandleCEnterNotify (ClientData *pCD, XEnterWindowEvent *enterEvent)
  *	* the menu comes unposted, the new window has input focus, but no
  *	  client active decorations are changed.
  */
-#ifdef SGI_FOCUS_PATCH
-		    SetKeyboardFocus (pCD, REFRESH_LAST_FOCUS);
-#endif
 		}
 	    }
 	    if (wmGD.colormapFocusPolicy == CMAP_FOCUS_POINTER)
@@ -1968,7 +1963,6 @@ void HandleCEnterNotify (ClientData *pCD, XEnterWindowEvent *enterEvent)
     }
 
 } /* END OF FUNCTION HandleCEnterNotify */
-
 
 
 
@@ -2018,7 +2012,6 @@ void HandleCLeaveNotify (ClientData *pCD, XLeaveWindowEvent *leaveEvent)
     }
 
 } /* END OF FUNCTION HandleCLeaveNotify */
-
 
 
 

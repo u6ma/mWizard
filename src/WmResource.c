@@ -37,9 +37,7 @@
 
 #include <Xm/XmP.h>
 #include <Xm/RowColumn.h>
-#ifndef MOTIF_ONE_DOT_ONE
 #include <Xm/ScreenP.h>		/* for XmGetXmScreen and screen.moveOpaque */
-#endif
 
 /*
  * include extern functions
@@ -101,22 +99,13 @@ void _WmGetDynamicDefault (Widget widget, unsigned char type, String defaultColo
 Boolean SimilarAppearanceData (AppearanceData *pAD1, AppearanceData *pAD2);
 
 
-
 /*
  * Global Variables:
  */
 
 /* builtin window menu specification */
 
-#ifndef NO_MESSAGE_CATALOG
-/*
- * Use the same name as builtin to let the message catalog menu
- * take precedence over any menus that might match in sys.mwmrc
- */
-char defaultSystemMenuName[] = "_MwmWindowMenu_";
-#else
 char defaultSystemMenuName[] = "DefaultWindowMenu";
-#endif	/* NO_MESSAGE_CATALOG */
 char builtinSystemMenuName[] = "_MwmWindowMenu_";
 
 #define BUILTINSYSTEMMENU "_MwmWindowMenu_\n\
@@ -130,283 +119,7 @@ char builtinSystemMenuName[] = "_MwmWindowMenu_";
 	no-label				f.separator\n\
 	Close		_C	Alt<Key>F4	f.kill\n\
 }"
-#ifdef NO_MESSAGE_CATALOG
 char builtinSystemMenu[] = BUILTINSYSTEMMENU;
-#else /* !defined(NO_MESSAGE_CATALOG)*/
-char *builtinSystemMenu = BUILTINSYSTEMMENU;
-
-#define DEFAULT_MWM_SYSTEMMENU "_MwmWindowMenu_\n\
-{\n\
-	Restore		_R	f.restore\n\
-	Move		_M	f.move\n\
-	Size		_S	f.resize\n\
-	Minimize	_n	f.minimize\n\
-	Maximize	_x	f.maximize\n\
-	Lower		_L	f.lower\n\
-	no-label		f.separator\n\
-      \"Occupy Workspace...\"	_O	f.workspace_presence\n\
-      \"Occupy All Workspaces\"	_A	f.occupy_all\n\
-      \"Unoccupy Workspace\"	_U	f.remove\n\
-	no-label			f.separator\n\
-	Close	_C	Alt<Key>F4	f.kill\n\
-}"
-
-void InitBuiltinSystemMenu(void)
-{
-    char * tmpString;
-    char *ResString = NULL;
-    char *MovString = NULL;
-    char *SizString = NULL;
-    char *MinString = NULL;
-    char *MaxString = NULL;
-    char *LowString = NULL;
-    char *OcpString = NULL;
-    char *OcaString = NULL;
-    char *RemString = NULL;
-    char *CloString = NULL;
-    char dsm[2048];
-    Boolean gotItAll;
-    gotItAll = True;
-    if(gotItAll)
-    {
-#if 1
-        tmpString = ((char *)GETMESSAGE(62, 60, "Restore _R  Alt<Key>F5 f.restore"));
-#else
-        tmpString = ((char *)GETMESSAGE(62, 49, "Restore _R  f.restore"));
-#endif
-        if ((ResString =
-             (char *)XtMalloc ((unsigned int) (strlen(tmpString) + 1))) == NULL)
-        {
-            Warning (((char *)GETMESSAGE(62, 2, "Insufficient memory for local default menu.")));
-            gotItAll = False;
-        }
-        else
-        {
-            strcpy(ResString, tmpString);
-        }
-    }
-    if(gotItAll)
-    {
-#if 1
-        tmpString = ((char *)GETMESSAGE(62, 61, "Move _M  Alt<Key>F7 f.move"));
-#else
-        tmpString = ((char *)GETMESSAGE(62, 50, "Move _M  f.move"));
-#endif
-        if ((MovString =
-             (char *)XtMalloc ((unsigned int) (strlen(tmpString) + 1))) == NULL)
-        {
-            Warning (((char *)GETMESSAGE(62, 4, "Insufficient memory for local default menu.")));
-            gotItAll = False;
-        }
-        else
-        {
-            strcpy(MovString, tmpString);
-        }
-    }
-    if(gotItAll)
-    {
-#if 1
-        tmpString = ((char *)GETMESSAGE(62, 62, "Size _S  Alt<Key>F8 f.resize"));
-#else
-        tmpString = ((char *)GETMESSAGE(62, 51, "Size _S  f.resize"));
-#endif
-        if ((SizString =
-             (char *)XtMalloc ((unsigned int) (strlen(tmpString) + 1))) == NULL)
-        {
-            Warning (((char *)GETMESSAGE(62, 6, "Insufficient memory for local default menu.")));
-            gotItAll = False;
-        }
-        else
-        {
-            strcpy(SizString, tmpString);
-        }
-    }
-    if(gotItAll)
-    {
-#if 1
-        tmpString = ((char *)GETMESSAGE(62, 63, "Minimize _n  Alt<Key>F9 f.minimize"));
-#else
-        tmpString = ((char *)GETMESSAGE(62, 52, "Minimize _n  f.minimize"));
-#endif
-        if ((MinString =
-             (char *)XtMalloc ((unsigned int) (strlen(tmpString) + 1))) == NULL)
-        {
-            Warning (((char *)GETMESSAGE(62, 8, "Insufficient memory for local default menu.")));
-            gotItAll = False;
-        }
-        else
-        {
-            strcpy(MinString, tmpString);
-        }
-    }
-    if(gotItAll)
-    {
-#if 1
-	tmpString = ((char *)GETMESSAGE(62, 64, "Maximize _x  Alt<Key>F10 f.maximize"));
-#else
-	tmpString = ((char *)GETMESSAGE(62, 53, "Maximize _x  f.maximize"));
-#endif
-	if ((MaxString =
-             (char *)XtMalloc ((unsigned int) (strlen(tmpString) + 1))) == NULL)
-        {
-            Warning (((char *)GETMESSAGE(62, 10, "Insufficient memory for local default menu.")));
-            gotItAll = False;
-        }
-        else
-        {
-            strcpy(MaxString, tmpString);
-        }
-    }
-    if(gotItAll)
-    {
-#if 1
-        tmpString = ((char *)GETMESSAGE(62, 65, "Lower _L  Alt<Key>F3 f.lower"));
-#else
-        tmpString = ((char *)GETMESSAGE(62, 54, "Lower _L  f.lower"));
-#endif
-        if ((LowString =
-             (char *)XtMalloc ((unsigned int) (strlen(tmpString) + 1))) == NULL)
-        {
-            Warning (((char *)GETMESSAGE(62, 12, "Insufficient memory for local default menu.")));
-            gotItAll = False;
-        }
-        else
-        {
-            strcpy(LowString, tmpString);
-        }
-    }
-
-	if(gotItAll)
-	{
-	    tmpString = ((char *)GETMESSAGE(62, 55, "Occupy\\ Workspace\\.\\.\\. _O  f.workspace_presence"));
-	    if ((OcpString =
-		 (char *)XtMalloc ((unsigned int) 
-				 (strlen(tmpString) + 1))) == NULL)
-	    {
-		Warning (((char *)GETMESSAGE(62, 14, "Insufficient memory for local default menu.")));
-		gotItAll = False;
-	    }
-	    else
-	    {
-		strcpy(OcpString, tmpString);
-	    }
-	}
-	if(gotItAll)
-	{
-	    tmpString = ((char *)GETMESSAGE(62, 56, "Occupy\\ All\\ Workspaces _A  f.occupy_all"));
-	    if ((OcaString =
-		 (char *)XtMalloc ((unsigned int) 
-				 (strlen(tmpString) + 1))) == NULL)
-	    {
-		Warning (((char *)GETMESSAGE(62, 16, "Insufficient memory for local default menu.")));
-		gotItAll = False;
-	    }
-	    else
-	    {
-		strcpy(OcaString, tmpString);
-	    }
-	}
-	if(gotItAll)
-	{
-	    tmpString = ((char *)GETMESSAGE(62, 57, "Unoccupy\\ Workspace _U  f.remove"));
-	    if ((RemString =
-		 (char *)XtMalloc ((unsigned int) 
-				 (strlen(tmpString) + 1))) == NULL)
-	    {
-		Warning (((char *)GETMESSAGE(62, 18, "Insufficient memory for local default menu.")));
-		gotItAll = False;
-	    }
-	    else
-	    {
-		strcpy(RemString, tmpString);
-	    }
-	}
-
-    if(gotItAll)
-    {
-        tmpString = ((char *)GETMESSAGE(62, 48, "Close _C Alt<Key>F4 f.kill"));
-        if ((CloString =
-             (char *)XtMalloc ((unsigned int) (strlen(tmpString) + 1))) == NULL)
-        {
-            Warning (((char *)GETMESSAGE(62, 20, "Insufficient memory for local default menu.")));
-            gotItAll = False;
-        }
-        else
-        {
-            strcpy(CloString, tmpString);
-        }
-    }
-
-    if (!gotItAll)
-    {
-	    builtinSystemMenu = (char *) 
-			XtNewString((String)DEFAULT_MWM_SYSTEMMENU);
-    }
-    else
-    {
-        /* put it together */
-        strcpy(dsm, defaultSystemMenuName);
-        strcat(dsm, "\n{\n");
-        strcat(dsm, ResString);
-        strcat(dsm, "\n");
-        strcat(dsm, MovString);
-        strcat(dsm, "\n");
-        strcat(dsm, SizString);
-        strcat(dsm, "\n");
-        strcat(dsm, MinString);
-        strcat(dsm, "\n");
-        strcat(dsm, MaxString);
-        strcat(dsm, "\n");
-        strcat(dsm, LowString);
-        strcat(dsm, "\n");
-        strcat(dsm, " no-label  f.separator\n");
-	    strcat(dsm, OcpString);
-	    strcat(dsm, "\n");
-	    strcat(dsm, OcaString);
-	    strcat(dsm, "\n");
-	    strcat(dsm, RemString);
-	    strcat(dsm, "\n");
-	    strcat(dsm, " no-label  f.separator\n");
-        strcat(dsm, CloString);
-        strcat(dsm, "\n}");
-	
-	if ((builtinSystemMenu =
-	     (char *)XtMalloc ((unsigned int) (strlen(dsm) + 1))) == NULL)
-	{
-	   Warning (((char *)GETMESSAGE(62, 21, "Insufficient memory for localized default system menu")));
-
-		builtinSystemMenu = (char *) 
-			XtNewString((String)DEFAULT_MWM_SYSTEMMENU);
-	}
-	else
-	{
-	    strcpy(builtinSystemMenu, dsm);
-	}
-    }
-
-    if (ResString != NULL)
-       XtFree(ResString);
-    if (MovString != NULL)
-       XtFree(MovString);
-    if (SizString != NULL)
-       XtFree(SizString);
-    if (MinString != NULL)
-       XtFree(MinString);
-    if (MaxString != NULL)
-       XtFree(MaxString);
-    if (LowString != NULL)
-       XtFree(LowString);
-    if (OcpString != NULL)
-       XtFree(OcpString);
-    if (OcaString != NULL)
-       XtFree(OcaString);
-    if (RemString != NULL)
-       XtFree(RemString);
-    if (CloString != NULL)
-       XtFree(CloString);
-    
-} /* END OF FUNCTION  InitBuiltinSystemMenu */
-#endif /* NO_MESSAGE_CATALOG */
 
 
 #define HARD_CODED_PRIMARY   3
@@ -462,7 +175,6 @@ char builtinButtonBindingsName[] = "_MwmButtonBindings_";
 	<Btn3Down>	root		f.menu %s\n\
 }";
 char builtinButtonBindings[] = BUILTINBUTTONBINDINGS
-
 
 
 static ClientData *_pCD;
@@ -585,16 +297,6 @@ XtResource wmGlobalResources[] =
 	XtRString,
 	sizeof (String),
         XtOffsetOf(WmGlobalData, configFile),
-	XtRImmediate,
-	(XtPointer)NULL
-    },
-
-    {
-	WmNcppCommand,
-	WmCCppCommand,
-	XtRString,
-	sizeof (String),
-        XtOffsetOf(WmGlobalData, cppCommand),
 	XtRImmediate,
 	(XtPointer)NULL
     },
@@ -2661,7 +2363,6 @@ ProcessWmColors (WmScreenData *pSD)
 } /* END OF FUNCTION ProcessWmColors */
 
 
-
 /******************************<->*************************************
  *
  *  WriteOutXrmColors ()
@@ -3426,7 +3127,6 @@ CheckForNoDither (AppearanceData *pAD)
 } /* END OF FUNCTION CheckForNoDither */
 
 
-
 /******************************<->*************************************
  *
  *  ProcessAppearanceResources (pSD)
@@ -3761,7 +3461,6 @@ MakeAppearanceResources (WmScreenData *pSD, AppearanceData *pAData, Boolean make
 		      &(pAData->inactiveBottomShadowGC));
 
 
-
     /*
      * Make active apppearance resources if specified.
      */
@@ -3927,7 +3626,6 @@ GetAppearanceGCs (WmScreenData *pSD, Pixel fg, Pixel bg, Pixmap bg_pixmap, Pixel
 } /* END OF FUNCTION GetAppearanceGCs */
 
 
-
 
 /*************************************<->*************************************
  *
@@ -3973,10 +3671,8 @@ ProcessScreenResources (WmScreenData *pSD, unsigned char *screenName)
 	    wmScreenResources, 
 	    XtNumber (wmScreenResources), NULL, 0);
 
-#ifndef MOTIF_ONE_DOT_ONE
 	pSD->moveOpaque = (((XmScreen) XmGetXmScreen(XtScreen(pSD->screenTopLevelW)))
 			   -> screen.moveOpaque);
-#endif
 
 
     /*
@@ -4411,40 +4107,11 @@ ProcessWorkspaceResources (WmWorkspaceData *pWS)
 void 
 ProcessPresenceResources (WmScreenData *pSD)
 {
-#ifndef NO_MESSAGE_CATALOG
-    static char *default_ws_pres_title = NULL;
-#else
     static char *default_ws_pres_title = "Workspace Presence";
-#endif
     Arg args[5];
     int n;
     unsigned char *pch1, *pch2;
 
-#ifndef NO_MESSAGE_CATALOG
-    /* 
-     * Set up localized default title string on initial time through
-     */
-    if (default_ws_pres_title == NULL)
-    {
-	char * tmpString; 
-	/*
-	 * catgets returns a pointer to an area that is over written 
-	 * on each call to catgets.  
-	 */
-
-	tmpString = ((char *)GETMESSAGE(62, 59, "Occupy Workspace"));
-	if ((default_ws_pres_title =
-	     (char *)XtMalloc ((unsigned int) (strlen(tmpString) + 1))) == NULL)
-	{
-	    Warning (((char *)GETMESSAGE(62, 31, "Insufficient memory for local message string")));
-	    default_ws_pres_title = "Occupy Workspace";
-	}
-	else
-	{
-	    strcpy(default_ws_pres_title, tmpString);
-	}
-    }
-#endif
 
     if (pSD->presence.shellW)
     {
@@ -4531,7 +4198,6 @@ ProcessClientResources (ClientData *pCD)
 	    0);
 
 
-#ifdef NO_MESSAGE_CATALOG
     /*
      * If (window menu spec is not found) then use the builtin
      * system menu.
@@ -4542,7 +4208,6 @@ ProcessClientResources (ClientData *pCD)
     {
 	pCD->systemMenu = builtinSystemMenuName;
     }
-#endif
 
     /*
      * If the client decorations or client functions have been defaulted
@@ -4774,14 +4439,6 @@ GC GetHighlightGC (WmScreenData *pSD, Pixel fg, Pixel bg, Pixmap pixmap)
 	gcv.fill_style = FillSolid;
     }
 
-#ifdef OLD_CODE
-    /*
-     * NOTE: If additional mask bits are added, modify WmGetGC()
-     * in WmGraphics.c to check those values for matches.
-     */
-
-    return (WmGetGC (pSD, mask, &gcv));
-#endif /* OLD_CODE */
 
     return (XtGetGC (pSD->screenTopLevelW, mask, &gcv));
 
@@ -5222,9 +4879,7 @@ char * WmMalloc(char *ptr, unsigned size)
 
 void SetupDefaultResources(WmScreenData *pSD)
 {
-#ifdef NO_MESSAGE_CATALOG
 	MenuSpec *menuSpec;
-#endif
 
 /*
  * If (using DefaultBindings mechanism and bindings are not found in .mwmrc)
@@ -5279,7 +4934,6 @@ void SetupDefaultResources(WmScreenData *pSD)
 
     }
 
-#ifdef NO_MESSAGE_CATALOG
     /*
      * Set defaultSystemMenuUseBuiltin to FALSE if DefaultWindowMenu spec
      * is found.
@@ -5295,7 +4949,6 @@ void SetupDefaultResources(WmScreenData *pSD)
 	}
 	menuSpec = menuSpec->nextMenuSpec;
     }
-#endif
 
 } /* END OF FUNCTION SetupDefaultResources */
 

@@ -64,7 +64,6 @@ typedef struct {
 } FunctionTableEntry;
 
 
-
 /*
  * Global Variables:
  */
@@ -73,9 +72,7 @@ extern unsigned int buttonModifierMasks[];
 extern FunctionTableEntry functionTable[];
 extern int F_NOP_INDEX;
 
-#ifndef MOTIF_ONE_DOT_ONE
 #include <Xm/MenuShellP.h>
-#endif
 
 
 
@@ -459,10 +456,6 @@ int SetupKeyBindings (KeySpec *keySpecs, Window grabWindow, int keyboardMode, lo
     keySpec = keySpecs;
     while (keySpec)
     {
-#ifdef OLD_CODE
-	if (((keySpec->context == F_CONTEXT_ICON) && iconContext) ||
-	    ((keySpec->context != F_CONTEXT_ICON) && !iconContext))
-#endif
 	if (((F_CONTEXT_ICON == (keySpec->context ^
 				 (F_CONTEXT_ICONBOX     |
 				  F_SUBCONTEXT_IB_IICON |

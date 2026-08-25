@@ -28,6 +28,3 @@ extern void PrintFormatted(char *f, char *s0, char *s1, char *s2, char *s3, char
 
 extern void WmInitErrorHandler (Display *display);
 extern void Warning (char *message);
-#ifndef NO_MESSAGE_CATALOG
-extern char * GetMessage(int set, int n, char * s);
-#endif

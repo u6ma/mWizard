@@ -43,12 +43,7 @@
 #include <X11/Xlocale.h>
 #include <stdlib.h>
 
-#ifdef MOTIF_ONE_DOT_ONE
-#include <stdio.h>
-#include <pwd.h>
-#else
 #include <Xm/XmP.h>             /* for XmeGetHomeDirName */
-#endif
 #include <signal.h>
 
 /* maximum string lengths */
@@ -80,27 +75,18 @@
 #include "WmImage.h"
 #include "WmSession.h"
 
-#ifdef MOTIF_ONE_DOT_ONE
-extern char   *getenv ();
-#endif
 
 /*
  * Global Variables And Tables:
  */
 static char cfileName[MAXWMPATH+1];
-#ifndef NO_MESSAGE_CATALOG
-char * pWarningStringFile;
-char * pWarningStringLine;
-#else
 char pWarningStringFile[] = "%s: %s on line %d of configuration file %s\n";
 char pWarningStringLine[] = "%s: %s on line %d of specification string\n";
-#endif
 
 static FILE *cfileP = NULL;   /* fopen'ed configuration file or NULL */
 static unsigned char  line[MAXLINE+1]; /* line buffer */
 static int   linec = 0;       /* line counter for parser */
 static unsigned char *parseP = NULL;   /* pointer to parse string */
-
 
 
 typedef struct {
@@ -140,9 +126,6 @@ typedef struct {
    Boolean       fClick;
 } EventTableEntry;
 
-#ifdef MOTIF_ONE_DOT_ONE
-void GetHomeDirName(String  fileName);
-#endif
 FILE *FopenConfigFile (void);
 void SaveMenuAccelerators (WmScreenData *pSD, MenuSpec *newMenuSpec);
 static void ParseMenuSet (WmScreenData *pSD, unsigned char *lineP);
@@ -788,59 +771,6 @@ unsigned int PeekAhead(unsigned char *currentChar,
 } /* END OF FUNCTION PeekAhead */
 
 
-#ifdef MOTIF_ONE_DOT_ONE
-/*************************************<->*************************************
- *
- *  GetHomeDirName (fileName)
- *
- *  Description:
- *  -----------
- *  This function finds the "HOME" directory
- *
- *
- *  Inputs:
- *  ------
- *  fileName 
- *
- *  Outputs:
- *  -------
- *  fileName
- *
- *  Comments:
- *  --------
- * 
- *************************************<->***********************************/
-void GetHomeDirName(String  fileName)
-{
-        int uid;
-        struct passwd *pw;
-        char *ptr = NULL;
-
-        if((ptr = getenv("HOME")) == NULL)
-        {
-            if((ptr = getenv("USER")) != NULL)
-	    {
-		pw = getpwnam(ptr);
-	    }
-            else
-            {
-                uid = getuid();
-                pw = getpwuid(uid);
-            }
-
-            if (pw)
-	    {
-                ptr = pw->pw_dir;
-	    }
-            else
-	    {
-                ptr = "";
-	    }
-        }
-        strcpy(fileName, ptr);
-}
-#endif
-
 /*************************************<->*************************************
  *
  *  SyncModifierStrings (fileName)
@@ -1119,9 +1049,7 @@ FILE *FopenConfigFile (void)
     char    *LANG, *LANGp;
     FILE    *fileP;
 
-#ifndef MOTIF_ONE_DOT_ONE
     char *homeDir = XmeGetHomeDirName();
-#endif
     /*
      * Get the LANG environment variable
      * make copy since another call to getenv will blast the value.
@@ -1162,11 +1090,7 @@ FILE *FopenConfigFile (void)
         if ((wmGD.configFile[0] == '~') && (wmGD.configFile[1] == '/'))
 	/* handle "~/..." */
 	{
-#ifdef MOTIF_ONE_DOT_ONE
-	    GetHomeDirName(cfileName);
-#else
 	    strcpy (cfileName, homeDir);
-#endif
 	    if (LANG != NULL)
 	    {
 		strncat(cfileName, "/", MAXWMPATH-strlen(cfileName));
@@ -1186,11 +1110,7 @@ FILE *FopenConfigFile (void)
 		/* 
 		 * Just try $HOME/.mwmrc
 		 */
-#ifdef MOTIF_ONE_DOT_ONE
-		GetHomeDirName(cfileName);
-#else
 		strcpy (cfileName, homeDir);
-#endif
 		strncat(cfileName, &(wmGD.configFile[1]), 
 			MAXWMPATH-strlen(cfileName));
 		if ((fileP = fopen (cfileName, "r")) != NULL)
@@ -1227,11 +1147,7 @@ FILE *FopenConfigFile (void)
 #define HOME_MWMRC "/.mwizardrc"
 #define SLASH_MWMRC "/system.mwizardrc"
 
-#ifdef MOTIF_ONE_DOT_ONE
-    GetHomeDirName(cfileName);
-#else
     strcpy (cfileName, homeDir);
-#endif
 
     if (LANG != NULL)
     {
@@ -1253,11 +1169,7 @@ FILE *FopenConfigFile (void)
 	/* 
 	 * Just try $HOME/.mwmrc
 	 */
-#ifdef MOTIF_ONE_DOT_ONE
-	GetHomeDirName(cfileName);
-#else
     strcpy (cfileName, homeDir);
-#endif
 
     strncat(cfileName, HOME_MWMRC, MAXWMPATH - strlen(cfileName));
 	if ((fileP = fopen (cfileName, "r")) != NULL)
@@ -4766,62 +4678,16 @@ void ProcessMotifBindings (void)
 {
     char           fileName[MAXWMPATH+1];
     char	  *bindings = NULL;
-#ifndef MOTIF_ONE_DOT_ONE
     char	  *homeDir = XmeGetHomeDirName();
-#else
-    FILE          *fileP;
-#endif
 
     /*
      *  Look in the user's home directory for .motifbind
      */
 
-#ifdef MOTIF_ONE_DOT_ONE
-    GetHomeDirName(fileName);
-#else
     strcpy (fileName, homeDir);
-#endif
     strncat(fileName, "/", MAXWMPATH-strlen(fileName));
     strncat(fileName, MOTIF_BINDINGS_FILE, MAXWMPATH-strlen(fileName));
 
-#ifdef MOTIF_ONE_DOT_ONE
-    if ((fileP = fopen (fileName, "r")) != NULL)
-    {
-        unsigned char   buffer[MBBSIZ];
-        int             count;
-        Boolean         first = True;
-        int             mode = PropModeReplace;
-        Window          propWindow;
-
-        /*
-         * Get the atom for the property.
-         */
-        wmGD.xa_MOTIF_BINDINGS =
-                XInternAtom (DISPLAY, _XA_MOTIF_BINDINGS, False);
-
-        /*
-         * The property goes on the root window of screen zero
-         */
-        propWindow = RootWindow(DISPLAY, 0);
-
-        /*
-         * Copy file contents to property on root window of screen 0.
-         */
-        while ( (count=fread((char *) &buffer[0], 1, MBBSIZ, fileP)) > 0)
-        {
-            XChangeProperty (DISPLAY, propWindow, wmGD.xa_MOTIF_BINDINGS,
-                                XA_STRING, 8, mode,
-                                &buffer[0], count);
-
-            if (first)
-            {
-                first = False;
-                mode = PropModeAppend;
-            }
-        }
-    }
-
-#else
     XDeleteProperty (DISPLAY, RootWindow (DISPLAY, 0),
 		XInternAtom (DISPLAY, "_MOTIF_BINDINGS", False));
     XDeleteProperty (DISPLAY, RootWindow (DISPLAY, 0),
@@ -4837,67 +4703,7 @@ void ProcessMotifBindings (void)
 	_XmVirtKeysLoadFallbackBindings (DISPLAY, &bindings);
     }
     XtFree (bindings);
-#endif
 } /* END OF FUNCTION ProcessMotifBindings */
 
-#ifdef UNUSED
-/*************************************<->*************************************
- *
- *  PreprocessConfigFile (pSD)
- *
- *
- *  Description:
- *  -----------
- *  This function runs the configuration file through the C
- *  preprocessor
- *
- *
- *  Inputs:
- *  ------
- *  pSD = ptr to screen data
- *
- *  Outputs:
- *  -------
- *
- *
- *  Comments:
- *  --------
- * 
- *************************************<->***********************************/
-
-static void
-PreprocessConfigFile (void)
-{
-#define CPP_NAME_SIZE	((L_tmpnam)+1)
-    char pchCmd[MAXWMPATH+1];
-
-    if (wmGD.cppCommand && *wmGD.cppCommand)
-    {
-	/*
-	 * Generate a temp file name.
-	 */
-	pConfigStackTop->cppName = XtMalloc (CPP_NAME_SIZE * sizeof(char));
-	if (pConfigStackTop->cppName)
-	{
-	    (void) tmpnam (pConfigStackTop->cppName);
-
-	    /*
-	     * Build up the command line.
-	     */
-	    strcpy (pchCmd, wmGD.cppCommand);
-	    strcat (pchCmd, " ");
-	    strcat (pchCmd, pConfigStackTop->fileName);
-	    strcat (pchCmd, " ");
-	    strcat (pchCmd, pConfigStackTop->cppName);
-
-	    /*
-	     * Run the config file through the converter program
-	     * and send the output to a temp file. 
-	     */
-	    SystemCmd (pchCmd);
-	}
-    }
-}
-#endif /* UNUSED */
 
 /****************************   eof    ***************************/

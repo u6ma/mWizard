@@ -29,9 +29,6 @@
 #include "WmGlobal.h"
 #include "WmResNames.h"
 #include "WmICCC.h"
-#ifndef NO_OL_COMPAT
-#include "WmOL.h"
-#endif /* NO_OL_COMPAT */
 #include <X11/Xos.h>
 #include <X11/cursorfont.h>
 #include <Xm/Xm.h>
@@ -82,9 +79,6 @@
 
 void InitWmDisplayEnv (void);
 
-#ifndef NO_MESSAGE_CATALOG
-void InitNlsStrings (void);
-#endif
 
 /* limited to 3 chars max */
 #define UNSPECIFIED_SCREEN_NAME		"fbk"
@@ -95,10 +89,6 @@ int           dpy2Argc;
  * Global Variables:
  */
 extern int firstTime;
-#ifndef NO_MESSAGE_CATALOG
-extern char * pWarningStringFile;
-extern char * pWarningStringLine;
-#endif
 
 /*
  * InitMouseBinding
@@ -535,9 +525,6 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
 	    {
 		if (!processedGlobalResources)
 		{
-#ifndef NO_OL_COMPAT
-		    InitOLCompat();
-#endif /* NO_OL_COMPAT */
 #ifndef NO_SHAPE
 		    wmGD.hasShape = XShapeQueryExtension (DISPLAY,
 							  &wmGD.shapeEventBase,
@@ -574,9 +561,6 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
 
 		    wmGD.pLockMaskSequence = NULL;
 		    SetupLockingModifierMask ();
-#ifdef UNUSED
-#endif
-		    wmGD.cppCommand = NULL;
 		    wmGD.evLastButton.button = 0;
 		    wmGD.bReplayedButton = False;
 		    wmGD.bSuspendSecondaryRestack = False;
@@ -634,9 +618,6 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
 		    /*
 		     * Process global window manager resources:
 		     */
-#ifndef NO_MESSAGE_CATALOG
-    		    InitBuiltinSystemMenu();
-#endif
 		    
 		    ProcessWmResources ();
 
@@ -665,13 +646,6 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
 	}
     }
 
-
-#ifndef NO_MESSAGE_CATALOG
-    /*
-     * Set up NLS error messages.
-     */
-    InitNlsStrings ();
-#endif
 
     /*
      *  For multiple connections to the server, turn off
@@ -832,7 +806,6 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
     InitEventHandling ();
 
 
-
     /*
      * Initialize frame component graphics
      */
@@ -876,9 +849,6 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
 		{
 			ACTIVE_PSD = &wmGD.Screens[scr];
 			MapIconBoxes (pSD->pActiveWS);
-#ifdef HP_VUE
-			UpdateWorkspaceInfoProperty (pSD); /* backward compatible */
-#endif /* HP_VUE */
 
 			SetCurrentWorkspaceProperty (pSD);
 			SetWorkspaceListProperty (pSD);
@@ -1188,7 +1158,6 @@ void InitWmScreen (WmScreenData *pSD, int sNum)
 	}
 
     }
-
 
 
 } /* END OF FUNCTION  InitWmScreen */
@@ -1627,74 +1596,6 @@ void InitScreenNames (void)
 	sprintf((char *)wmGD.screenNames[num], UNSPECIFIED_SCREEN_NAME);
     }
 }
-
-#ifndef NO_MESSAGE_CATALOG
-void InitNlsStrings (void)
-{
-    char * tmpString;
-
-    /*
-     * Initialize messages
-     */
-    wmGD.okLabel=XmStringCreateLocalized("OK");
-    wmGD.cancelLabel=XmStringCreateLocalized("Cancel");
-
-    /*
-     * catgets returns a pointer to an area that is over written
-     * on each call to catgets.
-     */
-
-    tmpString = ((char *)GETMESSAGE(40, 14, "Icons"));
-    if ((wmNLS.default_icon_box_title =
-	 (char *)XtMalloc ((unsigned int) (strlen(tmpString) + 1))) == NULL)
-    {
-	Warning (((char *)GETMESSAGE(40, 15, "Insufficient memory for local message string")));
-	wmNLS.default_icon_box_title = "Icons";
-    }
-    else
-    {
-	strcpy(wmNLS.default_icon_box_title, tmpString);
-    }
-
-    tmpString = ((char *)GETMESSAGE(40, 20, "%s: %s on line %d of configuration file %s\n"));
-    if ((pWarningStringFile =
-	 (char *)XtMalloc ((unsigned int) (strlen(tmpString) + 1))) == NULL)
-    {
-	Warning (((char *)GETMESSAGE(40, 17, "Insufficient memory for local message string")));
-	pWarningStringFile = "%s: %s on line %d of configuration file %s\n";
-    }
-    else
-    {
-	strcpy(pWarningStringFile, tmpString);
-    }
-
-    tmpString = ((char *)GETMESSAGE(40, 21, "%s: %s on line %d of specification string\n"));
-    if ((pWarningStringLine =
-	 (char *)XtMalloc ((unsigned int) (strlen(tmpString) + 1))) == NULL)
-    {
-	Warning (((char *)GETMESSAGE(40, 19, "Insufficient memory for local message string")));
-	pWarningStringLine = "%s: %s on line %d of specification string\n";
-    }
-    else
-    {
-	strcpy(pWarningStringLine, tmpString);
-    }
-
-
-    tmpString = ((char *)GETMESSAGE(40, 22, "About Window Manager"));
-    if ((wmNLS.defaultVersionTitle =
-	 (char *)XtMalloc ((unsigned int) (strlen(tmpString) + 1))) == NULL)
-    {
-	Warning (((char *)GETMESSAGE(40, 15, "Insufficient memory for local message string")));
-	wmNLS.defaultVersionTitle = "About Workspace Manager";
-    }
-    else
-    {
-	strcpy(wmNLS.defaultVersionTitle, tmpString);
-    }
-
-} /* InitNlsStrings  */
-#endif
 
 
 

@@ -22,9 +22,6 @@
  * Floor, Boston, MA 02110-1301 USA
 */ 
 
-#ifndef NO_MESSAGE_CATALOG
-void InitBuiltinSystemMenu(void);
-#endif
 void GetAppearanceGCs (WmScreenData *pSD, Pixel fg, Pixel bg, Pixmap bg_pixmap, Pixel ts_color, Pixmap ts_pixmap, Pixel bs_color, Pixmap bs_pixmap, GC *pGC, GC *ptsGC, GC *pbsGC);
 GC   GetHighlightGC (WmScreenData *pSD, Pixel fg, Pixel bg, Pixmap pixmap);
 void MakeAppearanceResources (WmScreenData *pSD, AppearanceData *pAData, Boolean makeActiveResources);
@@ -49,11 +46,7 @@ String ResCat (String s1, String s2, String s3, String s4);
 void CheckForNoDither (AppearanceData *pAD);
 void ProcessPresenceResources (WmScreenData *pSD);
 
-#ifndef NO_MESSAGE_CATALOG
-extern char *builtinSystemMenu;
-#else
 extern char builtinSystemMenu[];
-#endif
 extern char builtinKeyBindings[];
 extern char builtinRootMenu[];
 extern char builtinSystemMenuName[];

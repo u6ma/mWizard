@@ -32,9 +32,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifndef MOTIF_ONE_DOT_ONE
 #include <Xm/XmosP.h>
-#endif
 
 /*
  * include extern functions
@@ -1352,7 +1350,6 @@ void WmCvtStringToShowFeedback (XrmValue *args, Cardinal numArgs, XrmValue *from
 	}
 	pch = pchNext;
     }
-
 
 
     /*

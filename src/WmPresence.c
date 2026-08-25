@@ -80,7 +80,6 @@ static void wspExtendedSelectCB(Widget w,
 	XtPointer client_data, XmListCallbackStruct *cb);
 static XmString ShortenXmString(XmString, size_t max_chrs, Boolean ltor);
 
-/* static Dimension wspCharWidth(XmFontList xmfl); */
 
 
 /********    End Static Function Declarations    ********/
@@ -397,9 +396,7 @@ static Boolean wspCreateWidgets(WmScreenData *pSD)
     Arg args [5];
     int n;
     Boolean rval /* = True */;
-#ifdef NO_MESSAGE_CATALOG
     XmString tmpXmString;
-#endif /* NO_MESSAGE_CATALOG */
 
     rval = ((pPres->shellW = wspCreateShell (pSD)) != NULL);
 
@@ -452,17 +449,11 @@ static Boolean wspCreateWidgets(WmScreenData *pSD)
 
     if (rval)
     {
-#ifndef NO_MESSAGE_CATALOG
-        rval = ((pPres->OkW = 
-		 wspCreatePushButton (pPres->formW, "ok", wmGD.okLabel))
-			!= NULL);
-#else
 	tmpXmString = XmStringCreateLocalized ("OK");
         rval = ((pPres->OkW = 
 		 wspCreatePushButton (pPres->formW, "ok", tmpXmString))
 			!= NULL);
 	XmStringFree(tmpXmString);
-#endif
 
 	/* set the default action */
 	n = 0;
@@ -475,16 +466,11 @@ static Boolean wspCreateWidgets(WmScreenData *pSD)
 
     if (rval)
     {
-#ifndef NO_MESSAGE_CATALOG
-        rval = ((pPres->CancelW = wspCreatePushButton (pPres->formW, 
-			"cancel", wmGD.cancelLabel)) != NULL);
-#else
 	tmpXmString = XmStringCreateLocalized ("Cancel");
         rval = ((pPres->CancelW = 
 		wspCreatePushButton (pPres->formW, "cancel", tmpXmString))
 			!= NULL);
 	XmStringFree(tmpXmString);
-#endif
 	XtAddCallback (pPres->CancelW, XmNactivateCallback, 
 		(XtCallbackProc) wspCancelCB, (XtPointer)pSD); 
 
@@ -496,7 +482,6 @@ static Boolean wspCreateWidgets(WmScreenData *pSD)
 
     return(rval);
 } /* END OF FUNCTION   */
-
 
 
 /*************************************<->*************************************
@@ -595,7 +580,6 @@ wspCreateManager(
 
     return (formW);
 } /* END OF FUNCTION   */
-
 
 
 /*************************************<->*************************************
@@ -702,7 +686,6 @@ wspCreateSeparator(
 
     return (sepW);
 } /* END OF FUNCTION   */
-
 
 
 /*************************************<->*************************************
@@ -1095,77 +1078,6 @@ wspSetPosition(
 } /* END OF FUNCTION wspSetPosition */
 
 
-#if 0 /* UNUSED */
-/*************************************<->*************************************
- *
- *  wspCharWidth (xmfl)
- *
- *
- *  Description:
- *  -----------
- *  Returns the max logical character width for this fontList
- *
- *
- *  Inputs:
- *  ------
- *  xmfl  -  XmFontList
- * 
- *  Returns:
- *  -------
- *  max logical character width
- *
- *  Comments:
- *  ---------
- ******************************<->***********************************/
-static Dimension
-wspCharWidth(
-        XmFontList xmfl )
-{
-    XmFontContext 	fc;
-    XmFontListEntry 	entry;
-    Dimension 		dWidth, dTmpWidth;
-    XtPointer 		pFont;
-    XmFontType 		type;
-    XFontSetExtents	*pExtents;
-
-    XmFontListInitFontContext ( &fc, xmfl);
-
-    dWidth = 0;
-
-    entry = XmFontListNextEntry (fc);
-    while (entry)
-    {
-	pFont = XmFontListEntryGetFont (entry, &type);
-
-	switch (type)
-	{
-	    case XmFONT_IS_FONT:
-		dTmpWidth = ((XFontStruct *)pFont)->max_bounds.rbearing -
-			    ((XFontStruct *)pFont)->min_bounds.lbearing;
-		break;
-
-            case XmFONT_IS_FONTSET:
-		pExtents = XExtentsOfFontSet ((XFontSet) pFont);
-		dTmpWidth = pExtents->max_logical_extent.width;
-		break;
-
-	    default:
-		dTmpWidth = 0;
-		break;
-	}
-
-	if (dTmpWidth > dWidth)
-	    dWidth = dTmpWidth;
-
-	entry = XmFontListNextEntry (fc);
-    }
-
-    XmFontListFreeFontContext (fc);
-
-    return (dWidth);
-}
-#endif /* UNUSED */
-
 /*************************************<->*************************************
  *
  *  wspLayout (pPres)
@@ -1293,7 +1205,6 @@ wspLayout(
     XtSetValues (pPres->CancelW, args, n);
 
 } /* END OF FUNCTION   */
-
 
 
 /*************************************<->*************************************
@@ -1455,8 +1366,6 @@ wspAllWsCB(
 } /* END OF FUNCTION   */
 
 
-
-
 /*************************************<->*************************************
  *
  *  static void
@@ -1507,7 +1416,6 @@ wspExtendedSelectCB(
     }
 
 } /* END OF FUNCTION wspExtendedSelectCB */
-
 
 
 /*************************************<->*************************************

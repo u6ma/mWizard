@@ -40,7 +40,6 @@
 #include "WmResParse.h"
 
 
-
 /*
  * Function Declarations:
  */
@@ -210,14 +209,10 @@ void ProcessWmProtocols (ClientData *pCD)
 {
     int rValue;
     Atom *property = NULL;
-#ifndef ICCC_COMPLIANT
     Atom actualType;
     int actualFormat;
     unsigned long leftover;
     unsigned long nitems;
-#else
-    int nitems;
-#endif /* ICCC_COMPLIANT */
     int i;
 
 
@@ -234,7 +229,6 @@ void ProcessWmProtocols (ClientData *pCD)
      * Read the WM_PROTOCOLS property.
      */
 
-#ifndef ICCC_COMPLIANT
     if (!HasProperty (pCD, wmGD.xa_WM_PROTOCOLS)) {
 		rValue = -1;
     } else {
@@ -247,17 +241,6 @@ void ProcessWmProtocols (ClientData *pCD)
 
 
     if ((rValue != Success) || (actualType == None) || (actualFormat != 32))
-#else
-
-    if (!HasProperty (pCD, wmGD.xa_WM_PROTOCOLS)) {
-		rValue = -1;
-	} else {
-    	rValue = XGetWMProtocols (DISPLAY, pCD->client, 
-		 	(Atom **)&property, &nitems);
-	}
-
-    if (0 == rValue) 
-#endif /* ICCC_COMPLIANT */
     {
 	/*
 	 * WM_PROTOCOLS does not exist or it is an invalid type or size.
@@ -492,7 +475,6 @@ void SetMwmSaveSessionInfo (Window wmWindow)
     SetWMState(wmWindow, NORMAL_STATE, 0);
     
 } /* END OF FUNCTION SetMwmSaveSessionInfo */
-
 
 
 /*************************************<->*************************************
@@ -1071,36 +1053,6 @@ GetMwmMenuItems(
 
 } /* END OF FUNCTION GetMwmMenuItems */
 
-#ifdef HP_VUE
-
-/*************************************<->*************************************
- *
- *  SetWorkspaceInfo (propWindow, pWsInfo, cInfo)
- *
- *
- *  Description:
- *  -----------
- *  This function sets up the _MWM_WORKSPACE_INFO property
- *
- *
- *  Inputs:
- *  ------
- *  propWindow = window on which the _MWM_WORKSPACE_INFO property is to be set
- *  pWsInfo =  pointer to workspace info data
- *  cInfo = size of workspace info data
- * 
- *
- *************************************<->***********************************/
-
-void SetWorkspaceInfo (Window propWindow, WorkspaceInfo *pWsInfo, unsigned long cInfo)
-{
-    XChangeProperty (DISPLAY, propWindow, wmGD.xa_MWM_WORKSPACE_INFO, 
-	wmGD.xa_MWM_WORKSPACE_INFO,
-	32, PropModeReplace, (unsigned char *)pWsInfo,
-	(cInfo * sizeof(WorkspaceInfo))/sizeof(long));
-
-} /* END OF FUNCTION SetWorkspaceInfo */
-#endif /* HP_VUE */
 
 
 /*************************************<->*************************************
@@ -1517,8 +1469,5 @@ HasProperty (
     return (bFound);
 
 } /* END OF FUNCTION HasProperty */
-
-
-
 
 
