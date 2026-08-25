@@ -1,0 +1,67 @@
+Goodies
+=======
+
+Optional extras that go well with mWizard: an application icon set, a set of
+higher resolution Motif dialog icons, an X cursor theme, and GTK 2/3
+configuration files that match the Motif look.
+
+None of them are required. mWizard neither builds nor installs them unless you
+ask for it.
+
+    make goodies            unpack and build them under goodies/build
+    make install-goodies    install them (as root)
+    make uninstall-goodies  remove them again
+
+
+COPYRIGHT AND LICENSE
+=====================
+
+These files are NOT part of mWizard and are NOT under the same license as the
+rest of this distribution.
+
+    Copyright alx@fastestcode.org
+    Source:   https://fastestcode.org/emwm.html
+    License:  Creative Commons Attribution-Share Alike 3.0
+
+The CC BY-SA 3.0 license requires that credit be given to the original author,
+that a link to the original source be provided, and that any redistribution be
+under the same license. They cannot be relicensed, and the attribution above
+must not be removed.
+
+Each archive carries its own COPYING file. Those files are installed alongside
+the content and must stay with it.
+
+
+CONTENTS
+========
+
+app-icons.tar.xz
+    Generic 48x48 application icons in pixel-art style, for applications that
+    ship no icon of their own. Installed to $(PREFIX)/share/mwizard/icons.
+    Point the bitmapDirectory setting at that path, or name them directly in
+    an iconImage setting.
+
+xmdlgicons.tar.xz
+    Motif dialog icons (error, information, question, warning, working) at 32
+    and 48 pixels, for roughly 96 and 130 DPI screens respectively. Installed
+    to $(RCDIR)/bitmaps, one of the paths Motif searches. The 32px set is
+    installed by default; see the archive's own README for the 48px set and
+    for XBMLANGPATH.
+
+xc-core-hr.tar.xz
+    A sharp-edged X cursor theme built on the look of the X11 core cursors, in
+    24 and 32 pixel sizes. Building it needs xcursorgen(1); if that is not
+    installed, "make goodies" skips this one and says so. Installed to
+    $(PREFIX)/share/icons/core-hr. To use it, set:
+
+        Xcursor.theme: core-hr
+        Xcursor.size:  24
+
+gtk-configs.tar.xz
+    GTK 2 and GTK 3 configuration matching the default Motif colors, so GTK
+    applications do not look out of place. These are per-user dotfiles and are
+    deliberately NOT installed system-wide. Copy them yourself:
+
+        cp goodies/build/gtk-configs/gtkrc-2.0 ~/.gtkrc-2.0
+        mkdir -p ~/.config/gtk-3.0
+        cp goodies/build/gtk-configs/gtk.css ~/.config/gtk-3.0/gtk.css

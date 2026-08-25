@@ -25,7 +25,7 @@ mwizard: $(mwm_objs)
 .depend:
 	$(CC) -MM $(INCDIRS) $(mwm_objs:.o=.c) > $@
 
-.PHONY: clean install common_install
+.PHONY: clean install common_install install-goodies uninstall-goodies
 
 clean:
 	-rm -f $(mwm_objs) $(wsm_objs) mwizard
@@ -42,6 +42,53 @@ common_install:
 	install -m 644 stalonetrayrc $(RCDIR)/stalonetrayrc
 	install -m 755 -d $(APPLRESDIR)
 	install -m 644 MWizard.ad $(APPLRESDIR)/MWizard
+
+# --- goodies -------------------------------------------------------------
+#
+# Extras by alx@fastestcode.org under CC BY-SA 3.0. That license requires the
+# attribution and the COPYING files to travel with the content, which is why
+# each COPYING is installed alongside.
+#
+# Driven from the top level; GOODIES_BLD is passed in from there.
+
+GOODIES_BLD = ../goodies/build
+ICONDIR = $(PREFIX)/share/mwizard/icons
+CURSORDIR = $(PREFIX)/share/icons
+BITMAPDIR = $(RCDIR)/bitmaps
+
+install-goodies:
+	install -m 755 -d $(ICONDIR)
+	install -m 644 $(GOODIES_BLD)/icons/*.xpm $(ICONDIR)
+	install -m 644 $(GOODIES_BLD)/icons/COPYING $(ICONDIR)/COPYING
+	install -m 755 -d $(BITMAPDIR)
+	install -m 644 $(GOODIES_BLD)/dlgicons/32px/* $(BITMAPDIR)
+	install -m 644 $(GOODIES_BLD)/dlgicons/README $(BITMAPDIR)/README.dlgicons
+	@if [ -d $(GOODIES_BLD)/xc-core-hr/core-hr ]; then \
+		echo "installing cursor theme"; \
+		install -m 755 -d $(CURSORDIR)/core-hr/cursors; \
+		cp -R $(GOODIES_BLD)/xc-core-hr/core-hr/cursors/. \
+			$(CURSORDIR)/core-hr/cursors/; \
+		install -m 644 $(GOODIES_BLD)/xc-core-hr/COPYING \
+			$(CURSORDIR)/core-hr/COPYING; \
+	else \
+		echo "NOTE: cursor theme was not built, skipping it."; \
+	fi
+	@echo ""
+	@echo "GTK configs are per-user files and were not installed. To use them:"
+	@echo "    cp $(GOODIES_BLD)/gtk-configs/gtkrc-2.0 ~/.gtkrc-2.0"
+	@echo "    mkdir -p ~/.config/gtk-3.0"
+	@echo "    cp $(GOODIES_BLD)/gtk-configs/gtk.css ~/.config/gtk-3.0/gtk.css"
+	@echo ""
+	@echo "Icons are in $(ICONDIR); point bitmapDirectory at it."
+	@echo "For the cursor theme set Xcursor.theme: core-hr"
+
+uninstall-goodies:
+	-rm -rf $(ICONDIR)
+	-rm -rf $(CURSORDIR)/core-hr
+	-rm -f $(BITMAPDIR)/README.dlgicons
+	-for f in xm_error xm_information xm_question xm_warning xm_working; do \
+		rm -f $(BITMAPDIR)/$$f; \
+	done
 
 uninstall:
 	rm -f $(PREFIX)/bin/mwizard

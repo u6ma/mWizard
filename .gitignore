@@ -7,5 +7,5 @@ src/.depend
 src/*.o
 src/mwizard
 
-# local extras, not part of the source distribution
-goodies/
+# unpacked/built goodies -- the tarballs themselves are tracked
+goodies/build/
