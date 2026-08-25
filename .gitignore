@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+
+# build products
+src/Makefile
+src/.depend
+src/*.o
+src/mwizard
+
+# local extras, not part of the source distribution
+goodies/
