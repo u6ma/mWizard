@@ -39,6 +39,7 @@ common_install:
 	install -m 644 mwizardrc.4 $(MANDIR)/man4/mwizardrc.4
 	install -m 755 -d $(RCDIR)
 	install -m 644 system.mwizardrc $(RCDIR)/system.mwizardrc
+	install -m 644 stalonetrayrc $(RCDIR)/stalonetrayrc
 	install -m 755 -d $(APPLRESDIR)
 	install -m 644 MWizard.ad $(APPLRESDIR)/MWizard
 
@@ -47,5 +48,6 @@ uninstall:
 	rm -f $(MANDIR)/man1/mwizard.1
 	rm -f $(MANDIR)/man4/mwizardrc.4
 	rm -f $(RCDIR)/system.mwizardrc
+	rm -f $(RCDIR)/stalonetrayrc
 	rm -f $(APPLRESDIR)/MWizard
 

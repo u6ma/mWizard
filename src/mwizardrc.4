@@ -553,6 +553,29 @@ Idle time in minutes after which \fIlockCommand\fP is run\&. \fB0\fP, the
 default, disables the timer\&. Requires \fIlockCommand\fP to be set, and a
 build with the MIT-SCREEN-SAVER extension enabled\&. To lock on demand
 rather than on a timer, bind \fBf\&.exec\fP to the same command\&.
+.SS "System Tray"
+.PP
+\fBmwizard\fP does not implement a system tray\&. The \fItrayCommand\fP setting
+names one to run at startup -- \fBstalonetray\fP(1) is the usual choice\&. It is
+empty by default, in which case no tray is started\&.
+.PP
+The command is only run when nothing already owns the
+\fB_NET_SYSTEM_TRAY_S<screen>\fP selection, so restarting the window manager with
+\fBf\&.restart\fP does not leave a second tray behind\&.
+.PP
+.nf
+Settings
+{
+    trayCommand   "stalonetray -c /etc/X11/stalonetrayrc"
+}
+.fi
+.PP
+A stalonetray configuration tuned for \fBmwizard\fP is installed next to the
+system rc file\&. A tray that sets \fB_NET_WM_WINDOW_TYPE_DOCK\fP is given no
+frame, may only be moved, and appears on every workspace; if it also sets
+\fB_NET_WM_STRUT\fP or \fB_NET_WM_STRUT_PARTIAL\fP, maximized windows stop at its
+edge rather than passing underneath\&. A tray that does none of this can be
+configured by hand with a \fBClient\fP block\&.
 .SS "Per Client and Per Workspace Settings"
 .PP
 A \fBClient\fP block overrides behavior for one application, named by its

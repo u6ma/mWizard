@@ -534,6 +534,16 @@ XtResource wmGlobalResources[] =
     },
 
     {
+	WmNtrayCommand,
+	WmCTrayCommand,
+	XtRString,
+	sizeof (String),
+	XtOffsetOf(WmGlobalData, trayCommand),
+	XtRString,
+	(XtPointer)NULL
+    },
+
+    {
 	WmNlockTimeout,
 	WmCLockTimeout,
 	XtRInt,

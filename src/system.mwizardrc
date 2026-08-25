@@ -124,6 +124,13 @@ Settings
 	! Bind f.exec to the same command to lock on demand.
 	lockCommand		""
 	lockTimeout		0
+
+	! System tray. mWizard has none of its own; this runs whichever one you
+	! prefer, at startup, and skips it if a tray is already running. Empty
+	! by default. A stalonetray config tuned for mWizard is installed
+	! alongside this file.
+	! trayCommand		"stalonetray -c /etc/X11/stalonetrayrc"
+	trayCommand		""
 }
 
 ! Per-application overrides. The name is the client's resource name or
@@ -133,6 +140,17 @@ Settings
 ! {
 !	clientDecoration	-resizeh
 !	focusAutoRaise		False
+! }
+
+! A tray that announces itself as a dock needs nothing here -- mWizard
+! already gives docks no frame and puts them on every workspace. This is
+! only needed for a tray that does not set _NET_WM_WINDOW_TYPE_DOCK.
+!
+! Client stalonetray
+! {
+!	clientDecoration	none
+!	clientFunctions		move
+!	occupyWorkspaces	all
 ! }
 
 ! Per-workspace settings. Workspaces are named ws0, ws1 and so on.

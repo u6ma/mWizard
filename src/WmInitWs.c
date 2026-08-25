@@ -890,6 +890,7 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
 	InitKeyboardFocus();
 	InitWmDisplayEnv();
 	InitIdleLock();
+	InitSystemTray();
 	
 	ShowWaitState (FALSE);
 

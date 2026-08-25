@@ -43,4 +43,10 @@ Boolean SpawnCommand(const char *command);
  */
 void InitIdleLock(void);
 
+/*
+ * Starts the configured system tray, unless one already owns the
+ * _NET_SYSTEM_TRAY selection on a managed screen.
+ */
+void InitSystemTray(void);
+
 #endif /* _WmSession_h */

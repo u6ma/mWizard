@@ -1,0 +1,61 @@
+# stalonetray configuration for mWizard.
+#
+# Copy to ~/.stalonetrayrc to customize, or point stalonetray at this file
+# directly. mWizard runs it for you when trayCommand is set in your rc file:
+#
+#     Settings
+#     {
+#         trayCommand   "stalonetray -c /etc/X11/stalonetrayrc"
+#     }
+#
+# See stalonetray(1) for every option.
+
+# No frame. stalonetray sets this through _MOTIF_WM_HINTS, which mWizard
+# honours natively, so the tray comes up undecorated even on a build without
+# EWMH dock support.
+decorations none
+
+# Ask to be treated as a dock. mWizard maps this onto no decoration, move
+# only, and present on every workspace.
+window_type dock
+
+# Reserve screen edge space so maximized windows stop at the tray. Set to
+# none if you would rather have windows maximize underneath it.
+window_strut auto
+
+# Keep the tray on every workspace and out of window lists.
+sticky true
+skip_taskbar true
+
+# Sit below normal windows rather than floating over them.
+window_layer bottom
+
+# Icon slot geometry. icon_size is the icon itself, slot_size the cell it
+# sits in; width and height below are counted in slots, not pixels.
+icon_size 22
+slot_size 24
+geometry 4x1
+
+# Grow to the left as icons are added, filling from the right.
+grow_gravity E
+icon_gravity NE
+
+# Match the mWizard window background so the tray blends with the frames.
+background "#d2d2d2"
+
+# Work around trays being repositioned, and icons that ignore the slot size.
+# Without fix_window_pos the tray tends to drift when the window manager
+# reconfigures it.
+kludges fix_window_pos,force_icons_size
+
+# Some dockapps only behave in this mode.
+dockapp_mode simple
+
+# Do not shrink back when icons are removed, so the tray does not jump about.
+no_shrink false
+
+max_geometry 0x0
+transparent false
+tint_level 0
+scrollbars none
+xsync false

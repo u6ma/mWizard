@@ -204,8 +204,9 @@ does in detail; this is the index.
 | `suspendCommand` | command | `systemctl suspend` |
 | `lockCommand` | command | *(empty)* |
 | `lockTimeout` | minutes | `0` (disabled) |
+| `trayCommand` | command | *(empty)* |
 
-See sections 6 and 7.
+See sections 6, 7 and 8.
 
 ---
 
@@ -296,7 +297,7 @@ Titles can also be set all at once with `workspaceList` in `Settings`, and
 changed at runtime with `f.rename_workspace`.
 
 > EMWM's per-workspace **backdrop** resources have no equivalent. mWizard does
-> not draw on the root window at all — see section 8.
+> not draw on the root window at all — see section 9.
 
 ---
 
@@ -383,7 +384,65 @@ timer entirely.
 
 ---
 
-## 8. Wallpaper
+## 8. System tray
+
+mWizard has no tray of its own. `trayCommand` names one to run at startup —
+[stalonetray](https://github.com/kolbusa/stalonetray) is the usual pick:
+
+```
+Settings
+{
+    trayCommand   "stalonetray -c /etc/X11/stalonetrayrc"
+}
+```
+
+Empty by default, in which case nothing is started. The command only runs when
+nothing already owns the `_NET_SYSTEM_TRAY_S<screen>` selection, so `f.restart`
+re-execs the window manager without leaving a second tray behind.
+
+A stalonetray config tuned for mWizard is installed as
+`/etc/X11/stalonetrayrc`. There is no build-time dependency on stalonetray or
+on any other tray — it is a string you set.
+
+### What mWizard does for a tray
+
+A window that sets `_NET_WM_WINDOW_TYPE_DOCK` gets:
+
+- **no frame**, and move as its only window-manager function;
+- **presence on every workspace** — internally this is the same
+  occupy-all-workspaces state `f.occupy_all` sets, so the Occupy Workspace
+  dialog shows it as such;
+- **reserved screen space**, if it also sets `_NET_WM_STRUT` or
+  `_NET_WM_STRUT_PARTIAL`. Maximized windows then stop at the tray edge instead
+  of passing underneath, and `_NET_WORKAREA` reports the reduced area to any
+  other EWMH client that asks.
+
+`_NET_WM_STATE_STICKY` works on any window, not just docks, and maps onto the
+same occupy-all-workspaces state.
+
+Struts that would leave no usable space are ignored rather than honoured — a
+client asking to reserve the whole screen is broken, and obeying it would make
+everything unmaximizable.
+
+### A tray that does not announce itself
+
+Older trays may set neither the dock type nor a strut. Configure one by hand:
+
+```
+Client stalonetray
+{
+    clientDecoration      none
+    clientFunctions       move
+    occupyWorkspaces      all
+}
+```
+
+That covers decoration and stickiness. Reserved space is not available this
+way — it requires the strut property.
+
+---
+
+## 9. Wallpaper
 
 This is the reason mWizard exists.
 
@@ -413,7 +472,7 @@ to a script that changes the wallpaper and then switches:
 
 ---
 
-## 9. What stays in the X resource database
+## 10. What stays in the X resource database
 
 Appearance only. These are Motif Component Appearance resources; the rc file has
 no business owning fonts and shadow pixmaps.
@@ -457,7 +516,7 @@ appearance resource under "Component Appearance Resources".
 
 ---
 
-## 10. Migrating from EMWM
+## 11. Migrating from EMWM
 
 ### Rename your files
 

@@ -228,6 +228,38 @@ Boolean F_Suspend (String args, ClientData *pCD, XEvent *event)
 }
 
 
+/*
+ * Starts the system tray named by trayCommand, if one is not running already.
+ *
+ * mWizard has no tray of its own; this runs whatever the user configured,
+ * typically stalonetray. The selection check matters because f.restart
+ * re-execs the window manager while its clients keep running -- without it
+ * every restart would leave another tray behind.
+ */
+void InitSystemTray(void)
+{
+	char sel_name[32];
+	Atom sel_atom;
+	int scr;
+
+	if(!wmGD.trayCommand || !(*(wmGD.trayCommand))) return;
+
+	for(scr = 0; scr < wmGD.numScreens; scr++) {
+		if(!wmGD.Screens[scr].managed) continue;
+
+		snprintf(sel_name, sizeof(sel_name), "_NET_SYSTEM_TRAY_S%d",
+			wmGD.Screens[scr].screen);
+
+		sel_atom = XInternAtom(DISPLAY, sel_name, False);
+
+		if(XGetSelectionOwner(DISPLAY, sel_atom) == None) {
+			SpawnCommand(wmGD.trayCommand);
+			return;
+		}
+	}
+}
+
+
 #ifdef IDLE_LOCK
 
 /*
