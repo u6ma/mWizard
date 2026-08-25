@@ -88,6 +88,16 @@ static Boolean IsKnownName(const char *name, BlockKind kind)
 	if (!strcmp (name, wmWorkspaceResources[i].resource_name))
 	    return (True);
 
+    /*
+     * Client resources are accepted here too. Written without a client
+     * component the key matches every client, which is how EMWM's
+     * "Emwm*clientDecoration" applied to all of them; a Client block then
+     * overrides it for one application.
+     */
+    for (i = 0; i < wmNumClientResources; i++)
+	if (!strcmp (name, wmClientResources[i].resource_name))
+	    return (True);
+
     return (False);
 }
 
@@ -167,139 +177,177 @@ Boolean IsSettingsKeyword(const char *keyword)
 	    !strcmp (keyword, WORKSPACE_KEYWORD));
 }
 
+
+/*
+ * Scanner state. Brace depth is tracked across the whole file so that a
+ * block header is only ever recognized at the outermost level -- otherwise
+ * a menu item labelled "Settings" would be mistaken for one.
+ */
+typedef struct {
+    int       depth;		/* current brace nesting depth */
+    Boolean   inBlock;		/* inside a block we care about */
+    BlockKind kind;		/* which kind, when inBlock */
+    char      prefix[RC_LINE_MAX];	/* resource prefix for that block */
+    Boolean   pending;		/* a header was seen, awaiting its '{' */
+    BlockKind pendingKind;
+    char      pendingPrefix[RC_LINE_MAX];
+    int       lineNum;
+} ScanState;
+
+static void WarnUnknown(const char *name, int lineNum)
+{
+    /* Warning() already prefixes the program name. */
+    const char fmt[] = "rc file line %d: unknown setting \"%s\".";
+    size_t len;
+    char *msg;
+
+    len = snprintf (NULL, 0, fmt, lineNum, name);
+    msg = XtMalloc (len + 1);
+    sprintf (msg, fmt, lineNum, name);
+    Warning (msg);
+    XtFree (msg);
+}
+
+/*
+ * Handles one stretch of text between braces.
+ *
+ * At depth 0 it is a possible block header; at depth 1 inside one of our
+ * blocks it is a setting. Anything else -- the body of a Menu, Keys or
+ * Buttons block -- is not ours and is passed over.
+ */
+static void HandleSegment(ScanState *st, char *seg)
+{
+    char *name, *value, *p;
+    char  first[RC_LINE_MAX];
+    char *rest;
+    int   n;
+
+    seg = Trim (seg);
+    if (!*seg) return;
+
+    if (st->depth == 0)
+    {
+	n = 0;
+	p = seg;
+	while (*p && !isspace ((unsigned char)*p) && n < RC_LINE_MAX-1)
+	    first[n++] = tolower ((unsigned char)*p++);
+	first[n] = '\0';
+
+	rest = Trim (p);
+
+	if (!strcmp (first, SETTINGS_KEYWORD))
+	{
+	    st->pending = True;
+	    st->pendingKind = BLOCK_SETTINGS;
+	    snprintf (st->pendingPrefix, sizeof(st->pendingPrefix), "*");
+	}
+	else if ((!strcmp (first, CLIENT_KEYWORD) ||
+		  !strcmp (first, WORKSPACE_KEYWORD)) && *rest)
+	{
+	    char spec[RC_LINE_MAX];
+
+	    n = 0;
+	    p = rest;
+	    while (*p && !isspace ((unsigned char)*p) && n < RC_LINE_MAX-1)
+		spec[n++] = *p++;
+	    spec[n] = '\0';
+
+	    st->pending = True;
+	    st->pendingKind = (!strcmp (first, CLIENT_KEYWORD)) ?
+				  BLOCK_CLIENT : BLOCK_WORKSPACE;
+	    snprintf (st->pendingPrefix, sizeof(st->pendingPrefix),
+		      "*%s*", spec);
+	}
+	else
+	{
+	    /* Some other top-level construct; not ours. */
+	    st->pending = False;
+	}
+	return;
+    }
+
+    if (!st->inBlock || st->depth != 1) return;
+
+    if (!SplitEntry (seg, &name, &value)) return;
+
+    if (!IsKnownName (name, st->kind))
+    {
+	WarnUnknown (name, st->lineNum);
+	return;
+    }
+
+    PutSetting (st->prefix, name, value);
+}
+
+static void HandleBrace(ScanState *st, char c)
+{
+    if (c == '{')
+    {
+	st->depth++;
+	if (st->depth == 1 && st->pending)
+	{
+	    st->inBlock = True;
+	    st->kind = st->pendingKind;
+	    strcpy (st->prefix, st->pendingPrefix);
+	    st->pending = False;
+	}
+    }
+    else
+    {
+	if (st->depth > 0) st->depth--;
+	if (st->depth == 0) st->inBlock = False;
+    }
+}
+
 void LoadRcSettings(void)
 {
     FILE *fp;
     char  buf[RC_LINE_MAX];
-    char  prefix[RC_LINE_MAX];
-    char *line, *name, *value, *p;
-    int   depth = 0;
-    Boolean inBlock = False;
-    BlockKind kind = BLOCK_SETTINGS;
-    Boolean pendingBrace = False;
-    int   lineNum = 0;
-    char *msg;
-    size_t len;
-    const char fmt[] = "%s, line %d: unknown setting \"%s\".";
+    char  seg[RC_LINE_MAX];
+    ScanState st;
+    char *p;
+    int   n;
+    Boolean inQuotes;
 
     if ((fp = FopenConfigFile ()) == NULL) return;
 
-    prefix[0] = '\0';
+    memset (&st, 0, sizeof(st));
 
     while (fgets (buf, sizeof(buf), fp) != NULL)
     {
-	lineNum++;
+	st.lineNum++;
 
 	if ((p = strchr (buf, '\n')) != NULL) *p = '\0';
 
-	line = Trim (buf);
-	if (!*line || *line == '!') continue;
+	p = buf;
+	while (*p && isspace ((unsigned char)*p)) p++;
+	if (*p == '!') continue;		/* whole-line comment */
 
 	/*
-	 * A header may be followed by its brace on the same line or the
-	 * next one, which is why the brace is tracked separately.
+	 * Split the line at braces, so that a block written as
+	 * "Workspace ws0 { title Web }" is handled the same as one spread
+	 * over several lines. Braces inside a quoted string -- a menu label,
+	 * say -- are literal text and do not count.
 	 */
-	if (pendingBrace)
+	n = 0;
+	inQuotes = False;
+	for (; *p; p++)
 	{
-	    if (*line == '{')
-	    {
-		pendingBrace = False;
-		inBlock = True;
-		depth = 1;
-		line = Trim (line + 1);
-		if (!*line) continue;
-	    }
-	    else
-	    {
-		/*
-		 * Not a block after all -- most likely a menu item whose
-		 * label happened to be "Settings". Forget it and carry on.
-		 */
-		pendingBrace = False;
-	    }
-	}
+	    if (*p == '"') inQuotes = !inQuotes;
 
-	if (!inBlock)
-	{
-	    /*
-	     * Only recognize a block header at the outermost level, so that
-	     * a menu item or binding named "Settings" cannot be mistaken
-	     * for one.
-	     */
-	    char first[RC_LINE_MAX];
-	    char rest[RC_LINE_MAX];
-	    int  n = 0;
-
-	    p = line;
-	    while (*p && !isspace ((unsigned char)*p) && n < RC_LINE_MAX-1)
-		first[n++] = tolower ((unsigned char)*p++);
-	    first[n] = '\0';
-
-	    strncpy (rest, Trim (p), sizeof(rest) - 1);
-	    rest[sizeof(rest)-1] = '\0';
-
-	    if (!strcmp (first, SETTINGS_KEYWORD))
+	    if (!inQuotes && (*p == '{' || *p == '}'))
 	    {
-		kind = BLOCK_SETTINGS;
-		snprintf (prefix, sizeof(prefix), "*");
-		pendingBrace = True;
-		if (*rest == '{')
-		{
-		    pendingBrace = False;
-		    inBlock = True;
-		    depth = 1;
-		}
-		continue;
-	    }
-	    else if ((!strcmp (first, CLIENT_KEYWORD) ||
-		      !strcmp (first, WORKSPACE_KEYWORD)) && *rest)
-	    {
-		char spec[RC_LINE_MAX];
+		seg[n] = '\0';
+		HandleSegment (&st, seg);
 		n = 0;
-		p = rest;
-		while (*p && !isspace ((unsigned char)*p) && n < RC_LINE_MAX-1)
-		    spec[n++] = *p++;
-		spec[n] = '\0';
-
-		kind = (!strcmp (first, CLIENT_KEYWORD)) ?
-			    BLOCK_CLIENT : BLOCK_WORKSPACE;
-		snprintf (prefix, sizeof(prefix), "*%s*", spec);
-		pendingBrace = True;
-		p = Trim (p);
-		if (*p == '{')
-		{
-		    pendingBrace = False;
-		    inBlock = True;
-		    depth = 1;
-		}
+		HandleBrace (&st, *p);
 		continue;
 	    }
 
-	    /* Some other top-level construct; not ours. */
-	    continue;
+	    if (n < RC_LINE_MAX - 1) seg[n++] = *p;
 	}
-
-	/* Inside a Settings or Client block. */
-	if (*line == '}')
-	{
-	    depth--;
-	    if (depth <= 0) inBlock = False;
-	    continue;
-	}
-
-	if (!SplitEntry (line, &name, &value)) continue;
-
-	if (!IsKnownName (name, kind))
-	{
-	    len = snprintf (NULL, 0, fmt, WM_RESOURCE_NAME, lineNum, name);
-	    msg = XtMalloc (len + 1);
-	    sprintf (msg, fmt, WM_RESOURCE_NAME, lineNum, name);
-	    Warning (msg);
-	    XtFree (msg);
-	    continue;
-	}
-
-	PutSetting (prefix, name, value);
+	seg[n] = '\0';
+	HandleSegment (&st, seg);
     }
 
     fclose (fp);

@@ -8,6 +8,8 @@
  * Copyright (c) 1987-2012, The Open Group. All rights reserved.
  * Copyright (c) 2018-2026, alx@fastestcode.org
  *
+ * Modified 2026 for mWizard, a fork of EMWM. See NOTICE for details.
+ *
  * These libraries and programs are free software; you can
  * redistribute them and/or modify them under the terms of the GNU
  * Lesser General Public License as published by the Free Software
