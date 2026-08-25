@@ -511,11 +511,6 @@ FunctionTableEntry functionTable[] = {
 			0,
 			F_Separator,
 			(FunctionTableParseProcT)ParseWmFuncNoArg},
-    {"f.set_behavior",	0,
-			CRS_ANY,
-			0,
-			F_Set_Behavior,
-			(FunctionTableParseProcT)ParseWmFuncNoArg},
     {"f.shutdown",	0,
 			CRS_ANY,
 			0,
@@ -991,8 +986,7 @@ void ProcessWmFile (WmScreenData *pSD)
 
     if ((cfileP = FopenConfigFile ()) == NULL)
     {
-	if (!wmGD.useStandardBehavior)
-	  Warning (((char *)GETMESSAGE(60, 6, "Cannot open configuration file")));
+	Warning (((char *)GETMESSAGE(60, 6, "Cannot open configuration file")));
 	return;
     }
 

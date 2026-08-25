@@ -318,15 +318,6 @@ void UpdateWorkspacePresenceProperty(ClientData *pCD)
     unsigned long cPresence = 0;
     unsigned long i;
 
-    if (wmGD.useStandardBehavior)
-    {
-	/*
-	 * Don't change any workspace properties in standard behavior
-	 * mode.
-	 */
-	return;
-    }
-
 	if(!(pPresence = (Atom *) XtMalloc(pCD->numInhabited * sizeof(Atom))))
 	{
 	    Warning (((char *)GETMESSAGE(76, 2,

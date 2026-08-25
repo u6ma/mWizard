@@ -959,8 +959,6 @@ void InitWmScreen (WmScreenData *pSD, int sNum)
     pSD->colormapFocus = NULL;
     pSD->keySpecs = NULL;
     pSD->screen = sNum;
-    pSD->confirmboxW[DEFAULT_BEHAVIOR_ACTION] = NULL;
-    pSD->confirmboxW[CUSTOM_BEHAVIOR_ACTION] = NULL;
     pSD->confirmboxW[RESTART_ACTION] = NULL;
     pSD->confirmboxW[QUIT_MWM_ACTION] = NULL;
     pSD->feedbackWin = (Window)NULL;
@@ -1212,8 +1210,6 @@ void InitWmScreen (WmScreenData *pSD, int sNum)
  *
  *  Outputs:
  *  -------
- *  wmGD.useStandardBehavior = True if set indicated in property
- *
  *  wmGD.wmRestarted = True if the window manager was restarted
  * 
  *************************************<->***********************************/
@@ -1225,14 +1221,11 @@ void ProcessMotifWmInfo (Window rootWindowOfScreen)
     wmGD.xa_MWM_INFO = XInternAtom (DISPLAY, _XA_MWM_INFO, False);
     if ((pMwmInfo = (MotifWmInfo *)GetMwmInfo (rootWindowOfScreen)) != NULL)
     {
-	wmGD.useStandardBehavior =
-		(pMwmInfo->flags & MWM_INFO_STARTUP_STANDARD) ? True : False;
 	wmGD.wmRestarted = True;
 	XFree ((char *)pMwmInfo);
     }
     else
     {
-	wmGD.useStandardBehavior = False;
 	wmGD.wmRestarted = False;
     }
 
@@ -1278,9 +1271,7 @@ void SetupWmWorkspaceWindows (void)
 
 	    XMapWindow (DISPLAY, pSD->wmWorkspaceWin);
 
-	    SetMwmInfo (pSD->rootWindow, 
-			(long) ((wmGD.useStandardBehavior) ?
-                        MWM_INFO_STARTUP_STANDARD : MWM_INFO_STARTUP_CUSTOM), 
+	    SetMwmInfo (pSD->rootWindow, (long) MWM_INFO_STARTUP_CUSTOM,
 			pSD->wmWorkspaceWin);
 
 	    XSaveContext (DISPLAY, pSD->wmWorkspaceWin, 

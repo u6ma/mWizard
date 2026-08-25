@@ -3364,67 +3364,7 @@ Boolean F_Refresh_Win (String args, ClientData *pCD, XEvent *event)
 } /* END OF FUNCTION F_Refresh_Win */
 
 
-/*************************************<->*************************************
- *
- *  F_Set_Behavior (args, pCD, event)
- *
- *
- *  Description:
- *  -----------
- *  This function is used to switch the window manager configuration between
- *  the built-in configuration (for CXI behavior) and the user's custom
- *  configuration.
- *
- *************************************<->***********************************/
-
-Boolean F_Set_Behavior (String args, ClientData *pCD, XEvent *event)
-{
-    /*
-     * Go system modal in starting to do the set behavior.
-     */
-
-    /* !!! grab the server and the pointer !!! */
-
-
-    /*
-     * Confirm that a set_behavior should be done.
-     * Execute restart if so.
-     */
-
-    if (wmGD.showFeedback & WM_SHOW_FB_BEHAVIOR)
-    {
-	ConfirmAction (ACTIVE_PSD, (wmGD.useStandardBehavior) ?
-		       CUSTOM_BEHAVIOR_ACTION : DEFAULT_BEHAVIOR_ACTION);
-    }
-    else
-    {
-	RestartWm ((long) ((wmGD.useStandardBehavior) ?
-			MWM_INFO_STARTUP_CUSTOM : MWM_INFO_STARTUP_STANDARD));
-    }
-    return (False);
-
-} /* END OF FUNCTION F_Set_Behavior */
-
-
 
-/*************************************<->*************************************
- *
- *  Do_Set_Behavior (dummy)
- *
- *
- *  Description:
- *  -----------
- *  Callback to do the f.set_behavior function.
- *
- *************************************<->***********************************/
-
-void Do_Set_Behavior (Boolean dummy)
-{
-    RestartWm ((long) ((wmGD.useStandardBehavior) ?
-			MWM_INFO_STARTUP_CUSTOM : MWM_INFO_STARTUP_STANDARD));
-
-} /* END OF FUNCTION Do_Set_Behavior */
-
 /*************************************<->*************************************
  *
  *  F_Title (args, pCD, event)

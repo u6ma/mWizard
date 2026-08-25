@@ -85,7 +85,6 @@ void _WmFocusAutoRaiseDefault (Widget widget, int offset, XrmValue *value);
 void _WmMultiClickTimeDefault (Widget widget, int offset, XrmValue *value);
 void ProcessWmResources (void);
 void ProcessGlobalScreenResources (void);
-void SetStdGlobalResourceValues (void);
 void ProcessScreenListResource (void);
 void ProcessAppearanceResources (WmScreenData *pSD);
 void MakeAppearanceResources (WmScreenData *pSD, AppearanceData *pAData, Boolean makeActiveResources);
@@ -93,8 +92,6 @@ void GetAppearanceGCs (WmScreenData *pSD, Pixel fg, Pixel bg, Pixmap bg_pixmap, 
 void ProcessScreenResources (WmScreenData *pSD, unsigned char *screenName);
 void ProcessWorkspaceResources (WmWorkspaceData *pWS);
 void ProcessClientResources (ClientData *pCD);
-void SetStdClientResourceValues (ClientData *pCD);
-void SetStdScreenResourceValues (WmScreenData *pSD);
 GC GetHighlightGC (WmScreenData *pSD, Pixel fg, Pixel bg, Pixmap pixmap);
 static void WriteOutXrmColors (WmScreenData *pSD);
 void _WmIconImageMaximumDefault (Widget widget, int offset, XrmValue *value);
@@ -973,116 +970,6 @@ XtResource wmGlobalScreenResources[] =
 
 
 
-/******************************<->*************************************
- *
- *  wmStdGlobalResources
- *
- *
- *  Description:
- *  -----------
- *  This data structure is used in the processing of mwm general appearance
- *  and behavior resources that are not automatically set for the standard
- *  (default) behavior.  These resources are specified with the following
- *  syntax:
- *
- *      "Mwm*<resource_identifier>".
- *
- ******************************<->***********************************/
-
-XtResource wmStdGlobalResources[] =
-{
-
-    {
-	WmNbitmapDirectory,
-	WmCBitmapDirectory,
-	XtRString,
-	sizeof (String),
-        XtOffsetOf(WmGlobalData, bitmapDirectory),
-	XtRString,
-	(XtPointer)BITMAPDIR
-    },
-
-    {
-	WmNconfigFile,
-	WmCConfigFile,
-	XtRString,
-	sizeof (String),
-        XtOffsetOf(WmGlobalData, configFile),
-	XtRImmediate,
-	(XtPointer)NULL
-    },
-
-    {
-	WmNframeStyle,
-	WmCFrameStyle,
-	WmRFrameStyle,
-	sizeof (FrameStyle),
-	XtOffsetOf(WmGlobalData, frameStyle),
-	XtRImmediate,
-	(XtPointer)WmRECESSED
-    },
-
-    {
-	WmNiconAutoPlace,
-	WmCIconAutoPlace,
-	XtRBoolean,
-	sizeof (Boolean),
-        XtOffsetOf(WmGlobalData, iconAutoPlace),
-	XtRImmediate,
-	(XtPointer)True
-    },
-
-    {
-	WmNmoveThreshold,
-	WmCMoveThreshold,
-	XtRInt,
-	sizeof (int),
-        XtOffsetOf(WmGlobalData, moveThreshold),
-	XtRImmediate,
-	(XtPointer)4
-    },
-
-    {
-	WmNpositionOnScreen,
-	WmCPositionOnScreen,
-	XtRBoolean,
-	sizeof (Boolean),
-        XtOffsetOf(WmGlobalData, positionOnScreen),
-	XtRImmediate,
-	(XtPointer)True
-    },
-
-    {
-	WmNquitTimeout,
-	WmCQuitTimeout,
-	XtRInt,
-	sizeof (int),
-        XtOffsetOf(WmGlobalData, quitTimeout),
-	XtRImmediate,
-	(XtPointer)1000
-    },
-
-    {
-	WmNshowFeedback,
-	WmCShowFeedback,
-	WmRShowFeedback,
-	sizeof (int),
-        XtOffsetOf(WmGlobalData, showFeedback),
-	XtRImmediate,
-	(XtPointer)(WM_SHOW_FB_DEFAULT)
-    },
-
-	{
-	WmNprimaryXineramaScreen,
-	WmCPrimaryXineramaScreen,
-	XtRInt,
-	sizeof(int),
-	XtOffsetOf (WmGlobalData, primaryXineramaScreen),
-	XtRImmediate,
-	(XtPointer)0
-	}
-};
-
 
 /******************************<->*************************************
  *
@@ -1394,86 +1281,6 @@ XtResource wmScreenResources[] =
 };
 
 
-/******************************<->*************************************
- *
- *  wmStdScreenResources
- *
- *
- *  Description:
- *  -----------
- *  This data structure is used in the processing of mwm screen specific
- *  appearance and behavior resources that are not automatically set for 
- *  the standard (default) behavior.  These resources are specified with 
- *  the following syntax:
- *
- *      "Mwm*screen<#>*<resource_identifier>".
- *
- ******************************<->***********************************/
-
-XtResource wmStdScreenResources[] =
-{
-    {
-	WmNframeBorderWidth,
-	WmCFrameBorderWidth,
-	XtRInt,
-	sizeof (int),
-	XtOffsetOf (WmScreenData, frameBorderWidth),
-	XtRImmediate,
-	(XtPointer) BIGSIZE
-    },
-
-    {
-	WmNiconImageMaximum,
-	WmCIconImageMaximum,
-	WmRSize,
-	sizeof (WHSize),
-	XtOffsetOf (WmScreenData, iconImageMaximum),
-	XtRCallProc,
-	(XtPointer) _WmIconImageMaximumDefault
-    },
-
-    {
-	WmNiconImageMinimum,
-	WmCIconImageMinimum,
-	WmRSize,
-	sizeof (WHSize),
-	XtOffsetOf (WmScreenData, iconImageMinimum),
-	XtRString,
-	"32x32"
-    },
-
-    {
-	WmNiconPlacementMargin,
-	WmCIconPlacementMargin,
-	XtRInt,
-	sizeof (int),
-	XtOffsetOf (WmScreenData, iconPlacementMargin),
-	XtRImmediate,
-	(XtPointer)-1
-    },
-
-    {
-	WmNmaximumMaximumSize,
-	WmCMaximumMaximumSize,
-	WmRSize,
-	sizeof (WHSize),
-	XtOffsetOf (WmScreenData, maximumMaximumSize),
-	XtRString,
-	"0x0"
-    },
-
-    {
-	WmNresizeBorderWidth,
-	WmCFrameBorderWidth,
-	XtRInt,
-	sizeof (int),
-	XtOffsetOf (WmScreenData, resizeBorderWidth),
-	XtRImmediate,
-	(XtPointer) BIGSIZE
-    }
-};
-
-
 
 /******************************<->*************************************
  *
@@ -1515,35 +1322,6 @@ XtResource wmWorkspaceResources[] =
 
 
 
-/******************************<->*************************************
- *
- *  wmStdWorkspaceResources
- *
- *
- *  Description:
- *  -----------
- *  This data structure is used in the processing of mwm workspace specific 
- *  appearance and behavior resources that are not automatically set for 
- *  the standard (default) behavior.  These resources are specified with 
- *  the following syntax:
- *
- *      "Mwm*[screen<#>*]<workspace>*<resource_identifier>".
- *
- *************************************<->***********************************/
-
-XtResource wmStdWorkspaceResources[] =
-{
-    {
-	WmNtitle,
-	WmCTitle,
-	XmRXmString,
-	sizeof (XmString),
-	XtOffsetOf (WmWorkspaceData, title),
-	XmRXmString,
-	(XtPointer)NULL
-    }
-};
-
 
 
 /*************************************<->*************************************
@@ -1788,137 +1566,6 @@ XtResource wmClientResources[] =
 
 
 
-/*************************************<->*************************************
- *
- *  wmStdClientResources
- *
- *
- *  Description:
- *  -----------
- *  This data structure is used in the processing of client specific 
- *  window manager resources that are not automatically set for the standard
- *  (default) behavior.  These resources are specified with the
- *  following syntax:
- *
- *      "Mwm*<client_name_or_class>*<resource_identifier>"
- *
- *************************************<->***********************************/
-
-XtResource wmStdClientResources[] =
-{
-
-    {
-	WmNiconImage,
-	WmCIconImage,
-	XtRString,
-	sizeof (String),
-	XtOffsetOf (ClientData, iconImage),
-	XtRString,
-	(XtPointer)NULL
-    },
-
-    {
-	WmNiconImageBackground,
-	WmCIconImageBackground,
-	XtRPixel,
-	sizeof (Pixel),
-	XtOffsetOf (ClientData, iconImageBackground),
-	XtRCallProc,
-	(XtPointer)_WmIconImageBDefault
-    },
-
-    {
-	WmNiconImageForeground,
-	WmCIconImageForeground,
-	XtRPixel,
-	sizeof (Pixel),
-	XtOffsetOf (ClientData, iconImageForeground),
-	XtRCallProc,
-	(XtPointer)_WmIconImageFDefault
-    },
-
-    {
-	WmNiconImageBottomShadowColor,
-	WmCIconImageBottomShadowColor,
-	XtRPixel,
-	sizeof (Pixel),
-        XtOffsetOf (ClientData, iconImageBottomShadowColor),
-	XtRCallProc,
-	(XtPointer)_WmIconImageBSCDefault
-    },
-
-    {
-	WmNiconImageBottomShadowPixmap,
-	WmCIconImageBottomShadowPixmap,
-	XtRString,
-	sizeof (String),
-        XtOffsetOf (ClientData, iconImageBottomShadowPStr),
-	XtRCallProc,
-	(XtPointer)_WmIconImageBSPDefault
-    },
-
-    {
-	WmNiconImageTopShadowColor,
-	WmCIconImageTopShadowColor,
-	XtRPixel,
-	sizeof (Pixel),
-        XtOffsetOf (ClientData, iconImageTopShadowColor),
-	XtRCallProc,
-	(XtPointer)_WmIconImageTSCDefault
-    },
-
-    {
-	WmNiconImageTopShadowPixmap,
-	WmCIconImageTopShadowPixmap,
-	XtRString,
-	sizeof (String),
-	XtOffsetOf (ClientData, iconImageTopShadowPStr),
-	XtRCallProc,
-	(XtPointer)_WmIconImageTSPDefault
-    },
-
-    {
-	WmNmatteWidth,
-	WmCMatteWidth,
-	XtRInt,
-	sizeof (int),
-	XtOffsetOf (ClientData, matteWidth),
-	XtRImmediate,
-	(XtPointer)0
-    },
-
-    {
-	WmNmaximumClientSize,
-	WmCMaximumClientSize,
-	WmRSize,
-	sizeof (WHSize),
-	XtOffsetOf (ClientData, maximumClientSize),
-	XtRString,
-	"0x0"
-    },
-
-    {
-	WmNsecondariesOnTop,
-	WmCSecondariesOnTop,
-	XtRBoolean,
-	sizeof (Boolean),
-        XtOffsetOf (ClientData, secondariesOnTop),
-	XtRCallProc,
-	(XtPointer)_WmSecondariesOnTopDefault
-    },
-
-    {
-	WmNuseClientIcon,
-	WmCUseClientIcon,
-	XtRBoolean,
-	sizeof (Boolean),
-        XtOffsetOf (ClientData, useClientIcon),
-	XtRImmediate,
-	(XtPointer)False
-    }
-};
-
-
 
 /*************************************<->*************************************
  *
@@ -2796,27 +2443,12 @@ ProcessWmResources (void)
 {
 
     /*
-     * Process the mwm general appearance and behavior resources.  Retrieve
-     * a limited set of resource values if the window manager is starting
-     * up with the standard behavior.
+     * Process the general appearance and behavior resources.
      */
 
-    if (wmGD.useStandardBehavior)
-    {
-	XtGetApplicationResources (wmGD.topLevelW, (XtPointer) &wmGD,
-	    wmStdGlobalResources, XtNumber (wmStdGlobalResources), NULL, 0);
-
-	/*
-	 * Fill in the standard resource values.
-	 */
-
-	SetStdGlobalResourceValues ();
-    }
-    else
-    {
-	XtGetApplicationResources (wmGD.topLevelW, (XtPointer) &wmGD,
+    XtGetApplicationResources (wmGD.topLevelW, (XtPointer) &wmGD,
 	    wmGlobalResources, XtNumber (wmGlobalResources), NULL, 0);
-    }
+
 
     if (wmGD.autoRaiseDelay < 0)
     {
@@ -2874,46 +2506,6 @@ ProcessGlobalScreenResources (void)
 
 
 
-/*************************************<->*************************************
- *
- *  SetStdGlobalResourceValues ()
- *
- *
- *  Description:
- *  -----------
- *  This function sets resource data to standard values.  This setting
- *  is done in place of getting the values from the user settings in
- *  the resource database.
- *
- * 
- *  Outputs:
- *  -------
- *  wmGD = (global data filled out with resource values)
- * 
- *************************************<->***********************************/
-
-void 
-SetStdGlobalResourceValues (void)
-{
-    wmGD.autoKeyFocus = True;
-    wmGD.clientAutoPlace = True;
-    wmGD.colormapFocusPolicy = CMAP_FOCUS_KEYBOARD;
-    wmGD.deiconifyKeyFocus = True;
-    wmGD.doubleClickTime = 500;
-    wmGD.iconAutoPlace = True;
-    wmGD.iconClick = True;
-    wmGD.interactivePlacement = False;
-    wmGD.keyboardFocusPolicy = KEYBOARD_FOCUS_EXPLICIT;
-    wmGD.lowerOnIconify = True;
-    wmGD.passSelectButton = True;
-    wmGD.startupKeyFocus = True;
-    wmGD.systemButtonClick = True;
-    wmGD.systemButtonClick2 = True;
-	wmGD.useWindowOutline = True;
-
-} /* END OF FUNCTION SetStdGlobalResourceValues */
-
-
 
 /*************************************<->*************************************
  *
@@ -4376,23 +3968,7 @@ ProcessScreenResources (WmScreenData *pSD, unsigned char *screenName)
      * Use the screen name (e.g., "0") as the default resource name.
      */
 
-    if (wmGD.useStandardBehavior)
-    {
-	XtGetSubresources (wmGD.topLevelW, (XtPointer) pSD, 
-	    (String) screenName, 
-	    (String) screenName,
-	    wmStdScreenResources, 
-	    XtNumber (wmStdScreenResources), NULL, 0);
-
-	/*
-	 * Fill in the standard resource values.
-	 */
-
-	SetStdScreenResourceValues (pSD);
-    }
-    else
-    {
-	XtGetSubresources (wmGD.topLevelW, (XtPointer) pSD, 
+    XtGetSubresources (wmGD.topLevelW, (XtPointer) pSD, 
 	    (String)screenName, (String) screenName,
 	    wmScreenResources, 
 	    XtNumber (wmScreenResources), NULL, 0);
@@ -4401,7 +3977,7 @@ ProcessScreenResources (WmScreenData *pSD, unsigned char *screenName)
 	pSD->moveOpaque = (((XmScreen) XmGetXmScreen(XtScreen(pSD->screenTopLevelW)))
 			   -> screen.moveOpaque);
 #endif
-    }
+
 
     /*
      * Do some additional processing on the window manager resource values.
@@ -4764,36 +4340,18 @@ ProcessWorkspaceResources (WmWorkspaceData *pWS)
     pResWS = pWS;	/* save current ws for default processing */
 
 
-    if (wmGD.useStandardBehavior)
-    {
-	XtGetSubresources (pWS->pSD->screenTopLevelW, (XtPointer) pWS, 
-	    pWS->name, pWS->name, wmStdWorkspaceResources, 
-	    XtNumber (wmStdWorkspaceResources), NULL, 0);
-
-	/*
-	 * Fill in the standard resource values.
-	 *
-	 * (no code for this right now)
-	 */
-
-        pWS->iconBoxGeometry = NULL;
-
-    }
-    else
-    {
-	XtGetSubresources (pWS->pSD->screenTopLevelW, (XtPointer) pWS, 
+    XtGetSubresources (pWS->pSD->screenTopLevelW, (XtPointer) pWS, 
 	    pWS->name, pWS->name, wmWorkspaceResources, 
 	    XtNumber (wmWorkspaceResources), NULL, 0);
 
 
-        /*  Dup iconbox geometry, it may be free'd later on.  */
+    /*  Dup iconbox geometry, it may be free'd later on.  */
 
-        if (pWS->iconBoxGeometry)
-        {
-            pWS->iconBoxGeometry = XtNewString (pWS->iconBoxGeometry);
-        }
-
+    if (pWS->iconBoxGeometry)
+    {
+        pWS->iconBoxGeometry = XtNewString (pWS->iconBoxGeometry);
     }
+
 
     if (pWS->title == NULL)
     {
@@ -4968,24 +4526,10 @@ ProcessClientResources (ClientData *pCD)
     clientName = (pCD->clientName) ? pCD->clientName : WmNdefaults;
     clientClass = (pCD->clientClass) ? pCD->clientClass : WmNdefaults;
 
-    if (wmGD.useStandardBehavior)
-    {
-	XtGetSubresources (pSD->screenTopLevelW, (XtPointer) pCD, clientName,
-	    clientClass, wmStdClientResources, XtNumber (wmStdClientResources),
-	    NULL, 0);
-
-	/*
-	 * Fill in the standard resource values.
-	 */
-
-	SetStdClientResourceValues (pCD);
-    }
-    else
-    {
-	XtGetSubresources (pSD->screenTopLevelW, (XtPointer) pCD, clientName,
+    XtGetSubresources (pSD->screenTopLevelW, (XtPointer) pCD, clientName,
 	    clientClass, wmClientResources, XtNumber (wmClientResources), NULL,
 	    0);
-    }
+
 
 #ifdef NO_MESSAGE_CATALOG
     /*
@@ -5182,86 +4726,7 @@ ProcessClientResources (ClientData *pCD)
 
 
 
-/*************************************<->*************************************
- *
- *  SetStdClientResourceValues (pCD)
- *
- *
- *  Description:
- *  -----------
- *  This function sets client resource data to standard values.  This setting
- *  is done in place of getting the values from the user settings in
- *  the resource database.
- *
- *  Input:
- *  -----
- *  pCD = pointer to the client data
- *
- * 
- *  Output:
- *  ------
- *  pCD = (client data filled out with resource values)
- * 
- *************************************<->***********************************/
-
-void 
-SetStdClientResourceValues (ClientData *pCD)
-{
-    pCD->clientDecoration = WM_DECOR_DEFAULT;
-    pCD->clientFunctions = WM_FUNC_DEFAULT;
-    pCD->focusAutoRaise = True;
-    pCD->systemMenu = builtinSystemMenuName;
-    pCD->usePPosition = USE_PPOSITION_NONZERO;
-
-} /* END OF FUNCTION SetStdClientResourceValues */
-
-
 
-/******************************<->*************************************
- *
- *  SetStdScreenResourceValues (pSD)
- *
- *
- *  Description:
- *  -----------
- *  This function sets screen resource data to standard values.  This setting
- *  is done in place of getting the values from the user settings in
- *  the resource database.
- *
- *  Input:
- *  -----
- *  pSD = pointer to the screen data
- *
- * 
- *  Output:
- *  ------
- *  pSD = (screen data filled out with resource values)
- * 
- ******************************<->***********************************/
-
-void 
-SetStdScreenResourceValues (WmScreenData *pSD)
-{
-    pSD->buttonBindings = builtinButtonBindingsName;
-    pSD->cleanText = True;
-    pSD->iconDecoration =
-		(ICON_LABEL_PART | ICON_IMAGE_PART | ICON_ACTIVE_LABEL_PART);
-    pSD->iconPlacement =
-		(ICON_PLACE_LEFT_PRIMARY | ICON_PLACE_BOTTOM_SECONDARY);
-    pSD->keyBindings = builtinKeyBindingsName;
-    pSD->limitResize = True;
-    pSD->resizeCursors = True;
-    pSD->transientDecoration = (WM_DECOR_SYSTEM | WM_DECOR_RESIZEH);
-    pSD->transientFunctions =
-		(WM_FUNC_ALL & ~(MWM_FUNC_MAXIMIZE | MWM_FUNC_MINIMIZE |
-				 MWM_FUNC_RESIZE));
-    pSD->useIconBox = False;
-
-    pSD->feedbackGeometry = NULL;
-    pSD->moveOpaque = False;
-
-} /* END OF FUNCTION SetStdScreenResourceValues */
-
 
 /*************************************<->*************************************
  *
@@ -5765,7 +5230,7 @@ void SetupDefaultResources(WmScreenData *pSD)
  * If (using DefaultBindings mechanism and bindings are not found in .mwmrc)
  *	then use the builtin bindings.
  */
-    if (!pSD->keySpecs && !wmGD.useStandardBehavior)
+    if (!pSD->keySpecs)
     {
 	/*
 	 * Print warning if user is NOT using "DefaultKeyBindings".
@@ -5778,7 +5243,7 @@ void SetupDefaultResources(WmScreenData *pSD)
 	pSD->keyBindings = builtinKeyBindingsName;
     }
 
-    if (!pSD->buttonSpecs && !wmGD.useStandardBehavior)
+    if (!pSD->buttonSpecs)
     {
 	/*
 	 * Print warning if user is NOT using "DefaultButtonBindings".

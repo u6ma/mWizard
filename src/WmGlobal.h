@@ -156,14 +156,12 @@ extern Pixel		FPselectcolor;
 #define FB_POSITION		(1L << 1)
 
 /* confirmbox and waitbox indexes */
-#define DEFAULT_BEHAVIOR_ACTION		0
-#define CUSTOM_BEHAVIOR_ACTION		1
-#define RESTART_ACTION		2
-#define QUIT_MWM_ACTION		3
-#define REBOOT_ACTION		4
-#define SHUTDOWN_ACTION		5
-#define SUSPEND_ACTION		6
-#define NUM_CONFIRM_ACTIONS	7
+#define RESTART_ACTION		0
+#define QUIT_MWM_ACTION		1
+#define REBOOT_ACTION		2
+#define SHUTDOWN_ACTION		3
+#define SUSPEND_ACTION		4
+#define NUM_CONFIRM_ACTIONS	5
 
 /* icon frame shadow widths */
 #define ICON_EXTERNAL_SHADOW_WIDTH	(wmGD.iconExternalShadowWidth)
@@ -1674,7 +1672,6 @@ typedef struct _WmGlobalData
     /* wm state info: */
 
     WmScreenData *pActiveSD;		/* with keyfocus window */
-    Boolean	useStandardBehavior;	/* behavior flag */
     Boolean	wmRestarted;		/* restart flag */
     Boolean	errorFlag;		/* handle on async errors */
     XID		errorResource;		/* from XErrorEvent */

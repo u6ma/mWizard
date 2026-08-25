@@ -75,8 +75,6 @@ Boolean F_Raise (String args, ClientData *pCD, XEvent *event);
 void Do_Raise (ClientData *pCD, ClientListEntry *pStackEntry, int flags);
 Boolean F_Raise_Lower (String args, ClientData *pCD, XEvent *event);
 Boolean F_Refresh_Win (String args, ClientData *pCD, XEvent *event);
-Boolean F_Set_Behavior (String args, ClientData *pCD, XEvent *event);
-void Do_Set_Behavior (Boolean dummy);
 Boolean F_Title (String args, ClientData *pCD, XEvent *event);
 Boolean F_Screen (String args, ClientData *pCD, XEvent *event);
 Boolean F_Next_Workspace (String args, ClientData *pCD, XEvent *event);
