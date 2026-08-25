@@ -1,21 +1,16 @@
 mWizard
 =======
 
-mWizard is a lightweight window manager for the X Window System, built on the
-Motif toolkit.
+mWizard is a lighter, opinionated build of EMWM -- a Motif window manager for
+the X Window System.
 
-It is a fork of EMWM (https://github.com/alx210/emwm), which derives from The
-Open Group's Motif Window Manager. mWizard removes the parts of EMWM that
-depended on, or interfered with, other software, and consolidates configuration
-into a single rc file.
+It drops the parts that fought with other software and keeps configuration in
+one file. Root-window wallpaper setters such as feh(1), xsetroot(1) and
+xwallpaper(1) work normally; behaviour is configured in ~/.mwizardrc rather
+than split across the rc file and the X resource database.
 
-Notably, mWizard does not draw a backdrop over the root window, so root-window
-wallpaper setters such as feh(1), xsetroot(1), hsetroot(1) and xwallpaper(1)
-work as expected. See NOTICE for the full list of changes and for licensing
-information.
-
-mWizard is distributed under the GNU Lesser General Public License, version 2.1
-or later; see COPYING.
+Distributed under the GNU Lesser General Public License, version 2.1 or later;
+see COPYING and NOTICE.
 
 
 PREREQUISITES
@@ -24,7 +19,7 @@ PREREQUISITES
 C99 compliant C compiler
 POSIX compliant make
 
-Libraries and Headers required for building:
+Libraries and headers required for building:
 
 libX11
 libXt
@@ -32,55 +27,48 @@ libXext
 libXrandr
 libXinerama
 libXm (open-motif/motif)
-
-Optional, only when the idle-lock timer is enabled (-DIDLE_LOCK, on by
-default in src/common.mf):
-
 libXScrnSaver (libXss)
 
-To build without it, remove -DIDLE_LOCK from DEFINES and -lXss from SYSLIBS in
-src/common.mf. Everything else in mWizard builds with no additional
-dependencies beyond those EMWM already required.
+libXss is used only by the idle lock timer. To build without it, remove
+-DIDLE_LOCK from DEFINES and -lXss from SYSLIBS in src/common.mf.
+
+Optional at runtime:
+
+stalonetray    system tray, if trayCommand is set
+xcursorgen     only to build the cursor theme in goodies
+
 
 BUILDING AND INSTALLING
 =======================
 
-Make sure to review the target platform makefile (mf/Makefile.<platform>).
-Adjust the installation prefix and X resources installation path if necessary.
-Read comments in the makefile for additional compile time options available.
-The target platform is picked by the master Makefile from uname(1). If no
-platform specific Makefile exists, try "Makefile.generic".
+Review the target platform makefile (mf/Makefile.<platform>) and adjust the
+installation prefix and X resources path if necessary. The target platform is
+picked by the master Makefile from uname(1); if no platform specific makefile
+exists, try "Makefile.generic".
 
-Run 'make' in the top-level directory of the source distribution.
-When the build process finishes, run 'make install' as root.
+    make
+    make install        # as root
+
+Additional targets:
+
+    make goodies            unpack and build the extras in goodies/
+    make install-goodies    install them (as root)
+    make mwand              build mWand, the optional launcher
+    make install-mwand      install it (as root)
+
 
 CONFIGURATION
-=======================
+=============
 
-mWizard is configured from a single rc file. A sample is installed as
-PREFIX/X11/system.mwizardrc; copy it to $HOME/.mwizardrc to customize. It
-defines key and mouse bindings, menus, and, in its Settings and Client blocks,
-window manager behaviour.
+mWizard reads one file. A sample is installed as PREFIX/X11/system.mwizardrc;
+copy it to $HOME/.mwizardrc to customize. It holds key and mouse bindings,
+menus, and window manager behaviour in its Settings, Client and Workspace
+blocks.
 
-doc/CONFIGURATION.md is the full guide to that file, including a table
-mapping every former X resource to its new rc setting.
+The app-defaults file installed as PREFIX/X11/app-defaults/MWizard carries
+appearance only: colors, shadows and fonts.
 
-The app-defaults file installed in PREFIX/X11/app-defaults/MWizard now carries
-appearance settings only: colors, shadows and fonts. Behaviour settings that
-EMWM read from the X resource database are read from the rc file instead, and
-the rc file takes precedence over any leftover entries in .Xdefaults.
-
-The mwizardrc(4) man page describes the file syntax in detail, and mwizard(1)
-documents the remaining appearance resources.
-
-MIGRATING FROM EMWM
-=======================
-
-An existing ~/.emwmrc will not be read; copy it to ~/.mwizardrc. Bindings and
-menus carry over unchanged, except that f.set_behavior no longer exists.
-
-Behaviour settings in ~/.Xdefaults or an old Emwm app-defaults file are no
-longer consulted; move them into a Settings block in ~/.mwizardrc. Backdrop
-resources have no replacement -- use a root-window wallpaper setter instead.
-
-See the "Migrating from EMWM" section of doc/CONFIGURATION.md for the details.
+    doc/CONFIGURATION.md    the full guide, including migration from EMWM
+    doc/MWAND.md            configuring mWand
+    mwizardrc(4)            rc file syntax
+    mwizard(1)              options and appearance resources

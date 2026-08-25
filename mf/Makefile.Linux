@@ -1,4 +1,4 @@
-# EMWM Linux Makefile
+# mWizard Linux Makefile
 
 # Installation prefix. Typically /usr or /usr/local.
 PREFIX = /usr

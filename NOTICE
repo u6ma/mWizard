@@ -15,7 +15,7 @@ LICENSE
 
 The project as a whole is distributed under the GNU Lesser General Public
 License, version 2.1 or (at your option) any later version. The full text is
-in the file COPYING.
+in the file COPYING. The MIT license text referenced below is in COPYING.MIT.
 
 Individual files retain their original copyright and license headers:
 
@@ -28,64 +28,59 @@ Individual files retain their original copyright and license headers:
     (WmEwmh.c/.h, WmXinerama.c/.h, WmXmP.h) are licensed under the MIT
     license.
 
-  * Files written for mWizard (WmSession.c/.h, WmSettings.c/.h) carry
-        Copyright (c) 2026, 845 <vinci845@icloud.com>
-    and are licensed under the MIT license, which is compatible with the
-    LGPL and matches the precedent already set by the newer EMWM files.
+  * Files written for mWizard are licensed under the MIT license, which is
+    compatible with the LGPL and matches the precedent set by the newer EMWM
+    files. They carry no copyright line.
 
 As required by section 2(a) of the LGPL 2.1, every file modified for mWizard
 carries a prominent notice stating that it was changed and when.
 
 
+ATTRIBUTION REQUIRED BY THIRD-PARTY LICENSES
+--------------------------------------------
+
+Two parts of this distribution are other people's work, under licenses that
+require their notices be kept. These notices are not optional and must not be
+removed when redistributing.
+
+  * mwand/ is derived from xmtoolbox, part of emwm-utils
+    (https://github.com/alx210/emwm-utils), which is MIT licensed and
+    Copyright (C) 2018-2026 alx@fastestcode.org. The MIT license requires that
+    "the above copyright notice and this permission notice shall be included
+    in all copies or substantial portions of the Software", so every mWand
+    file containing inherited code keeps that notice, followed by a line
+    recording that it was modified. Only files written from scratch for
+    mWizard carry the unattributed MIT notice described above.
+
+  * goodies/ contains an application icon set, a set of Motif dialog icons, an
+    X cursor theme and a pair of GTK configuration files, all by
+    alx@fastestcode.org and obtained from https://fastestcode.org/emwm.html.
+    They are distributed under the Creative Commons Attribution-Share Alike
+    3.0 license, which requires that credit be given to the original author,
+    that a link to the original source be provided, and that they be
+    redistributed under the same license. They cannot be relicensed. Each
+    archive carries its own COPYING file; see goodies/README.
+
+
 CHANGES RELATIVE TO EMWM 2.1
 ----------------------------
 
-Removed:
+Removed: the backdrop subsystem, which mapped a window over the root and hid
+anything drawn there by feh(1), xsetroot(1) and similar; XSMP session
+management and its client database; the _MWM_WM_REQUEST property protocol;
+"standard behavior" mode and its four duplicate resource tables; the
+cppCommand resource; and a large amount of code behind preprocessor macros
+that no makefile defined.
 
-  * The backdrop subsystem (WmBackdrop.c/.h) and all associated resources.
-    EMWM mapped a full-screen, override-redirect window over the root window
-    of every workspace, which permanently hid anything drawn on the root by
-    xsetroot(1), feh(1), hsetroot(1) or xwallpaper(1). mWizard does not create
-    that window, so those tools work normally.
+Added: an internal session facility (f.logout, f.reboot, f.shutdown,
+f.suspend) backed by user-configurable commands, with an optional idle lock
+timer; f.rename_workspace, replacing the removed protocol's NAMWKSPC verb;
+an extended rc file format with Settings, Client and Workspace blocks, so
+behaviour is configured in one place and the X resource database carries
+appearance only; EWMH dock, strut and sticky support; and optional
+integration with stalonetray.
 
-  * X Session Management Protocol support (WmXSMP.c/.h), which only did
-    anything when an external session manager was running, together with the
-    client resource database it maintained.
-
-  * The _MWM_WM_REQUEST root-window property protocol (WmRequest.c/.h), which
-    existed so that a separate helper program could drive workspaces from
-    outside. Its functionality is available directly as rc-file functions.
-
-  * The "standard behavior" mode (useStandardBehavior) and the four duplicate
-    resource tables that supported it.
-
-  * Code guarded by preprocessor macros that no makefile defined:
-    MOTIF_ONE_DOT_ONE, HP_VUE, DESKTOP, WSM, OLD_CODE, NOTDONE, PORT_OLDXLIB,
-    SGI_FOCUS_PATCH, ICCC_COMPLIANT, FIX_1193, NO_MESSAGE_CATALOG and the
-    OPEN LOOK compatibility layer (WmOL.h).
-
-  * The cppCommand resource, which was wired to a preprocessing routine that
-    was already compiled out.
-
-Added:
-
-  * An internal session facility (WmSession.c/.h) providing f.logout,
-    f.reboot, f.shutdown and f.suspend, each backed by a user-configurable
-    command so that mWizard has no hard dependency on systemd or any other
-    particular service manager. An optional idle-lock timer runs a
-    user-provided locker such as xscreensaver or i3lock.
-
-  * f.rename_workspace, replacing the NAMWKSPC request of the removed
-    property protocol.
-
-  * An extended rc-file format (WmSettings.c/.h) with Settings and Client
-    blocks, so that window manager behaviour is configured in one file
-    instead of being split between the rc file and the X resource database.
-    The X resource database now carries appearance settings only.
-
-Unchanged on purpose:
-
-  * X atom names. _MOTIF_WM_HINTS, _MWM_WM_HINTS, _MWM_WORKSPACE_*, WM_STATE,
-    WM_PROTOCOLS and the _NET_* set are the interoperability contract that
-    Motif and other toolkits rely on. Renaming them would break every client
-    that speaks them, so mWizard keeps them exactly as EMWM had them.
+Unchanged on purpose: X atom names. _MOTIF_WM_HINTS, _MWM_WM_HINTS,
+_MWM_WORKSPACE_*, WM_STATE, WM_PROTOCOLS and the _NET_* set are the
+interoperability contract that Motif and other toolkits rely on. Renaming
+them would break every client that speaks them.

@@ -1,4 +1,4 @@
-# EMWM FreeBSD Makefile
+# mWizard FreeBSD Makefile
 
 PREFIX ?= /usr/local
 MANDIR = $(PREFIX)/man
