@@ -3427,28 +3427,6 @@ void Do_Set_Behavior (Boolean dummy)
 
 /*************************************<->*************************************
  *
- *  F_Set_Context (args, pCD, event)
- *
- *
- *  Description:
- *  -----------
- *  This function is used to set a client context for subsequent
- *  WM_REQUESTs
- *
- *************************************<->***********************************/
-
-Boolean F_Set_Context (String args, ClientData *pCD, XEvent *event)
-{
- 
-    wmGD.requestContextWin = (Window) args;
-    return (True);
-
-} /* END OF FUNCTION F_Set_Context */
-
-
-
-/*************************************<->*************************************
- *
  *  F_Title (args, pCD, event)
  *
  *

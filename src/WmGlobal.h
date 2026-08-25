@@ -92,7 +92,6 @@ extern Pixel		FPselectcolor;
 
 /* Workspace atom names */
 #define _XA_MWM_MARQUEE_SELECTION	"_MWM_MARQUEE_SELECTION"
-#define _XA_MWM_WM_REQUEST		"_MWM_WM_REQUEST"
 #define _XA_MWM_WORKSPACE_HINTS		"_MWM_WORKSPACE_HINTS"
 #define _XA_MWM_WORKSPACE_PRESENCE	"_MWM_WORKSPACE_PRESENCE"
 #define _XA_MWM_WORKSPACE_INFO		"_MWM_WORKSPACE_INFO"
@@ -1737,7 +1736,6 @@ typedef struct _WmGlobalData
     Atom	xa_MWM_CLIENT_LIST;
     Atom	xa_MOTIF_BINDINGS;
     Atom	xa_COMPOUND_TEXT;
-    Atom	xa_MWM_WM_REQUEST;
 
 
     /* atoms used for workspace management: */
@@ -1810,7 +1808,6 @@ typedef struct _WmGlobalData
     Boolean	systemButtonClick;		/* resource */
     Boolean	systemButtonClick2;		/* resource */
     Boolean	useLargeCursors;
-    Window	requestContextWin;		/* for WmRequest f.fcns */
     Boolean	waitForClicks;			/* resource */
     FrameStyle	frameStyle;			/* resource */
     XButtonEvent evLastButton;			/* for detecting replayed button events */

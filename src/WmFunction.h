@@ -70,7 +70,6 @@ void Do_Restart (Boolean dummy);
 void RestartWm (long startupFlags);
 void DeFrameClient (ClientData *pCD);
 Boolean F_Send_Msg (String args, ClientData *pCD, XEvent *event);
-Boolean F_Set_Context (String args, ClientData *pCD, XEvent *event);
 Boolean F_Separator (String args, ClientData *pCD, XEvent *event);
 Boolean F_Raise (String args, ClientData *pCD, XEvent *event);
 void Do_Raise (ClientData *pCD, ClientListEntry *pStackEntry, int flags);

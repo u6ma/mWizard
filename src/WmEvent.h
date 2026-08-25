@@ -59,4 +59,3 @@ void WmUngrabButton (Display *display, unsigned int button,
 		unsigned int modifiers, Window grab_window);
 Boolean ReplayedButtonEvent (XButtonEvent *pevB1, XButtonEvent *pevB2);
 void HandleWmClientMessage (XClientMessageEvent *clientEvent);
-void HandleMwmRequest (WmScreenData *pSD, XEvent *pev);

@@ -575,7 +575,6 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
 		    wmGD.pLockMaskSequence = NULL;
 		    SetupLockingModifierMask ();
 #ifdef UNUSED
-			wmGD.requestContextWin = (Window) 0L;
 #endif
 		    wmGD.cppCommand = NULL;
 		    wmGD.evLastButton.button = 0;
@@ -700,11 +699,11 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
 
     {
       enum { XA_MWM_WORKSPACE_HINTS, XA_MWM_WORKSPACE_PRESENCE,
-	     XA_MWM_WORKSPACE_INFO, XA_WmNall, XA_MWM_WM_REQUEST,
+	     XA_MWM_WORKSPACE_INFO, XA_WmNall,
 	     XA_MWM_WORKSPACE_LIST, XA_MWM_WORKSPACE_CURRENT, NUM_ATOMS };
       static char *atom_names[] = {
 	     _XA_MWM_WORKSPACE_HINTS, _XA_MWM_WORKSPACE_PRESENCE,
-	     _XA_MWM_WORKSPACE_INFO, WmNall, _XA_MWM_WM_REQUEST,
+	     _XA_MWM_WORKSPACE_INFO, WmNall,
 	     _XA_MWM_WORKSPACE_LIST, _XA_MWM_WORKSPACE_CURRENT };
 
       Atom atoms[XtNumber(atom_names)];
@@ -716,7 +715,6 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
       wmGD.xa_ALL_WORKSPACES = atoms[XA_WmNall];
       wmGD.xa_MWM_WORKSPACE_LIST = atoms[XA_MWM_WORKSPACE_LIST];
       wmGD.xa_MWM_WORKSPACE_CURRENT = atoms[XA_MWM_WORKSPACE_CURRENT];
-      wmGD.xa_MWM_WM_REQUEST = atoms[XA_MWM_WM_REQUEST];
     }
 
     /*

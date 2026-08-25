@@ -2182,6 +2182,93 @@ F_DeleteWorkspace(
 /*************************************<->*************************************
  *
  *  Boolean
+ *  F_RenameWorkspace (args, pCD, event)
+ *
+ *  Description:
+ *  -----------
+ *  Sets the user-visible title of a workspace.
+ *
+ *  This replaces the NAMWKSPC verb of EMWM's _MWM_WM_REQUEST property
+ *  protocol, which existed so that an external helper program could rename
+ *  workspaces. Doing it from the rc file needs no helper.
+ *
+ *  Inputs:
+ *  ------
+ *  args = new title, or "workspace_name new title" to rename a workspace
+ *         other than the active one
+ *  pCD = unused
+ *  event = unused
+ *
+ *  Outputs:
+ *  -------
+ *  Return = TRUE
+ *
+ *************************************<->***********************************/
+
+Boolean 
+F_RenameWorkspace(
+        String args,
+        ClientData *pCD,
+        XEvent *event )
+
+{
+    WmScreenData *pSD = ACTIVE_PSD;
+    WmWorkspaceData *pWS = NULL;
+    char *copy;
+    char *title;
+    char *sep;
+    int i;
+
+    if ((args == NULL) || (*args == '\0'))
+    {
+	Warning ("f.rename_workspace requires a title argument.");
+	return (TRUE);
+    }
+
+    copy = XtNewString (args);
+
+    /*
+     * "name title" renames that workspace; a bare title renames the
+     * active one. A leading name only counts when it actually matches a
+     * workspace, so a multi-word title still works unambiguously.
+     */
+    title = copy;
+    if ((sep = strchr (copy, ' ')) != NULL)
+    {
+	*sep = '\0';
+	for (i = 0; i < pSD->numWorkspaces; i++)
+	{
+	    if (!strcmp (pSD->pWS[i].name, copy))
+	    {
+		pWS = &(pSD->pWS[i]);
+		title = sep + 1;
+		break;
+	    }
+	}
+	if (pWS == NULL) *sep = ' ';
+    }
+
+    if (pWS == NULL) pWS = ACTIVE_WS;
+
+    if (*title == '\0')
+    {
+	Warning ("f.rename_workspace requires a title argument.");
+	XtFree (copy);
+	return (TRUE);
+    }
+
+    ChangeWorkspaceTitle (pWS, title);
+
+    XtFree (copy);
+
+    return (TRUE);
+
+} /* END OF FUNCTION F_RenameWorkspace */
+
+
+/*************************************<->*************************************
+ *
+ *  Boolean
  *  F_GotoWorkspace (args, pCD, event)
  *
  *  Description:

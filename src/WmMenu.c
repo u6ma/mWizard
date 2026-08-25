@@ -410,7 +410,6 @@ DuplicateMenuItems (MenuItem *menuItems)
 	if ((curMenuItem->wmFunction == F_Send_Msg)
 	    || (curMenuItem->wmFunction == F_Circle_Up)
 	    || (curMenuItem->wmFunction == F_Circle_Down)
-	    || (curMenuItem->wmFunction == F_Set_Context)
 	    )
 	  newMenuItem->wmFuncArgs = curMenuItem->wmFuncArgs;
 	else if (curMenuItem->wmFuncArgs != (String) NULL)

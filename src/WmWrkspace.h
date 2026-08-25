@@ -139,6 +139,10 @@ Boolean F_GotoWorkspace(
                         String args,
                         ClientData *pCD,
                         XEvent *event) ;
+Boolean F_RenameWorkspace( 
+                        String args,
+                        ClientData *pCD,
+                        XEvent *event) ;
 Boolean F_AddToAllWorkspaces( 
                         String args,
                         ClientData *pCD,

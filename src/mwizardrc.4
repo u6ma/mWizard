@@ -274,6 +274,13 @@ This function causes a client window to be redrawn\&.
 .IP "\fBf.remove\fP" 10
 This function removes the associated window from the currently active workspace.
 No action is taken if the active workspace is the only one occupied by the window.
+.IP "\fBf\&.rename_workspace\fP \fItitle\fP" 10
+This function sets the user-visible title of a workspace\&. With a single
+argument the active workspace is renamed; if the argument begins with the
+name of an existing workspace (\fBws0\fP, \fBws1\fP and so on) followed by a
+space, that workspace is renamed to the remainder of the argument instead\&.
+Quote the argument if the title contains spaces, for example
+\fBf\&.rename_workspace "ws0 Web"\fP\&.
 .IP "\fBf\&.resize\fP" 10
 This function initiates an interactive resize of a client window\&.
 .IP "\fBf\&.restore\fP" 10
@@ -389,6 +396,7 @@ _
 \fBf\&.raise_lower\fPicon,windowbutton,key,menu
 \fBf\&.refresh\fProot,icon,windowbutton,key,menu
 \fBf\&.refresh_win\fPwindowbutton,key,menu
+\fBf\&.rename_workspace\fProot,icon,windowbutton,key,menu
 \fBf\&.resize\fPwindowbutton,key,menu
 \fBf\&.restart\fProot,icon,windowbutton,key,menu
 \fBf\&.restore\fPicon,windowbutton,key,menu

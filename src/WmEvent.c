@@ -45,7 +45,6 @@
 #include "WmWrkspace.h"
 #include "WmXmP.h"
 #include "WmEwmh.h"
-#include "WmRequest.h"
 #include "WmError.h"
 
 #include <Xm/RowColumnP.h> /* for MS_LastManagedMenuTime */
@@ -1886,26 +1885,6 @@ void HandleWmClientMessage (XClientMessageEvent *clientEvent)
     } /* WM_PROTOCOLS */
 } /* END OF FUNCTION HandleWmClientMessage */
 
-
-/*************************************<->*************************************
- * Processes the _MWM_WM_REQUEST property change
- *************************************<->*************************************/
-void HandleMwmRequest (WmScreenData *pSD, XEvent *pev)
-{
-	Boolean more = True;
-	char *pchReq = NULL;
-
-	while (more)
-    {
-		GetWmRequest (pSD, &pchReq, &more);
-
-		if (pchReq)
-		{
-			ProcessWmRequest(pSD, pchReq);
-			XtFree(pchReq);
-		}
-	}
-}
 
 /*************************************<->*************************************
  *
