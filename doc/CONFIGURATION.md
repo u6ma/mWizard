@@ -602,4 +602,5 @@ fields that no longer exist, and now carries the workspace title only.
 
 - `mwizard(1)` — command line options and appearance resources
 - `mwizardrc(4)` — full rc file syntax, every function, every binding context
+- `doc/MWAND.md` — configuring mWand, the optional launcher
 - `NOTICE` — fork lineage and licensing

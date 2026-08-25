@@ -37,6 +37,9 @@ Optional at runtime:
 stalonetray    system tray, if trayCommand is set
 xcursorgen     only to build the cursor theme in goodies
 
+mWand, the optional launcher in mwand/, needs only libX11, libXt and
+libXm. It is built separately; see "make mwand" below.
+
 
 BUILDING AND INSTALLING
 =======================
