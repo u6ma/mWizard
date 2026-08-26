@@ -45,45 +45,70 @@ static XtSignalId execSignalId;
  */
 void PostExecDialog(void)
 {
+    static Widget wtext = NULL;
     Arg args[8];
     int n = 0;
 
-    if (!wmGD.pActiveSD) return;
+    /*
+     * Parented on the application shell of the second display connection,
+     * not on a screen's popup shell.
+     *
+     * XmCreatePromptDialog expects an ordinary widget or an application
+     * shell and creates its own XmDialogShell underneath; handing it the
+     * popup VendorShell that screenTopLevelW1 is leaves the dialog with a
+     * shell parent it cannot use, and the window never appears. mWand
+     * parented this same dialog on its application shell, which is what
+     * topLevelW1 is here.
+     *
+     * The second connection matters too: this window is an ordinary client
+     * as far as the window manager is concerned, and it is the connection
+     * mWizard uses for all of its own windows for exactly that reason.
+     */
+    if (!wmGD.topLevelW1) return;
 
     if (execDialog == NULL)
     {
-	XmString title;
-	XmString prompt;
+	XmString xm_title;
+	XmString xm_prompt;
 	XtCallbackRec callback[] = {
 	    {(XtCallbackProc) ExecDialogCB, (XtPointer) NULL},
 	    {(XtCallbackProc) NULL, (XtPointer) NULL}
 	};
+	/* Reset the text field's Home/End translations to the defaults, since
+	 * the selection box overrides them to drive the list above, which is
+	 * unexpected here and not very useful either */
+	char alt_tt_src[] =
+	    ":s <Key>osfEndLine: end-of-line(extend)\n"
+	    ":s <Key>osfBeginLine: beginning-of-line(extend)\n"
+	    ":<Key>osfEndLine: end-of-line()\n"
+	    ":<Key>osfBeginLine: beginning-of-line()\n";
+	XtTranslations alt_tt = NULL;
 
-	title  = XmStringCreateLocalized (MWM_NAME);
-	prompt = XmStringCreateLocalized ("Specify a command");
-
-	XtSetArg (args[n], XmNdialogTitle, title); n++;
-	XtSetArg (args[n], XmNselectionLabelString, prompt); n++;
+	n = 0;
+	xm_title = XmStringCreateLocalized (MWM_NAME);
+	xm_prompt = XmStringCreateLocalized ("Specify a command");
+	XtSetArg (args[n], XmNdialogTitle, xm_title); n++;
 	XtSetArg (args[n], XmNokCallback, callback); n++;
 	XtSetArg (args[n], XmNcancelCallback, callback); n++;
+	XtSetArg (args[n], XmNselectionLabelString, xm_prompt); n++;
 
-	execDialog = XmCreatePromptDialog (
-			wmGD.pActiveSD->screenTopLevelW1,
-			"execDialog", args, n);
+	execDialog = XmCreatePromptDialog (wmGD.topLevelW1,
+					   "execDialog", args, n);
+	XmStringFree (xm_title);
+	XmStringFree (xm_prompt);
 
-	XmStringFree (title);
-	XmStringFree (prompt);
+	wtext = XmSelectionBoxGetChild (execDialog, XmDIALOG_TEXT);
+	alt_tt = XtParseTranslationTable (alt_tt_src);
+	if (alt_tt) XtOverrideTranslations (wtext, alt_tt);
 
 	XtUnmanageChild (
 	    XmSelectionBoxGetChild (execDialog, XmDIALOG_HELP_BUTTON));
     }
     else
     {
-	Widget wtext;
 	char *text;
 	size_t len;
 
-	wtext = XmSelectionBoxGetChild (execDialog, XmDIALOG_TEXT);
 	text = XmTextFieldGetString (wtext);
 	if (text)
 	{
@@ -95,7 +120,6 @@ void PostExecDialog(void)
 	    XtFree (text);
 	}
     }
-
     XtManageChild (execDialog);
 }
 

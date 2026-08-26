@@ -260,7 +260,21 @@ void RunStartupCommands(void)
 {
     int i;
 
-    if (wmGD.wmRestarted) return;
+    if (numStartupCmds == 0) return;
+
+    /*
+     * Say so rather than doing nothing quietly. f.restart is how the rc file
+     * gets reloaded, so it is also how someone will test a Startup entry
+     * they just added -- and without this they would see no effect and no
+     * reason for it.
+     */
+    if (wmGD.wmRestarted)
+    {
+	Warning ("Startup block skipped: the window manager was restarted "
+		 "rather than started, and its clients are still running. "
+		 "Log out and back in to run it.");
+	return;
+    }
 
     for (i = 0; i < numStartupCmds; i++)
     {
