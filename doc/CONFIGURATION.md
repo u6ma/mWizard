@@ -465,9 +465,10 @@ a third:
 ```
 
 Unlike the Execute dialog, mWinfo is an ordinary window: move it, resize it,
-and close it from its frame like anything else. The **Project Page** button
-hands the address to `xdg-open`; if that is not installed the address is still
-on screen in a field you can select and copy from.
+and close it from its frame like anything else. The notice wraps to the width
+it is given and scrolls, so nothing is cut off however small the window is
+made. **Project Page** hands the address to `xdg-open`, and **Close** puts the
+window away.
 
 ---
 

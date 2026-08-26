@@ -43,7 +43,8 @@
 #include <Xm/Label.h>
 #include <Xm/PushB.h>
 #include <Xm/SeparatoG.h>
-#include <Xm/TextF.h>
+#include <Xm/Text.h>
+#include <Xm/ScrolledW.h>
 
 #include "WmGlobal.h"
 #include "WmWinfo.h"
@@ -101,7 +102,7 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
     int n;
     char buf[256];
     XmString xms;
-    Widget wname, wversion, wsep1, wurlLabel, wurl;
+    Widget wname, wversion, wsep1, wtext;
     Widget wsep2, wbuttons, wclose, wproject;
     Atom deleteAtom;
 
@@ -146,7 +147,13 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
      * between, so that making the window bigger gives the space to the text
      * rather than stranding the buttons in the middle of it.
      */
+    /*
+     * Both buttons sit together in the middle, attached by position rather
+     * than to the form's edges, so they stay a pair when the window is
+     * widened instead of drifting apart to the corners.
+     */
     n = 0;
+    XtSetArg (args[n], XmNfractionBase, (XtArgVal) 100);		n++;
     XtSetArg (args[n], XmNleftAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNrightAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNbottomAttachment, (XtArgVal) XmATTACH_FORM);	n++;
@@ -156,7 +163,13 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
     xms = XmStringCreateLocalized ("Project Page");
     n = 0;
     XtSetArg (args[n], XmNlabelString, (XtArgVal) xms);			n++;
-    XtSetArg (args[n], XmNleftAttachment, (XtArgVal) XmATTACH_FORM);	n++;
+    XtSetArg (args[n], XmNleftAttachment,
+	(XtArgVal) XmATTACH_POSITION);					n++;
+    XtSetArg (args[n], XmNleftPosition, (XtArgVal) 20);			n++;
+    XtSetArg (args[n], XmNrightAttachment,
+	(XtArgVal) XmATTACH_POSITION);					n++;
+    XtSetArg (args[n], XmNrightPosition, (XtArgVal) 50);			n++;
+    XtSetArg (args[n], XmNrightOffset, (XtArgVal) 4);			n++;
     XtSetArg (args[n], XmNtopAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNbottomAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     wproject = XtCreateManagedWidget ("projectButton", xmPushButtonWidgetClass,
@@ -168,7 +181,13 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
     xms = XmStringCreateLocalized ("Close");
     n = 0;
     XtSetArg (args[n], XmNlabelString, (XtArgVal) xms);			n++;
-    XtSetArg (args[n], XmNrightAttachment, (XtArgVal) XmATTACH_FORM);	n++;
+    XtSetArg (args[n], XmNleftAttachment,
+	(XtArgVal) XmATTACH_POSITION);					n++;
+    XtSetArg (args[n], XmNleftPosition, (XtArgVal) 50);			n++;
+    XtSetArg (args[n], XmNleftOffset, (XtArgVal) 4);			n++;
+    XtSetArg (args[n], XmNrightAttachment,
+	(XtArgVal) XmATTACH_POSITION);					n++;
+    XtSetArg (args[n], XmNrightPosition, (XtArgVal) 80);			n++;
     XtSetArg (args[n], XmNtopAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNbottomAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNshowAsDefault, (XtArgVal) 1);			n++;
@@ -189,36 +208,6 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
     XtSetArg (args[n], XmNbottomWidget, (XtArgVal) wbuttons);		n++;
     wsep2 = XtCreateManagedWidget ("separator", xmSeparatorGadgetClass,
 				   winfoFormW, args, n);
-
-    /*
-     * A read-only text field rather than a label, so the address can be
-     * selected and pasted somewhere. The button above opens it, but that
-     * needs xdg-open to exist; this works regardless.
-     */
-    n = 0;
-    XtSetArg (args[n], XmNvalue, (XtArgVal) MWM_PROJECT_URL);		n++;
-    XtSetArg (args[n], XmNeditable, (XtArgVal) False);			n++;
-    XtSetArg (args[n], XmNcursorPositionVisible, (XtArgVal) False);	n++;
-    XtSetArg (args[n], XmNcolumns,
-	(XtArgVal) (int) strlen (MWM_PROJECT_URL));			n++;
-    XtSetArg (args[n], XmNleftAttachment, (XtArgVal) XmATTACH_FORM);	n++;
-    XtSetArg (args[n], XmNrightAttachment, (XtArgVal) XmATTACH_FORM);	n++;
-    XtSetArg (args[n], XmNbottomAttachment, (XtArgVal) XmATTACH_WIDGET);n++;
-    XtSetArg (args[n], XmNbottomWidget, (XtArgVal) wsep2);		n++;
-    wurl = XtCreateManagedWidget ("url", xmTextFieldWidgetClass,
-				  winfoFormW, args, n);
-
-    xms = XmStringCreateLocalized ("Project page:");
-    n = 0;
-    XtSetArg (args[n], XmNlabelString, (XtArgVal) xms);			n++;
-    XtSetArg (args[n], XmNalignment, (XtArgVal) XmALIGNMENT_BEGINNING);	n++;
-    XtSetArg (args[n], XmNleftAttachment, (XtArgVal) XmATTACH_FORM);	n++;
-    XtSetArg (args[n], XmNrightAttachment, (XtArgVal) XmATTACH_FORM);	n++;
-    XtSetArg (args[n], XmNbottomAttachment, (XtArgVal) XmATTACH_WIDGET);n++;
-    XtSetArg (args[n], XmNbottomWidget, (XtArgVal) wurl);		n++;
-    wurlLabel = XtCreateManagedWidget ("urlLabel", xmLabelWidgetClass,
-				       winfoFormW, args, n);
-    XmStringFree (xms);
 
     /* Top down: the name, the version, a rule, then the notice. */
     xms = XmStringCreateLocalized (MWM_FULL_NAME);
@@ -257,19 +246,41 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
     wsep1 = XtCreateManagedWidget ("separator", xmSeparatorGadgetClass,
 				   winfoFormW, args, n);
 
-    xms = XmStringCreateLocalized ((char *) winfoLicenseText);
+    /*
+     * The notice is a scrolled read-only text rather than a label.
+     *
+     * A label is exactly as tall as its string and cannot give any of it
+     * back: shrink the window and the bottom lines are simply cut off with
+     * no way to reach them. This wraps to the width it is given and puts a
+     * scrollbar on whatever does not fit, so the text stays readable at any
+     * size the window is dragged to. Read-only, but still selectable, so it
+     * can be copied.
+     */
     n = 0;
-    XtSetArg (args[n], XmNlabelString, (XtArgVal) xms);			n++;
-    XtSetArg (args[n], XmNalignment, (XtArgVal) XmALIGNMENT_BEGINNING);	n++;
+    XtSetArg (args[n], XmNvalue, (XtArgVal) winfoLicenseText);		n++;
+    XtSetArg (args[n], XmNeditMode, (XtArgVal) XmMULTI_LINE_EDIT);	n++;
+    XtSetArg (args[n], XmNeditable, (XtArgVal) False);			n++;
+    XtSetArg (args[n], XmNcursorPositionVisible, (XtArgVal) False);	n++;
+    XtSetArg (args[n], XmNwordWrap, (XtArgVal) True);			n++;
+    XtSetArg (args[n], XmNscrollHorizontal, (XtArgVal) False);		n++;
+    XtSetArg (args[n], XmNrows, (XtArgVal) 13);				n++;
+    XtSetArg (args[n], XmNcolumns, (XtArgVal) 68);			n++;
+    wtext = XmCreateScrolledText (winfoFormW, "license", args, n);
+    XtManageChild (wtext);
+
+    /*
+     * XmCreateScrolledText hands back the text, but the form's child is the
+     * scrolled window wrapped around it, so that is what carries the
+     * attachments.
+     */
+    n = 0;
     XtSetArg (args[n], XmNtopAttachment, (XtArgVal) XmATTACH_WIDGET);	n++;
     XtSetArg (args[n], XmNtopWidget, (XtArgVal) wsep1);			n++;
     XtSetArg (args[n], XmNleftAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNrightAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNbottomAttachment, (XtArgVal) XmATTACH_WIDGET);n++;
-    XtSetArg (args[n], XmNbottomWidget, (XtArgVal) wurlLabel);		n++;
-    (void) XtCreateManagedWidget ("license", xmLabelWidgetClass,
-				  winfoFormW, args, n);
-    XmStringFree (xms);
+    XtSetArg (args[n], XmNbottomWidget, (XtArgVal) wsep2);		n++;
+    XtSetValues (XtParent (wtext), args, n);
 
     PlaceWinfoDialog (pSD);
 
@@ -424,7 +435,7 @@ static void WinfoCloseCB(Widget w, XtPointer client_data, XtPointer call_data)
 /*
  * Hands the project page to xdg-open through SpawnCommand(), the same way any
  * other command mWizard runs is handled. If there is no xdg-open the command
- * simply fails and the address is still on screen to be copied.
+ * simply fails; the address itself is in MWM_PROJECT_URL and in the manual.
  */
 static void WinfoUrlCB(Widget w, XtPointer client_data, XtPointer call_data)
 {
