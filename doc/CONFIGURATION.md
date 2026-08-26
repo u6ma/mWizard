@@ -432,6 +432,10 @@ The command is run the same way an `f.exec` string is, so `Variables`,
 pipelines and `&` all work. The dialog keeps the last command, so raising it
 again and pressing Return repeats it.
 
+Dismiss it with Cancel or Escape. It carries no Close item in its window menu:
+the dialog belongs to the window manager itself, and a window manager that
+closes its own window closes the X connection it is running on.
+
 mWand's "Execute..." item posts this same dialog rather than one of its own —
 see `doc/MWAND.md`.
 

@@ -178,9 +178,49 @@ WmXErrorHandler (Display *display, XErrorEvent *errorEvent)
     fprintf (stderr, "\n  ");
     fprintf (stderr, pchErrorFormat[E_ERROR_SERIAL], errorEvent->serial);
     fprintf (stderr, "\n  ");
-    fprintf (stderr, pchErrorFormat[E_CURRENT_SERIAL], 
+    fprintf (stderr, pchErrorFormat[E_CURRENT_SERIAL],
 			LastKnownRequestProcessed(display));
     fprintf (stderr, "\n");
+#else /* !DEBUG */
+
+    /*
+     * Report the error rather than swallowing it.
+     *
+     * This used to be visible only in a DEBUG build, which meant that a
+     * protocol error in a release build produced no output at all: the
+     * window manager either carried on with something half done or fell over
+     * later somewhere unrelated, with nothing to say which request had
+     * failed. One line naming the error, the request and the resource is
+     * enough to place it.
+     *
+     * BadWindow and BadDrawable are left silent. Those are the ordinary race
+     * with a client that has just exited -- the window manager still has the
+     * window id and the server no longer does -- and they are handled just
+     * below; printing them would bury everything else.
+     */
+    if ((errorEvent->error_code != BadWindow) &&
+	(errorEvent->error_code != BadDrawable))
+    {
+	char errText[BUFSIZ];
+	char reqText[BUFSIZ];
+	char reqNum[32];
+
+	XGetErrorText (display, errorEvent->error_code, errText, BUFSIZ);
+
+	sprintf (reqNum, "%d", errorEvent->request_code);
+	XGetErrorDatabaseText (display, "XRequest", reqNum, "unknown",
+			       reqText, BUFSIZ);
+
+	fprintf (stderr,
+	    "%s: X error on %s: %s\n"
+	    "    request %d (%s), minor %d, resource 0x%lx, serial %lu\n",
+	    MWM_NAME, XDisplayString (display), errText,
+	    (int) errorEvent->request_code, reqText,
+	    (int) errorEvent->minor_code,
+	    (unsigned long) errorEvent->resourceid,
+	    (unsigned long) errorEvent->serial);
+	fflush (stderr);
+    }
 #endif /* DEBUG */
 
     /*

@@ -76,7 +76,7 @@ unsigned int hotkey_mods = 0;
 
 static Widget wgadsep = None;
 static Widget wgadrc = None;
-static XtSignalId xt_sigusr1;
+static XtSignalId xt_sigusr1 = (XtSignalId)0;
 static KeyCode hotkey_code = 0;
 
 static XrmOptionDescRec xrdb_options[]={
@@ -103,8 +103,13 @@ int main(int argc, char **argv)
 	int root_event_mask = PropertyChangeMask;
 	int retries;
 	
-	rsignal(SIGUSR1, sigusr_handler);
-	rsignal(SIGUSR2, sigusr_handler);
+	/*
+	 * SIGUSR1 is not taken here: its handler goes through xt_sigusr1, which
+	 * does not exist until XtAppAddSignal() has been called at the end of
+	 * this function. Signalled in between -- which is easy to do, since the
+	 * window manager starts mWand and may reload it straight away -- the
+	 * handler would hand XtNoticeSignal() an id that was never issued.
+	 */
 	rsignal(SIGCHLD, sigchld_handler);
 
 	XtSetLanguageProc(NULL,NULL,NULL);
@@ -225,7 +230,9 @@ int main(int argc, char **argv)
 	XSelectInput(XtDisplay(wshell), root_window, root_event_mask);
 	
 	xt_sigusr1 = XtAppAddSignal(app_context, xt_sigusr1_handler, NULL);
-	
+	rsignal(SIGUSR1, sigusr_handler);
+	rsignal(SIGUSR2, sigusr_handler);
+
 	for(;;) {
 		XEvent evt;
 		XtAppNextEvent(app_context, &evt);
@@ -581,5 +588,5 @@ static void sigchld_handler(int sig)
 
 static void sigusr_handler(int sig)
 {
-	if(sig == SIGUSR1) XtNoticeSignal(xt_sigusr1);
+	if(sig == SIGUSR1 && xt_sigusr1) XtNoticeSignal(xt_sigusr1);
 }

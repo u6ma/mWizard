@@ -1215,22 +1215,45 @@ static void* FetchWindowProperty(Window wnd, Atom prop,
 	char *result = NULL;
 	Atom ret_type;
 	int ret_fmt;
-	
+
+	/*
+	 * Zero the count up front. Callers fetch several properties in a row
+	 * through the same variable and test the count to decide whether the
+	 * returned pointer is usable; leaving a previous property's count in
+	 * place when this one is absent hands them a count with a NULL pointer.
+	 */
+	if(size) *size = 0;
+
 	if(XGetWindowProperty(DISPLAY,wnd,prop,0,BUFSIZ,
 		False,req_type,&ret_type,&ret_fmt,&ret_items,
 		&ret_bytes_left,(unsigned char**)&result) != Success ) return NULL;
-	
+
 	if(ret_type!=req_type){
 		if(result) XFree(result);
 		return NULL;
 	}
-	
+
 	if(ret_bytes_left){
 		XFree(result);
+		result = NULL;
 		if(XGetWindowProperty(DISPLAY,wnd,prop,0,BUFSIZ+ret_bytes_left+1,
 			False,req_type,&ret_type,&ret_fmt,&ret_items,
 			&ret_bytes_left,(unsigned char**)&result) != Success) return NULL;
 
+		if(ret_type!=req_type){
+			if(result) XFree(result);
+			return NULL;
+		}
+	}
+
+	/*
+	 * A property that exists but holds nothing still comes back with an
+	 * allocated pointer. Report it as absent rather than let a caller index
+	 * into it.
+	 */
+	if(!ret_items){
+		if(result) XFree(result);
+		return NULL;
 	}
 
 	if(size) *size = ret_items;

@@ -696,6 +696,18 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
 	ExitWM (WM_ERROR_EXIT_VALUE);
     }
 
+    /*
+     * The same for the second connection, which was missed here. Every
+     * command f.exec and the Execute dialog run would otherwise inherit an
+     * open connection to the server and hold it for as long as it lives.
+     */
+    if (DISPLAY1 && fcntl (ConnectionNumber (DISPLAY1), F_SETFD, 1) == -1)
+    {
+	ShowWaitState (FALSE);
+	Warning (((char *)GETMESSAGE(40, 6, "Cannot configure X connection")));
+	ExitWM (WM_ERROR_EXIT_VALUE);
+    }
+
     {
       enum { XA_MWM_WORKSPACE_HINTS, XA_MWM_WORKSPACE_PRESENCE,
 	     XA_MWM_WORKSPACE_INFO, XA_WmNall,

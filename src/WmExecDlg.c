@@ -11,8 +11,42 @@
  * without one, and the window manager is the process that is always there.
  * mWand now asks for this dialog instead of carrying its own.
  *
- * Reachable three ways: the f.run rc function (bound to a key or a menu
+ * Reachable two ways: the f.run rc function (bound to a key or a menu
  * item), and SIGUSR1, which is what mWand sends.
+ *
+ * ---------------------------------------------------------------------------
+ *
+ * A window manager cannot put up a Motif dialog the way an ordinary
+ * application does, and the difference is what this file is mostly about.
+ *
+ * The prompt started life in mWand as XmCreatePromptDialog() parented on the
+ * application shell. Moved here unchanged, that is wrong in three ways:
+ *
+ *  - XmCreatePromptDialog() builds an XmDialogShell, which is a Motif
+ *    VendorShell. A VendorShell talks to the window manager synchronously:
+ *    on a geometry change it sends its request and then waits for the
+ *    window manager's reply (XmNwaitForWm, XmNwmTimeout). Here the window
+ *    manager is this same process and this same event loop, so nothing can
+ *    answer while Motif is waiting. That is exactly why WmInitWs.c turns
+ *    XmNuseAsyncGeometry on for topLevelW/topLevelW1 and why wspCreateShell()
+ *    does the same for the presence dialog. Every other window mWizard puts
+ *    on the screen is a plain Xt shell for this reason, so this one is too.
+ *
+ *  - It was parented on wmGD.topLevelW1, the global application shell, which
+ *    is 10x10, parked at x=10000 and never mapped. A dialog centred on that
+ *    lands off screen. The per-screen shells are what the rest of the window
+ *    manager hangs its windows off.
+ *
+ *  - It inherited whatever visual, depth and colormap Xt guessed for the
+ *    default screen of the second connection rather than the ones for the
+ *    screen being managed. Every other shell here states them explicitly.
+ *
+ * On top of that, a window mWizard owns must not be closable through
+ * f.kill: with no WM_DELETE_WINDOW protocol on it, F_Kill falls through to
+ * XKillClient(), and killing the client that owns the second display
+ * connection means killing mWizard -- which takes the X session with it.
+ * The _MOTIF_WM_HINTS set below withhold MWM_FUNC_CLOSE for that reason,
+ * the same way PRESENCE_BOX_FUNCTIONS does for the presence dialog.
  */
 
 #include <stdio.h>
@@ -20,6 +54,7 @@
 #include <string.h>
 #include <signal.h>
 #include <X11/Intrinsic.h>
+#include <X11/Shell.h>
 #include <Xm/Xm.h>
 #include <Xm/SelectioB.h>
 #include <Xm/TextF.h>
@@ -28,13 +63,163 @@
 #include "WmExecDlg.h"
 #include "WmSession.h"
 #include "WmError.h"
+#include "WmXinerama.h"
 
-static void ExecDialogCB(Widget, XtPointer, XtPointer);
+static Boolean MakeExecDialog(WmScreenData *pSD);
+static void PlaceExecDialog(WmScreenData *pSD);
+static void UnpostExecDialog(void);
+static void ExecOkCB(Widget, XtPointer, XtPointer);
+static void ExecCancelCB(Widget, XtPointer, XtPointer);
 static void ExecSignalProc(XtPointer, XtSignalId*);
 static void ExecSignalHandler(int);
 
-static Widget execDialog = NULL;
+static Widget execShellW = NULL;
+static Widget execBoxW = NULL;
+static Widget execTextW = NULL;
+static WmScreenData *execPSD = NULL;
+static Boolean execOnScreen = False;
 static XtSignalId execSignalId;
+
+/*
+ * Builds the dialog for one screen. Returns False and leaves nothing behind
+ * if any part of it could not be made.
+ */
+static Boolean MakeExecDialog(WmScreenData *pSD)
+{
+    Arg args[16];
+    int n;
+    XmString xm_prompt;
+    XtTranslations alt_tt;
+    PropMwmHints hints;
+    Widget helpW;
+
+    /* Reset the text field's Home/End translations to the defaults, since
+     * the selection box overrides them to drive the list above, which is
+     * unexpected here and not very useful either */
+    static char alt_tt_src[] =
+	":s <Key>osfEndLine: end-of-line(extend)\n"
+	":s <Key>osfBeginLine: beginning-of-line(extend)\n"
+	":<Key>osfEndLine: end-of-line()\n"
+	":<Key>osfBeginLine: beginning-of-line()\n";
+
+    if (!pSD->screenTopLevelW1) return (False);
+
+    /*
+     * A plain Xt TransientShell, not an XmDialogShell: see the note at the
+     * top of the file. Depth, screen and colormap are stated for the screen
+     * being managed rather than left to the second connection's default.
+     */
+    n = 0;
+    XtSetArg (args[n], XtNallowShellResize, (XtArgVal) True);		n++;
+    XtSetArg (args[n], XtNtitle, (XtArgVal) MWM_NAME);			n++;
+    XtSetArg (args[n], XtNdepth,
+	(XtArgVal) DefaultDepth (DISPLAY1, pSD->screen));		n++;
+    XtSetArg (args[n], XtNscreen,
+	(XtArgVal) ScreenOfDisplay (DISPLAY1, pSD->screen));		n++;
+    XtSetArg (args[n], XtNcolormap,
+	(XtArgVal) DefaultColormap (DISPLAY1, pSD->screen));		n++;
+
+    execShellW = XtCreatePopupShell ("execDialog", transientShellWidgetClass,
+				     pSD->screenTopLevelW1, args, n);
+    if (!execShellW) return (False);
+
+    /*
+     * XmNautoUnmanage would unmanage the selection box and leave an empty
+     * shell mapped behind it, since there is no XmDialogShell here to notice
+     * and pop down. The callbacks below pop the shell down themselves.
+     */
+    n = 0;
+    xm_prompt = XmStringCreateLocalized ("Specify a command");
+    XtSetArg (args[n], XmNdialogType, (XtArgVal) XmDIALOG_PROMPT);	n++;
+    XtSetArg (args[n], XmNselectionLabelString, (XtArgVal) xm_prompt);	n++;
+    XtSetArg (args[n], XmNautoUnmanage, (XtArgVal) False);		n++;
+    XtSetArg (args[n], XmNtraversalOn, (XtArgVal) True);			n++;
+
+    execBoxW = XtCreateManagedWidget ("execBox", xmSelectionBoxWidgetClass,
+				      execShellW, args, n);
+    XmStringFree (xm_prompt);
+
+    if (!execBoxW)
+    {
+	XtDestroyWidget (execShellW);
+	execShellW = NULL;
+	return (False);
+    }
+
+    XtAddCallback (execBoxW, XmNokCallback,
+	(XtCallbackProc) ExecOkCB, (XtPointer) NULL);
+    XtAddCallback (execBoxW, XmNcancelCallback,
+	(XtCallbackProc) ExecCancelCB, (XtPointer) NULL);
+
+    if ((helpW = XmSelectionBoxGetChild (execBoxW, XmDIALOG_HELP_BUTTON)))
+    {
+	XtUnmanageChild (helpW);
+    }
+
+    execTextW = XmSelectionBoxGetChild (execBoxW, XmDIALOG_TEXT);
+    if (execTextW && (alt_tt = XtParseTranslationTable (alt_tt_src)))
+    {
+	XtOverrideTranslations (execTextW, alt_tt);
+    }
+
+    XtRealizeWidget (execShellW);
+
+    /*
+     * Withhold MWM_FUNC_CLOSE. F_Kill() calls XKillClient() on a client that
+     * offers no WM_DELETE_WINDOW, and this client is mWizard's own second
+     * display connection.
+     */
+    hints.flags = MWM_HINTS_FUNCTIONS | MWM_HINTS_DECORATIONS;
+    hints.functions = MWM_FUNC_MOVE;
+    hints.decorations = MWM_DECOR_BORDER | MWM_DECOR_TITLE;
+    hints.inputMode = 0;
+    hints.status = 0;
+
+    XChangeProperty (DISPLAY1, XtWindow (execShellW),
+	wmGD.xa_MWM_HINTS, wmGD.xa_MWM_HINTS, 32, PropModeReplace,
+	(unsigned char *) &hints, PROP_MWM_HINTS_ELEMENTS);
+
+    execPSD = pSD;
+
+    return (True);
+}
+
+/*
+ * Centres the dialog, on the user's preferred Xinerama head when there is
+ * one. Same rule ConfirmAction() uses.
+ */
+static void PlaceExecDialog(WmScreenData *pSD)
+{
+    Arg args[2];
+    int n;
+    Dimension width = 0, height = 0;
+    Position x, y;
+    XineramaScreenInfo xsi;
+
+    n = 0;
+    XtSetArg (args[n], XmNwidth, &width);	n++;
+    XtSetArg (args[n], XmNheight, &height);	n++;
+    XtGetValues (execShellW, args, n);
+
+    if (GetPrimaryXineramaScreen (&xsi))
+    {
+	x = xsi.x_org + (xsi.width - (int) width) / 2;
+	y = xsi.y_org + (xsi.height - (int) height) / 2;
+    }
+    else
+    {
+	x = (DisplayWidth (DISPLAY, pSD->screen) - (int) width) / 2;
+	y = (DisplayHeight (DISPLAY, pSD->screen) - (int) height) / 2;
+    }
+
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+
+    n = 0;
+    XtSetArg (args[n], XmNx, (XtArgVal) x);	n++;
+    XtSetArg (args[n], XmNy, (XtArgVal) y);	n++;
+    XtSetValues (execShellW, args, n);
+}
 
 /*
  * Posts the dialog, creating it the first time.
@@ -45,93 +230,101 @@ static XtSignalId execSignalId;
  */
 void PostExecDialog(void)
 {
-    static Widget wtext = NULL;
-    Arg args[8];
-    int n = 0;
+    WmScreenData *pSD = ACTIVE_PSD;
+
+    if (!pSD) return;
 
     /*
-     * Parented on the application shell of the second display connection,
-     * not on a screen's popup shell.
-     *
-     * XmCreatePromptDialog expects an ordinary widget or an application
-     * shell and creates its own XmDialogShell underneath; handing it the
-     * popup VendorShell that screenTopLevelW1 is leaves the dialog with a
-     * shell parent it cannot use, and the window never appears. mWand
-     * parented this same dialog on its application shell, which is what
-     * topLevelW1 is here.
-     *
-     * The second connection matters too: this window is an ordinary client
-     * as far as the window manager is concerned, and it is the connection
-     * mWizard uses for all of its own windows for exactly that reason.
+     * A system modal window is up and has the input; posting over it would
+     * put up a prompt that cannot be typed into. Same guard ConfirmAction()
+     * uses.
      */
-    if (!wmGD.topLevelW1) return;
+    if (wmGD.systemModalActive) return;
 
-    if (execDialog == NULL)
+    /*
+     * The shell belongs to one screen and cannot be moved to another, so on
+     * a genuinely multi-screen display it is rebuilt when the active screen
+     * changes. This costs nothing in the ordinary single-screen case.
+     */
+    if (execShellW && execPSD != pSD)
     {
-	XmString xm_title;
-	XmString xm_prompt;
-	XtCallbackRec callback[] = {
-	    {(XtCallbackProc) ExecDialogCB, (XtPointer) NULL},
-	    {(XtCallbackProc) NULL, (XtPointer) NULL}
-	};
-	/* Reset the text field's Home/End translations to the defaults, since
-	 * the selection box overrides them to drive the list above, which is
-	 * unexpected here and not very useful either */
-	char alt_tt_src[] =
-	    ":s <Key>osfEndLine: end-of-line(extend)\n"
-	    ":s <Key>osfBeginLine: beginning-of-line(extend)\n"
-	    ":<Key>osfEndLine: end-of-line()\n"
-	    ":<Key>osfBeginLine: beginning-of-line()\n";
-	XtTranslations alt_tt = NULL;
-
-	n = 0;
-	xm_title = XmStringCreateLocalized (MWM_NAME);
-	xm_prompt = XmStringCreateLocalized ("Specify a command");
-	XtSetArg (args[n], XmNdialogTitle, xm_title); n++;
-	XtSetArg (args[n], XmNokCallback, callback); n++;
-	XtSetArg (args[n], XmNcancelCallback, callback); n++;
-	XtSetArg (args[n], XmNselectionLabelString, xm_prompt); n++;
-
-	execDialog = XmCreatePromptDialog (wmGD.topLevelW1,
-					   "execDialog", args, n);
-	XmStringFree (xm_title);
-	XmStringFree (xm_prompt);
-
-	wtext = XmSelectionBoxGetChild (execDialog, XmDIALOG_TEXT);
-	alt_tt = XtParseTranslationTable (alt_tt_src);
-	if (alt_tt) XtOverrideTranslations (wtext, alt_tt);
-
-	XtUnmanageChild (
-	    XmSelectionBoxGetChild (execDialog, XmDIALOG_HELP_BUTTON));
+	UnpostExecDialog ();
+	XtDestroyWidget (execShellW);
+	execShellW = NULL;
+	execBoxW = NULL;
+	execTextW = NULL;
+	execOnScreen = False;
     }
-    else
+
+    if (!execShellW)
     {
-	char *text;
+	if (!MakeExecDialog (pSD)) return;
+    }
+
+    if (execTextW)
+    {
+	char *text = XmTextFieldGetString (execTextW);
 	size_t len;
 
-	text = XmTextFieldGetString (wtext);
 	if (text)
 	{
 	    if ((len = strlen (text)) != 0)
 	    {
-		XmTextFieldSetSelection (wtext, 0, len,
-		    XtLastTimestampProcessed (XtDisplay (wtext)));
+		XmTextFieldSetSelection (execTextW, 0, len,
+		    XtLastTimestampProcessed (XtDisplay (execTextW)));
 	    }
 	    XtFree (text);
 	}
     }
-    XtManageChild (execDialog);
+
+    if (!execOnScreen)
+    {
+	PlaceExecDialog (pSD);
+	XtPopup (execShellW, XtGrabNone);
+	execOnScreen = True;
+    }
+
+    if (execTextW) XmProcessTraversal (execTextW, XmTRAVERSE_CURRENT);
 }
 
-static void ExecDialogCB(Widget w, XtPointer client_data, XtPointer call_data)
+/*
+ * Takes the dialog off the screen. Popping the shell down unmaps it, which
+ * is what tells the window manager side to unmanage the frame; the widgets
+ * stay so that the next post still has the last command in the text field.
+ */
+static void UnpostExecDialog(void)
+{
+    if (execShellW && execOnScreen)
+    {
+	XtPopdown (execShellW);
+
+	/*
+	 * XtPopdown does nothing if the window is already unmapped -- which
+	 * it is whenever the window manager side has iconified the dialog or
+	 * put it on a workspace that is not showing -- and then the frame is
+	 * never unmanaged. Withdraw it explicitly, over the first connection
+	 * so that the window manager sees this in order with its own events.
+	 * HidePresenceBox() does the same for the same reason.
+	 */
+	if (XtWindow (execShellW))
+	{
+	    XWithdrawWindow (DISPLAY, XtWindow (execShellW), execPSD->screen);
+	    XSync (DISPLAY, False);
+	}
+
+	execOnScreen = False;
+    }
+}
+
+static void ExecOkCB(Widget w, XtPointer client_data, XtPointer call_data)
 {
     XmSelectionBoxCallbackStruct *cbs =
 	(XmSelectionBoxCallbackStruct *) call_data;
     char *command;
 
-    if (cbs->reason == XmCR_CANCEL) return;
+    UnpostExecDialog ();
 
-    command = (char *) XmStringUnparse (cbs->value, NULL, 0,
+    command = (char *) XmStringUnparse (cbs->value, NULL, XmCHARSET_TEXT,
 			   XmCHARSET_TEXT, NULL, 0, XmOUTPUT_ALL);
     if (!command) return;
 
@@ -143,6 +336,11 @@ static void ExecDialogCB(Widget w, XtPointer client_data, XtPointer call_data)
     if (*command) SpawnCommand (command);
 
     XtFree (command);
+}
+
+static void ExecCancelCB(Widget w, XtPointer client_data, XtPointer call_data)
+{
+    UnpostExecDialog ();
 }
 
 /*
