@@ -438,6 +438,25 @@ Struts that would leave no usable space are ignored rather than honoured — a
 client asking to reserve the whole screen is broken, and obeying it would make
 everything unmaximizable.
 
+### Taking Close away from the tray
+
+A framed tray can be closed like anything else, which strands whatever icons
+are docked in it — nothing short of `f.restart` brings it back. stalonetray has
+no option for this: it can ask for decorations, but not for window-manager
+functions. Do it from this side instead, as the shipped rc does:
+
+```
+Client stalonetray
+{
+    clientFunctions       -close
+}
+```
+
+A leading `-` starts from every function and subtracts, so the tray keeps move,
+resize, minimize and maximize and picks up anything added later. List the
+functions instead — `move minimize` — to allow only those. The block name is
+matched against `WM_CLASS`, so check yours with `xprop WM_CLASS`.
+
 ### A tray that does not announce itself
 
 Older trays may set neither the dock type nor a strut. Configure one by hand:

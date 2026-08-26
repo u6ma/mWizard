@@ -142,16 +142,28 @@ Settings
 !	focusAutoRaise		False
 ! }
 
-! A tray that announces itself as a dock needs nothing here -- mWizard
-! already gives docks no frame and puts them on every workspace. This is
-! only needed for a tray that does not set _NET_WM_WINDOW_TYPE_DOCK.
+! The system tray. The shipped stalonetrayrc asks for a full Motif frame and
+! does not call itself a dock, so the tray behaves like any other window:
+! moved, resized, minimized and maximized by its frame. Only Close is taken
+! away -- closing the tray would strand the icons docked in it, and there is
+! no way to get it back short of f.restart.
 !
-! Client stalonetray
-! {
-!	clientDecoration	none
-!	clientFunctions		move
-!	occupyWorkspaces	all
-! }
+! "-close" starts from every function and subtracts, so new functions stay
+! available. Spell it "move minimize" instead to list what is allowed rather
+! than what is not. It stays on every workspace through "sticky true" in
+! stalonetrayrc; "occupyWorkspaces all" here does the same thing from this
+! side if your tray does not set _NET_WM_STATE_STICKY.
+!
+! The block name is matched against WM_CLASS -- check yours with
+! "xprop WM_CLASS" and click the tray, since it varies between builds.
+Client stalonetray
+{
+	clientFunctions		-close
+}
+
+! A tray that announces itself as a dock instead gets no frame and move as
+! its only function, and nothing here can add either back -- the window type
+! is applied before this block. Such a tray needs no configuration at all.
 
 ! Per-workspace settings. Workspaces are named ws0, ws1 and so on.
 !
