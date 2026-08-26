@@ -118,15 +118,9 @@ static void parse_line(char *line, struct tb_entry *e)
 		e->type = TBE_CASCADE;
 }
 
-/*
- * True if a top level line opens the Settings block.
- *
- * That block is read by config.c before this parser ever runs, and its
- * entries are not menu syntax, so they have to be stepped over here.
- */
-static int is_settings_header(const char *line)
+/* True if a top level line opens the named block. */
+static int is_block_header(const char *line, const char *kw)
 {
-	static const char kw[] = "settings";
 	const char *p = line;
 	int i;
 
@@ -139,6 +133,19 @@ static int is_settings_header(const char *line)
 	while(*p == ' ' || *p == '\t') p++;
 
 	return (*p == '\0' || *p == '{');
+}
+
+/*
+ * True if a top level line opens a block that is not menu syntax.
+ *
+ * Both are read by config.c before this parser ever runs -- Settings into
+ * the resource database, Variables into the environment -- and neither
+ * holds menu entries, so they have to be stepped over here.
+ */
+static int is_settings_header(const char *line)
+{
+	return (is_block_header(line, "settings") ||
+		is_block_header(line, "variables"));
 }
 
 /* Parses the global buffer */

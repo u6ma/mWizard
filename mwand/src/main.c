@@ -63,6 +63,7 @@ static void handle_root_event(XEvent*);
 static void set_ws_presence(Widget);
 static void create_utility_widgets(Widget);
 static void xt_sigusr1_handler(XtPointer, XtSignalId*);
+static void xt_sigusr2_handler(XtPointer, XtSignalId*);
 static void sigchld_handler(int);
 static void sigusr_handler(int);
 
@@ -77,6 +78,7 @@ unsigned int hotkey_mods = 0;
 static Widget wgadsep = None;
 static Widget wgadrc = None;
 static XtSignalId xt_sigusr1;
+static XtSignalId xt_sigusr2;
 static KeyCode hotkey_code = 0;
 
 static XrmOptionDescRec xrdb_options[]={
@@ -225,6 +227,7 @@ int main(int argc, char **argv)
 	XSelectInput(XtDisplay(wshell), root_window, root_event_mask);
 	
 	xt_sigusr1 = XtAppAddSignal(app_context, xt_sigusr1_handler, NULL);
+	xt_sigusr2 = XtAppAddSignal(app_context, xt_sigusr2_handler, NULL);
 	
 	for(;;) {
 		XEvent evt;
@@ -572,6 +575,24 @@ static void xt_sigusr1_handler(XtPointer client_data, XtSignalId *id)
 	ConstructMenu();
 }
 
+/*
+ * SIGUSR2 raises the command prompt.
+ *
+ * mWand owns the only "run a command" dialog in the system, and a window
+ * manager key binding cannot call into another process -- so the binding
+ * shipped in system.mwizardrc signals us instead:
+ *
+ *     f.exec "pkill -USR2 -x mwand"
+ *
+ * The signal is only noticed here, not acted on: XtNoticeSignal defers to
+ * the event loop, so the dialog is raised from a safe context rather than
+ * from the handler.
+ */
+static void xt_sigusr2_handler(XtPointer client_data, XtSignalId *id)
+{
+	ExecuteCommandDialog();
+}
+
 static void sigchld_handler(int sig)
 {
 	int status;
@@ -581,4 +602,5 @@ static void sigchld_handler(int sig)
 static void sigusr_handler(int sig)
 {
 	if(sig == SIGUSR1) XtNoticeSignal(xt_sigusr1);
+	else if(sig == SIGUSR2) XtNoticeSignal(xt_sigusr2);
 }

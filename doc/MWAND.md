@@ -109,6 +109,47 @@ regardless when there is only one workspace.
 
 ---
 
+## 3a. The `Variables` block
+
+Names a program once so the menus can refer to it:
+
+```
+Variables
+{
+    TERMINAL   xterm
+    BROWSER    chromium-bin
+    EDITOR     nedit
+}
+```
+
+Each entry is exported to the environment, and menu commands are expanded
+before they run, so `$NAME` or `${NAME}` in any command is substituted:
+
+```
+&Programs
+{
+    &Web Browser: $BROWSER
+    &Text Editor: $EDITOR
+    &E-Mail: $TERMINAL -title "E-Mail" -e mutt
+}
+```
+
+mWizard's rc file takes the same block with the same spelling, so the two
+configurations stay readable side by side. They are separate programs, though:
+mWand does not inherit mWizard's variables unless mWizard started it, so keep
+the two blocks in step — or export the names from `~/.xinitrc` and delete both.
+
+**One difference from mWizard.** There, `f.exec` runs through `sh -c` and the
+shell does the expanding. Here commands are `execvp`'d directly and mWand does
+the expanding itself, so there is no shell: no `&`, no pipes or redirection,
+and no `${NAME:-default}` fallback. An unset variable expands to nothing and
+warns on stderr.
+
+Names must look like shell variable names — a letter or underscore followed by
+letters, digits or underscores. Anything else is reported and ignored.
+
+---
+
 ## 4. Menus
 
 A top-level menu is a title followed by a brace block. `&` marks the keyboard

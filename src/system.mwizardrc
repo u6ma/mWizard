@@ -1,11 +1,32 @@
 ! Default menu and keybinding configuration for mWizard.
 ! Copy this file to ~/.mwizardrc for customization.
 
+! Command variables.
+!
+! Each entry is exported to the environment, and every command mWizard runs
+! goes through "sh -c", so "$NAME" in any f.exec string is substituted by the
+! shell. Set a program once here and change it in one place. Ordinary shell
+! syntax works too, so "${TERMINAL:-xterm}" falls back when unset, and
+! "$TERMINAL -e mutt" passes arguments.
+!
+! These names are the conventional ones, so programs that already honour
+! EDITOR or BROWSER pick them up as well. mWand reads its own Variables
+! block from ~/.mwandrc -- it is a separate program and does not inherit
+! these unless mWizard started it.
+Variables
+{
+	TERMINAL	xterm
+	BROWSER		chromium-bin
+	EDITOR		nedit
+}
+
 ! Root Menu
 Menu DefaultRootMenu
 {
 	"Main Menu"		f.title
-	"New Xterm"		f.exec "xterm &"
+	"New Terminal"		f.exec "$TERMINAL &"
+	"Web Browser"		f.exec "$BROWSER &"
+	"Text Editor"		f.exec "$EDITOR &"
 	 no-label		f.separator
 	"Shuffle Up"		f.circle_up
 	"Shuffle Down"		f.circle_down
@@ -54,7 +75,53 @@ Keys DefaultKeyBindings
 	Alt<Key>F6 window f.next_key transient
 	Alt Shift<Key>F6 window f.prev_key transient
 	Shift<Key>F10 icon f.post_wmenu
-!	Alt Shift<Key>Delete root|icon|window f.restart
+	Alt Shift<Key>Delete root|icon|window f.restart
+
+	! Workspaces. Alt Shift 1 and 2 step through them; the keysym is the
+	! unshifted one, since the grab is on the key and the modifier mask.
+	Alt Shift<Key>1 root|icon|window	f.prev_workspace
+	Alt Shift<Key>2 root|icon|window	f.next_workspace
+
+	! Jump straight to one workspace. Change ws0 to whichever you want as
+	! the one Home returns to -- workspaces are named ws0, ws1 and so on
+	! unless renamed in a Workspace block.
+	!
+	! NOTE: this grabs Home in the window context, so applications never
+	! see it -- Home stops working in text fields, terminals and browsers.
+	! If you would rather keep it, comment this line out and uncomment the
+	! Alt<Key>Home one below, or drop "|window" to leave it bound only on
+	! the desktop and icons.
+	<Key>Home root|icon|window		f.goto_workspace ws0
+!	Alt<Key>Home root|icon|window		f.goto_workspace ws0
+
+	! Terminal
+	Alt Shift<Key>Return root|icon|window	f.exec "$TERMINAL &"
+
+	! The command prompt. mWizard has no run dialog of its own, so this
+	! signals mWand, which raises its "Execute..." window. Does nothing if
+	! mWand is not running.
+	!
+	! F1 rather than the more usual F2: the window menu above already binds
+	! Alt<Key>F2 to f.workspace_presence, and menu accelerators are grabbed
+	! the same way these are.
+	Alt<Key>F1 root|icon|window		f.exec "pkill -USR2 -x mwand"
+
+	! Media and other XF86 keys.
+	!
+	! Any name XStringToKeysym(3) knows works here, which covers all of
+	! XF86keysym.h. A binding needs no modifier at all, and the key has to
+	! exist on your keymap -- check with xev(1) if one does nothing, and
+	! note that a desktop agent already grabbing it wins over mWizard.
+	!
+	!	<Key>XF86AudioRaiseVolume root|icon|window f.exec "pactl set-sink-volume @DEFAULT_SINK@ +5%"
+	!	<Key>XF86AudioLowerVolume root|icon|window f.exec "pactl set-sink-volume @DEFAULT_SINK@ -5%"
+	!	<Key>XF86AudioMute root|icon|window f.exec "pactl set-sink-mute @DEFAULT_SINK@ toggle"
+	!	<Key>XF86AudioMicMute root|icon|window f.exec "pactl set-source-mute @DEFAULT_SOURCE@ toggle"
+	!	<Key>XF86MonBrightnessUp root|icon|window f.exec "brightnessctl set +10%"
+	!	<Key>XF86MonBrightnessDown root|icon|window f.exec "brightnessctl set 10%-"
+	!	<Key>XF86AudioPlay root|icon|window f.exec "playerctl play-pause"
+	!	<Key>XF86AudioNext root|icon|window f.exec "playerctl next"
+	!	<Key>XF86AudioPrev root|icon|window f.exec "playerctl previous"
 }
 
 ! Mouse Button Bindins
@@ -141,6 +208,10 @@ Settings
 !	clientDecoration	-resizeh
 !	focusAutoRaise		False
 ! }
+!
+! Client blocks match WM_CLASS, which is a property of the program itself --
+! so unlike f.exec strings they cannot use $TERMINAL. Name the actual class
+! of whichever terminal you set, e.g. "Client Alacritty" or "Client st".
 
 ! The system tray. The shipped stalonetrayrc asks for a full Motif frame and
 ! does not call itself a dock, so the tray behaves like any other window:
@@ -159,6 +230,7 @@ Settings
 Client stalonetray
 {
 	clientFunctions		-close
+	clientTitle		Tray
 }
 
 ! A tray that announces itself as a dock instead gets no frame and move as

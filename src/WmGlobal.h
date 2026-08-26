@@ -1370,6 +1370,7 @@ typedef struct _ClientData
 
     String	clientClass;			/* WM_CLASS field */
     String	clientName;			/* WM_CLASS field */
+    String	titleString;			/* resource, replaces WM_NAME */
     int		clientDecoration;		/* resource */
     int		clientFunctions;		/* resource */
     Boolean	focusAutoRaise;			/* resource */

@@ -210,6 +210,45 @@ See sections 6, 7 and 8.
 
 ---
 
+## 3a. The `Variables` block
+
+Names a program once so the rest of the file can refer to it:
+
+```
+Variables
+{
+    TERMINAL   xterm
+    BROWSER    chromium-bin
+    EDITOR     nedit
+}
+```
+
+Each entry is exported to the environment, and every command mWizard runs is
+exec'd through `sh -c`, so the **shell** performs the substitution:
+
+```
+Alt Shift<Key>Return root|icon|window  f.exec "$TERMINAL &"
+"New Terminal"                         f.exec "$TERMINAL &"
+```
+
+Because it is the shell doing the work, ordinary shell syntax applies —
+`$TERMINAL -e mutt` passes arguments, and `${TERMINAL:-xterm}` falls back when
+the variable is unset. Nothing happens at parse time, which is why variables
+work only where a command is run: **`f.exec` strings and `trayCommand`, not
+key names, menu titles or `Client` block names.** A `Client` block matches
+`WM_CLASS`, a property of the program itself, so it must name the real class of
+whichever terminal you chose.
+
+Names must look like shell variable names — a letter or underscore followed by
+letters, digits or underscores. Anything else is reported and ignored.
+
+Programs mWizard starts inherit these; programs your session file started
+before mWizard do not. mWand is normally in the second group, so it reads its
+own `Variables` block from `~/.mwandrc` — see `doc/MWAND.md`. Export them from
+`~/.xinitrc` instead and both pick them up, and you can drop both blocks.
+
+---
+
 ## 4. `Client` blocks
 
 Per-application overrides. The name is the client's resource name or class —
@@ -218,6 +257,7 @@ whatever `xprop WM_CLASS` reports:
 ```
 Client XTerm
 {
+    clientTitle           Terminal
     clientDecoration      -resizeh
     focusAutoRaise        False
 }
@@ -472,6 +512,52 @@ Client stalonetray
 
 That covers decoration and stickiness. Reserved space is not available this
 way — it requires the strut property.
+
+---
+
+## 8a. Media and other XF86 keys
+
+Key names are passed to `XStringToKeysym(3)`, so every name in `XF86keysym.h`
+works with no special handling — volume, brightness, playback, and the rest:
+
+```
+Keys DefaultKeyBindings
+{
+    <Key>XF86AudioRaiseVolume root|icon|window f.exec "pactl set-sink-volume @DEFAULT_SINK@ +5%"
+    <Key>XF86AudioLowerVolume root|icon|window f.exec "pactl set-sink-volume @DEFAULT_SINK@ -5%"
+    <Key>XF86AudioMute        root|icon|window f.exec "pactl set-sink-mute @DEFAULT_SINK@ toggle"
+    <Key>XF86AudioMicMute     root|icon|window f.exec "pactl set-source-mute @DEFAULT_SOURCE@ toggle"
+    <Key>XF86MonBrightnessUp  root|icon|window f.exec "brightnessctl set +10%"
+}
+```
+
+A binding needs no modifier at all, and each one is grabbed once per
+lock-modifier combination, so it still fires with NumLock or CapsLock on.
+
+Three things to check when one does nothing:
+
+- **The key must be on your keymap.** An unmapped keysym has no keycode and the
+  grab silently does nothing. `xev(1)` shows what your key actually sends.
+- **The context list decides where it works.** `root|icon|window` grabs it
+  everywhere; anything less and the key dies whenever a client has focus.
+- **Something else may have grabbed it first.** A desktop agent such as
+  `xfce4-volumed` takes these keys before mWizard sees them.
+
+The same applies to any bare key — which is worth remembering for `<Key>Home`:
+bound in the `window` context it is taken from every application, so text
+fields and terminals stop receiving it.
+
+---
+
+## 8b. Notifications
+
+mWizard has no notification daemon, the same way it has no tray. A dunst
+configuration matching the default Motif colors is installed as
+`/etc/X11/dunstrc`; copy it to `~/.config/dunst/dunstrc`. It is a plain
+configuration file with no build-time dependency on dunst.
+
+dunst sets `_NET_WM_WINDOW_TYPE_DOCK`, so mWizard gives notifications no frame
+without any `Client` block — see section 8 for what dock type implies.
 
 ---
 

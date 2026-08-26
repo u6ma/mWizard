@@ -45,6 +45,28 @@ Settings
 }
 
 
+# Command variables.
+#
+# Each entry is exported to the environment, and menu commands are expanded
+# before they are run, so "$NAME" or "${NAME}" in any command below is
+# substituted. Set a program once here and change it in one place.
+#
+# mWand is a separate program from the window manager and does not share its
+# environment unless mWizard started it, so keep these in step with the
+# Variables block in ~/.mwizardrc -- or export them from your session file
+# and delete both blocks.
+#
+# Unlike mWizard's f.exec, commands here are run directly rather than through
+# a shell: there is no "&", no pipes, and no "${NAME:-default}" fallback. An
+# unset variable expands to nothing and warns on stderr.
+Variables
+{
+	TERMINAL	xterm
+	BROWSER		chromium-bin
+	EDITOR		nedit
+}
+
+
 # Launcher menus.
 #
 # Every top-level menu is defined by its title followed by an opening brace.
@@ -54,17 +76,18 @@ Settings
 	# A menu item is a title and a command separated by a colon.
 
 	&File Manager: xfile
-	&NEdit: nedit
+	&Web Browser: $BROWSER
+	&Text Editor: $EDITOR
+	&Terminal: $TERMINAL
 	&GIMP: gimp
-	&Web-Browser: links -g
-	&E-Mail: xterm -title "E-Mail" -geometry 96x40 -e mutt
+	&E-Mail: $TERMINAL -title "E-Mail" -geometry 96x40 -e mutt
 }
 
 
 # Menus may contain menus. SEPARATOR places a separator between items.
 &Utilities
 {
-	&XTerm: xterm
+	&Terminal: $TERMINAL
 	X&OSView: xosview
 	X&pdf: xpdf
 	SEPARATOR

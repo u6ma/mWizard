@@ -1,0 +1,135 @@
+# dunst configuration for mWizard.
+#
+# Copy to ~/.config/dunst/dunstrc to customize. dunst is a notification
+# daemon: it is not started by mWizard and nothing here depends on it. Most
+# distributions start it through D-Bus activation the first time something
+# sends a notification; otherwise add "dunst &" to your session file before
+# the window manager.
+#
+# The colors below are the ones in /etc/X11/app-defaults/MWizard, so
+# notifications match the window frames. If you retheme mWizard, the four
+# values to change are repeated in the urgency sections at the bottom.
+#
+# See dunst(1) for every option.
+
+[global]
+    ### Placement ###
+
+    monitor = 0
+
+    # Place notifications on the monitor with the keyboard focus. Use
+    # "mouse" to follow the pointer instead, or "none" to pin them to the
+    # monitor named above. This matches mWizard's own xineramaScreenFocus
+    # setting, which defaults to following the pointer -- set both the same
+    # way if you want notifications to appear where new windows do.
+    follow = keyboard
+
+    # Top right, clear of the tray if it is docked top right. The offset is
+    # generous enough to clear a Motif frame's shadow.
+    origin = top-right
+    offset = 12x12
+    notification_limit = 6
+
+    ### Geometry ###
+
+    width = (200, 420)
+    height = 300
+    scale = 0
+
+    # Square corners. Motif has no rounded geometry anywhere, and a rounded
+    # notification next to a beveled window frame looks out of place.
+    corner_radius = 0
+
+    # A 1px frame plus the separator reads as a Motif bevel without trying
+    # to imitate one -- dunst cannot draw a two-tone shadow, so a flat dark
+    # border is the honest approximation.
+    frame_width = 1
+    frame_color = "#4a4a4a"
+
+    separator_height = 1
+    separator_color = frame
+    padding = 8
+    horizontal_padding = 10
+    text_icon_padding = 8
+    gap_size = 4
+
+    ### Text ###
+
+    # Matches MWizard*renderTable in the app-defaults file.
+    font = Liberation Sans 10
+    line_height = 0
+    markup = full
+    format = "<b>%s</b>\n%b"
+    alignment = left
+    vertical_alignment = center
+    word_wrap = yes
+    ellipsize = middle
+    ignore_newline = no
+    show_age_threshold = 60
+    stack_duplicates = true
+    hide_duplicate_count = false
+    show_indicators = yes
+
+    ### Icons ###
+
+    enable_recursive_icon_lookup = true
+    icon_theme = "hicolor"
+    icon_position = left
+    min_icon_size = 16
+    max_icon_size = 48
+
+    ### Behaviour ###
+
+    sort = urgency_descending
+    idle_threshold = 120
+    sticky_history = yes
+    history_length = 24
+
+    # dunst draws its own window and asks not to be framed. mWizard honours
+    # _NET_WM_WINDOW_TYPE_DOCK by removing all decoration, and dunst uses
+    # that type, so notifications arrive unframed and stay clear of the
+    # window menu without any Client block on the mWizard side.
+    #
+    # A consequence worth knowing: dock windows are move-only in mWizard, so
+    # you cannot drag a notification. Dismiss it with the mouse bindings
+    # below instead.
+    force_xinerama = false
+    ignore_dbusclose = false
+
+    ### Mouse ###
+
+    mouse_left_click = close_current
+    mouse_middle_click = do_action, close_current
+    mouse_right_click = close_all
+
+# Keyboard control. dunst grabs these itself, so pick combinations that
+# mWizard's rc file does not also bind -- a key claimed in both places goes
+# to whichever grabbed it first, which is usually dunst.
+[keyboard_shortcuts]
+    close = ctrl+space
+    close_all = ctrl+shift+space
+    history = ctrl+grave
+    context = ctrl+shift+period
+
+# Low: the inactive frame color, for things you did not ask about.
+[urgency_low]
+    background = "#8c8c8c"
+    foreground = "#000000"
+    frame_color = "#4a4a4a"
+    timeout = 6
+
+# Normal: the same grey, held longer.
+[urgency_normal]
+    background = "#8c8c8c"
+    foreground = "#000000"
+    frame_color = "#4a4a4a"
+    timeout = 12
+
+# Critical: the active-window blue from MWizard*client*activeBackground, so
+# an urgent notification reads the way a focused window does. It does not
+# time out; dismiss it deliberately.
+[urgency_critical]
+    background = "#7399ba"
+    foreground = "#ffffff"
+    frame_color = "#3c5a75"
+    timeout = 0

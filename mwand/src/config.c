@@ -160,14 +160,52 @@ static Boolean SplitEntry(char *line, char **namep, char **valuep)
  * header is only ever recognized at the outermost level -- a menu titled
  * "Settings" must not be mistaken for one.
  */
+enum block_kind {
+	BLOCK_SETTINGS,	/* behaviour, merged into the resource database */
+	BLOCK_VARIABLES	/* command variables, exported to the environment */
+};
+
 struct scan_state {
 	XrmDatabase db;
 	const char *rc_file;
 	int depth;
 	int line_num;
 	Boolean in_block;
+	enum block_kind kind;
 	Boolean pending;
+	enum block_kind pending_kind;
 };
+
+/*
+ * Exports one entry of the Variables block to the environment.
+ *
+ * Menu commands are run through expand_env_vars() before exec, so a variable
+ * put here is what "$TERMINAL" in a menu entry expands to -- the same
+ * spelling mWizard's rc file uses, since there it is the shell that expands
+ * it. Nothing needs to happen at parse time in either program.
+ */
+static void PutVariable(struct scan_state *st, const char *name,
+	const char *value)
+{
+	const char *p;
+
+	if(!isalpha((unsigned char)name[0]) && name[0] != '_') {
+		fprintf(stderr, "%s: %s line %d: \"%s\" is not a usable "
+			"variable name.\n", APP_NAME, st->rc_file, st->line_num, name);
+		return;
+	}
+
+	for(p = name; *p; p++) {
+		if(!isalnum((unsigned char)*p) && *p != '_') {
+			fprintf(stderr, "%s: %s line %d: \"%s\" is not a usable "
+				"variable name.\n", APP_NAME, st->rc_file,
+				st->line_num, name);
+			return;
+		}
+	}
+
+	setenv(name, value, 1);
+}
 
 /*
  * Handles one stretch of text between braces: at depth 0 a possible block
@@ -190,13 +228,26 @@ static void HandleSegment(struct scan_state *st, char *seg)
 			first[k++] = tolower((unsigned char)*p++);
 		first[k] = '\0';
 
-		st->pending = (!strcmp(first, "settings")) ? True : False;
+		if(!strcmp(first, "settings")) {
+			st->pending = True;
+			st->pending_kind = BLOCK_SETTINGS;
+		} else if(!strcmp(first, "variables")) {
+			st->pending = True;
+			st->pending_kind = BLOCK_VARIABLES;
+		} else {
+			st->pending = False;
+		}
 		return;
 	}
 
 	if(!st->in_block || st->depth != 1) return;
 
 	if(!SplitEntry(seg, &name, &value)) return;
+
+	if(st->kind == BLOCK_VARIABLES) {
+		PutVariable(st, name, value);
+		return;
+	}
 
 	if(!IsKnownName(name)) {
 		fprintf(stderr, "%s: %s line %d: unknown setting \"%s\".\n",
@@ -214,6 +265,7 @@ static void HandleBrace(struct scan_state *st, char c)
 		st->depth++;
 		if(st->depth == 1 && st->pending) {
 			st->in_block = True;
+			st->kind = st->pending_kind;
 			st->pending = False;
 		}
 	} else {

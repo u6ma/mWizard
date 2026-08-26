@@ -1917,6 +1917,26 @@ ProcessWmWindowTitle (ClientData *pCD, Boolean firstTime)
 		if (wmNameProp.value) XFree ((char*)wmNameProp.value);
 	}
 
+    /*
+     * A clientTitle resource replaces whatever the client calls itself.
+     *
+     * This runs after WM_NAME has been read rather than instead of it, so a
+     * client that renames itself later is overridden again rather than
+     * escaping on the second pass. Programs that pick their own unhelpful
+     * title and offer no option to change it -- a system tray is the usual
+     * case -- can be given a sensible one from the rc file:
+     *
+     *     Client stalonetray
+     *     {
+     *         clientTitle    Tray
+     *     }
+     */
+    if (pCD->titleString && *pCD->titleString)
+    {
+	if (title_xms) XmStringFree (title_xms);
+	title_xms = XmStringCreateLocalized (pCD->titleString);
+    }
+
     if (title_xms)
     {
       if (!firstTime && (pCD->iconTitle == pCD->clientTitle))

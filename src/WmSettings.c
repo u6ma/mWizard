@@ -19,12 +19,14 @@
 #define SETTINGS_KEYWORD	"settings"
 #define CLIENT_KEYWORD		"client"
 #define WORKSPACE_KEYWORD	"workspace"
+#define VARIABLES_KEYWORD	"variables"
 
 /* Which resource tables a block's names are validated against. */
 typedef enum {
     BLOCK_SETTINGS,	/* global and per-screen behaviour */
     BLOCK_CLIENT,	/* per-client behaviour */
-    BLOCK_WORKSPACE	/* per-workspace */
+    BLOCK_WORKSPACE,	/* per-workspace */
+    BLOCK_VARIABLES	/* command variables, exported to the environment */
 } BlockKind;
 
 #define RC_LINE_MAX		(MAXWMPATH + 1)
@@ -108,6 +110,61 @@ static void PutSetting(const char *prefix, const char *name, const char *value)
     }
 }
 
+static void WarnBadVariable(const char *name, int lineNum)
+{
+    /* Warning() already prefixes the program name. */
+    const char fmt[] = "rc file line %d: \"%s\" is not a usable variable name.";
+    size_t len;
+    char *msg;
+
+    len = snprintf (NULL, 0, fmt, lineNum, name);
+    msg = XtMalloc (len + 1);
+    sprintf (msg, fmt, lineNum, name);
+    Warning (msg);
+    XtFree (msg);
+}
+
+/*
+ * Exports one entry of the Variables block to the environment.
+ *
+ * Every command the window manager runs goes through SpawnCommand(), which
+ * execs it with "sh -c", so the shell performs the substitution: a variable
+ * put here is what "$TERMINAL" in an f.exec string expands to. Nothing has
+ * to happen at parse time, which is why this needs no support in the rc
+ * parser itself -- and it means "$TERMINAL -e mutt" and "${TERMINAL:-xterm}"
+ * work exactly as they would in a shell.
+ *
+ * Children inherit the environment, so a program mWizard starts -- the tray
+ * from trayCommand, anything from f.exec -- sees these too. Programs started
+ * from the session file before mWizard does not; those keep their own.
+ */
+static void PutVariable(const char *name, const char *value, int lineNum)
+{
+    const char *p;
+
+    /*
+     * Refuse anything the shell would not treat as a variable name. Without
+     * this a stray line would be exported as an unusable environment entry
+     * and the reference in the command would silently expand to nothing.
+     */
+    if (!isalpha ((unsigned char)name[0]) && name[0] != '_')
+    {
+	WarnBadVariable (name, lineNum);
+	return;
+    }
+
+    for (p = name; *p; p++)
+    {
+	if (!isalnum ((unsigned char)*p) && *p != '_')
+	{
+	    WarnBadVariable (name, lineNum);
+	    return;
+	}
+    }
+
+    setenv (name, value, 1);
+}
+
 /* Trims leading and trailing whitespace in place; returns the new start. */
 static char *Trim(char *s)
 {
@@ -157,7 +214,8 @@ Boolean IsSettingsKeyword(const char *keyword)
 {
     return (!strcmp (keyword, SETTINGS_KEYWORD) ||
 	    !strcmp (keyword, CLIENT_KEYWORD) ||
-	    !strcmp (keyword, WORKSPACE_KEYWORD));
+	    !strcmp (keyword, WORKSPACE_KEYWORD) ||
+	    !strcmp (keyword, VARIABLES_KEYWORD));
 }
 
 
@@ -224,6 +282,12 @@ static void HandleSegment(ScanState *st, char *seg)
 	    st->pendingKind = BLOCK_SETTINGS;
 	    snprintf (st->pendingPrefix, sizeof(st->pendingPrefix), "*");
 	}
+	else if (!strcmp (first, VARIABLES_KEYWORD))
+	{
+	    st->pending = True;
+	    st->pendingKind = BLOCK_VARIABLES;
+	    st->pendingPrefix[0] = '\0';
+	}
 	else if ((!strcmp (first, CLIENT_KEYWORD) ||
 		  !strcmp (first, WORKSPACE_KEYWORD)) && *rest)
 	{
@@ -252,6 +316,12 @@ static void HandleSegment(ScanState *st, char *seg)
     if (!st->inBlock || st->depth != 1) return;
 
     if (!SplitEntry (seg, &name, &value)) return;
+
+    if (st->kind == BLOCK_VARIABLES)
+    {
+	PutVariable (name, value, st->lineNum);
+	return;
+    }
 
     if (!IsKnownName (name, st->kind))
     {

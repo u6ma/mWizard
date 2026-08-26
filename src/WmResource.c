@@ -1118,6 +1118,16 @@ XtResource wmClientResources[] =
     },
 
     {
+	WmNclientTitle,
+	WmCClientTitle,
+	XmRString,
+	sizeof (String),
+	XtOffsetOf (ClientData, titleString),
+	XmRString,
+	(XtPointer)NULL
+    },
+
+    {
 	WmNclientFunctions,
 	WmCClientFunctions,
 	WmRClientFunction,
