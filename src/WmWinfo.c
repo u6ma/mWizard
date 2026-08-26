@@ -71,25 +71,31 @@ static XtSignalId winfoSignalId;
 /*
  * The notice, kept short enough to read.
  *
+ * Written as unwrapped paragraphs: the text widget wraps to whatever width the
+ * window has, so a newline in the middle of a sentence would only get wrapped
+ * again and come out ragged. The line breaks that are here are the ones that
+ * are meant -- the blank lines between paragraphs, and the two copyright
+ * lines.
+ *
  * This has to stay true to the NOTICE file at the top of the tree: naming the
  * licenses is the whole point of the window, and getting them wrong here
  * would be worse than not having it. Anything that changes there should
  * change here too.
  */
 static const char winfoLicenseText[] =
-MWM_FULL_NAME " is a fork of EMWM, which derives from the Motif\n"
-"Window Manager originally published by The Open Group.\n"
+MWM_FULL_NAME " is a fork of EMWM, which derives from the Motif Window Manager "
+"originally published by The Open Group.\n"
 "\n"
 "Copyright (c) 1987-2012 The Open Group\n"
 "Copyright (c) 2018-2026 alx@fastestcode.org\n"
 "\n"
-"The project as a whole is distributed under the GNU Lesser General\n"
-"Public License, version 2.1 or (at your option) any later version;\n"
-"see the file COPYING. Files written for " MWM_NAME ", and a few\n"
-"inherited from EMWM, are under the MIT license; see COPYING.MIT.\n"
-"Individual files keep their own copyright and license headers.\n"
+"The project as a whole is distributed under the GNU Lesser General Public "
+"License, version 2.1 or (at your option) any later version; see the file "
+"COPYING. Files written for " MWM_NAME ", and a few inherited from EMWM, are "
+"under the MIT license; see COPYING.MIT. Individual files keep their own "
+"copyright and license headers.\n"
 "\n"
-"Not affiliated with, sponsored by, or endorsed by The Open Group.\n"
+"Not affiliated with, sponsored by, or endorsed by The Open Group. "
 "\"Motif\" is a trademark of The Open Group.";
 
 /*
@@ -165,7 +171,7 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
     XtSetArg (args[n], XmNlabelString, (XtArgVal) xms);			n++;
     XtSetArg (args[n], XmNleftAttachment,
 	(XtArgVal) XmATTACH_POSITION);					n++;
-    XtSetArg (args[n], XmNleftPosition, (XtArgVal) 20);			n++;
+    XtSetArg (args[n], XmNleftPosition, (XtArgVal) 12);			n++;
     XtSetArg (args[n], XmNrightAttachment,
 	(XtArgVal) XmATTACH_POSITION);					n++;
     XtSetArg (args[n], XmNrightPosition, (XtArgVal) 50);			n++;
@@ -187,7 +193,7 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
     XtSetArg (args[n], XmNleftOffset, (XtArgVal) 4);			n++;
     XtSetArg (args[n], XmNrightAttachment,
 	(XtArgVal) XmATTACH_POSITION);					n++;
-    XtSetArg (args[n], XmNrightPosition, (XtArgVal) 80);			n++;
+    XtSetArg (args[n], XmNrightPosition, (XtArgVal) 88);			n++;
     XtSetArg (args[n], XmNtopAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNbottomAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNshowAsDefault, (XtArgVal) 1);			n++;
@@ -263,8 +269,8 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
     XtSetArg (args[n], XmNcursorPositionVisible, (XtArgVal) False);	n++;
     XtSetArg (args[n], XmNwordWrap, (XtArgVal) True);			n++;
     XtSetArg (args[n], XmNscrollHorizontal, (XtArgVal) False);		n++;
-    XtSetArg (args[n], XmNrows, (XtArgVal) 13);				n++;
-    XtSetArg (args[n], XmNcolumns, (XtArgVal) 68);			n++;
+    XtSetArg (args[n], XmNrows, (XtArgVal) 14);				n++;
+    XtSetArg (args[n], XmNcolumns, (XtArgVal) 48);			n++;
     wtext = XmCreateScrolledText (winfoFormW, "license", args, n);
     XtManageChild (wtext);
 
