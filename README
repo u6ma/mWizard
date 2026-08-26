@@ -1,16 +1,17 @@
 mWizard
 =======
 
-mWizard is a lighter, opinionated build of EMWM -- a Motif window manager for
+mWizard is a lighter, opinionated build of EMWM: a Motif window manager for
 the X Window System.
 
-It drops the parts that fought with other software and keeps configuration in
-one file. Root-window wallpaper setters such as feh(1), xsetroot(1) and
-xwallpaper(1) work normally; behaviour is configured in ~/.mwizardrc rather
-than split across the rc file and the X resource database.
+14mb excluding X server during use.
 
-Distributed under the GNU Lesser General Public License, version 2.1 or later;
-see COPYING and NOTICE.
+mWizard is meant for personal use, altho contribution is welcome.
+
+The code in this repo that was added by this project is licensed under MIT license (COPYING.MIT), the rest follows its original LGPL license (COPYING).
+See NOTICE for further information.
+
+Documentation is located within doc/ with separate documents for each tool included in this repo.
 
 
 PREREQUISITES
