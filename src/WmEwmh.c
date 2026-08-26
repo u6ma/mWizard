@@ -127,9 +127,25 @@ void SetupWmEwmh(void)
 			ewmh_atoms[_NET_SUPPORTING_WM_CHECK], XA_WINDOW, 32,
 			PropModeReplace, (unsigned char*)&check_wnd,1);
 			
-		XChangeProperty(DISPLAY, check_wnd,ewmh_atoms[_NET_WM_NAME],
-			XA_STRING, 8, PropModeReplace, (unsigned char*)WM_RESOURCE_NAME,
-			strlen(WM_RESOURCE_NAME));
+		/*
+		 * The name of the window manager, which is how anything else on
+		 * the system identifies us: xprop, wmctrl, and the fetch tools
+		 * (neofetch, fastfetch) all read it from here.
+		 *
+		 * EWMH requires UTF8_STRING. This was XA_STRING, which xprop will
+		 * still print if told the format, but which stricter readers that
+		 * ask XGetWindowProperty for UTF8_STRING reject outright -- the
+		 * property comes back with a non-matching type and they fall
+		 * through to guessing from the process list, where "mwizard" is
+		 * not a name they know.
+		 *
+		 * MWM_NAME rather than WM_RESOURCE_NAME: this string is displayed,
+		 * not matched, so it should be the product name and not the
+		 * lowercase X resource name.
+		 */
+		XChangeProperty(DISPLAY, check_wnd, ewmh_atoms[_NET_WM_NAME],
+			XA_UTF8_STRING, 8, PropModeReplace, (unsigned char*)MWM_NAME,
+			strlen(MWM_NAME));
 	}
 }
 
