@@ -28,7 +28,8 @@
 enum tb_entry_type {
 	TBE_CASCADE,
 	TBE_COMMAND,
-	TBE_SEPARATOR
+	TBE_SEPARATOR,
+	TBE_MWINFO	/* built-in: posts the window manager's About window */
 };
 
 struct tb_entry {

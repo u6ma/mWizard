@@ -42,6 +42,8 @@ int expand_env_vars(const char *in, char **out);
 
 char* get_login(void);
 
+char* get_hostname(void);
+
 void print_version(const char*);
 
 #endif /* COMMON_H */

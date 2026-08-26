@@ -26,6 +26,14 @@
 #define APP_TITLE "mWand"
 
 /*
+ * The mWinfo menu item, named in one place because two menus offer it:
+ * the built-in Commands menu (session.c) and the MWINFO rc keyword
+ * (launcher.c).
+ */
+#define MWINFO_ITEM_LABEL "About mWizard..."
+#define MWINFO_ITEM_MNEMONIC 'A'
+
+/*
  * The name spelled out. APP_TITLE is the short form and is what goes in the
  * title bar, which on a panel this narrow has no room for anything longer;
  * this is for the places that introduce the program.
@@ -66,6 +74,7 @@ struct tb_resources {
 	Boolean horizontal;
 	Boolean separators;
 	Boolean switcher;
+	Boolean show_user_host;
 	Boolean occupy_all;
 	Boolean session_menu;
 	char *lock_command;

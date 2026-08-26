@@ -62,6 +62,7 @@ static int xgrabkey_err_handler(Display*, XErrorEvent*);
 static void handle_root_event(XEvent*);
 static void set_ws_presence(Widget);
 static void create_utility_widgets(Widget);
+static Widget create_user_host_widget(Widget);
 static void xt_sigusr1_handler(XtPointer, XtSignalId*);
 static void sigchld_handler(int);
 static void sigusr_handler(int);
@@ -76,6 +77,7 @@ unsigned int hotkey_mods = 0;
 
 static Widget wgadsep = None;
 static Widget wgadrc = None;
+static Widget wuserhost = None;
 static XtSignalId xt_sigusr1 = (XtSignalId)0;
 static KeyCode hotkey_code = 0;
 
@@ -507,14 +509,67 @@ static void create_utility_widgets(Widget wparent)
 
 	CreateSwitcherWidget(wgadrc);
 	CreateClockWidget(wgadrc);
+	create_user_host_widget(wgadrc);
 
 	have_switcher = XtIsManaged(wswitch);
 
-	if((have_switcher || app_res.show_date_time) && app_res.separators)
+	if((have_switcher || app_res.show_date_time || XtIsManaged(wuserhost))
+		&& app_res.separators)
 		XtManageChild(wgadsep);
 
-	if(have_switcher || app_res.show_date_time)
+	if(have_switcher || app_res.show_date_time || XtIsManaged(wuserhost))
 		XtManageChild(wgadrc);
+}
+
+/*
+ * Who is logged in and where, as the last line of the panel.
+ *
+ * xmtoolbox put this in the window title, where a long name is simply
+ * clipped by a narrow title bar; on a line of its own the panel widens to
+ * fit it instead. The host name is shortened to its first component for the
+ * same reason -- see get_hostname().
+ *
+ * Neither half changes while mWand is running, so this is set once and never
+ * updated. If the system will not name the host, the login is shown alone
+ * rather than something like "alex@(unknown)"; if it will not name either,
+ * the line is left out altogether, the same way the clock is when
+ * dateTimeDisplay is off.
+ */
+static Widget create_user_host_widget(Widget wparent)
+{
+	XmString label;
+	Arg args[8];
+	char *login;
+	char *host;
+	char *text = NULL;
+	int n = 0;
+
+	XtSetArg(args[n], XmNalignment, XmALIGNMENT_CENTER); n++;
+	wuserhost = XmCreateLabelGadget(wparent, "userHost", args, n);
+
+	if(!app_res.show_user_host) return wuserhost;
+
+	login = get_login();
+	host = get_hostname();
+
+	if(login && host) {
+		size_t len = strlen(login) + strlen(host) + 2;
+
+		if((text = malloc(len))) snprintf(text, len, "%s@%s", login, host);
+	} else if(login) {
+		text = strdup(login);
+	}
+
+	if(!text) return wuserhost;
+
+	label = XmStringCreateLocalized(text);
+	XtVaSetValues(wuserhost, XmNlabelString, label, NULL);
+	XmStringFree(label);
+	free(text);
+
+	XtManageChild(wuserhost);
+
+	return wuserhost;
 }
 
 char* FindRcFile(void)

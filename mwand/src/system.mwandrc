@@ -7,7 +7,9 @@
 
 Settings
 {
-	# Window title. Defaults to <user>@<host> when unset.
+	# Window title. Defaults to "mWand" when unset -- xmtoolbox titled the
+	# window <user>@<host>, which a narrow panel simply clips. That string
+	# is a line in the panel now; see userHostDisplay below.
 	# title              Toolbox
 
 	# Lay the toolbox out horizontally rather than vertically
@@ -23,6 +25,11 @@ Settings
 	# Show the date and time, and how to format it (see strftime(3))
 	dateTimeDisplay      True
 	dateTimeFormat       "%m/%d %l:%M %p"
+
+	# Show who is logged in and where, as the last line of the panel. The
+	# host name is shortened to its first component, so a machine known as
+	# "box.example.org" shows as "box".
+	userHostDisplay      True
 
 	# Ask the window manager to put mWand on every workspace
 	occupyAllWorkspaces  True
@@ -91,11 +98,18 @@ Variables
 
 
 # Menus may contain menus. SEPARATOR places a separator between items.
+#
+# MWINFO is the other bare keyword: it posts mWinfo, the window manager's
+# About window, and so is written with no label and no command -- mWand
+# supplies both. The Commands menu offers the same thing; this puts it where
+# the rest of the utilities are.
 &Utilities
 {
 	&Terminal: $TERMINAL
 	X&OSView: xosview
 	X&pdf: xpdf
+	SEPARATOR
+	MWINFO
 	SEPARATOR
 	X11 &Utilities 
 	{

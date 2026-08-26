@@ -161,7 +161,8 @@ Widget CreateCommandMenu(Widget wparent)
 	 * mWand only asks for it, so it is always offered -- there is nothing
 	 * to configure and nothing that can be missing.
 	 */
-	AddItem(wpulldown, "about", "About mWizard...", (KeySym)'A',
+	AddItem(wpulldown, "about", MWINFO_ITEM_LABEL,
+		(KeySym)MWINFO_ITEM_MNEMONIC,
 		(XtCallbackProc)about_item_cb, NULL);
 
 	if(any_session) {

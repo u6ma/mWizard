@@ -86,12 +86,13 @@ uses. **The rc file always wins**; a behaviour resource left over from an
 
 | Setting | Type | Default |
 |---|---|---|
-| `title` | string | `user@host` |
+| `title` | string | `mWand` |
 | `horizontal` | boolean | `False` |
 | `separators` | boolean | `True` |
 | `workspaceSwitcher` | boolean | `True` |
 | `dateTimeDisplay` | boolean | `True` |
 | `dateTimeFormat` | `strftime(3)` format | `"%m/%d %l:%M %p"` |
+| `userHostDisplay` | boolean | `True` |
 | `occupyAllWorkspaces` | boolean | `True` |
 | `hotkey` | keysym | *(unset)* |
 | `sessionMenu` | boolean | `True` |
@@ -103,6 +104,15 @@ uses. **The rc file always wins**; a behaviour resource left over from an
 
 `workspaceSwitcher` needs an EWMH window manager, and the switcher is hidden
 regardless when there is only one workspace.
+
+`userHostDisplay` puts who you are and where — `alex@box` — on the last line
+of the panel. xmtoolbox showed that in the window title, where a narrow title
+bar simply clips it; on a line of its own the panel widens to fit instead, and
+`title` is free to say what the program is. The host name is shortened to its
+first component, so `box.example.org` shows as `box`. Neither half changes
+while mWand runs, so the line is written once. If the system will not name the
+host, the login is shown alone; if it will not name either, the line is left
+out.
 
 `hotkey` takes a keysym name, optionally with modifiers, e.g. `Super_L` or
 `Alt<Key>space`.
@@ -156,10 +166,20 @@ A top-level menu is a title followed by a brace block. `&` marks the keyboard
 mnemonic, a colon separates an item's title from its command, and `SEPARATOR`
 places a separator. Menus nest.
 
+`MWINFO` is the one item that is not a command: it posts **mWinfo**, the
+window manager's About window, and is written bare like `SEPARATOR` because
+there is nothing to give it — mWand supplies the label, and asks the window
+manager for the window over the same path the Commands menu uses (see
+`doc/CONFIGURATION.md` §6b). It works in any menu, at any depth, and needs no
+window manager configuration. Nothing breaks if the window manager is not
+mWizard; the item reports that it could not be reached.
+
 ```
 &Utilities
 {
     &XTerm: xterm
+    SEPARATOR
+    MWINFO
     SEPARATOR
     X11 &Utilities
     {
@@ -239,7 +259,7 @@ having them in two places.
 
 Fonts and render tables only, in `/etc/X11/app-defaults/MWand`. The addressable
 parts are `XmPushButtonGadget` (menu items), `XmCascadeButtonGadget` (menu
-titles), `dateTime` (the clock) and `mainFrame`.
+titles), `dateTime` (the clock), `userHost` (the login line) and `mainFrame`.
 
 ```
 MWand.x: 8
@@ -290,6 +310,7 @@ resources read by Xt before mWand sees them.
 | "xmsm not running?" error at startup | Gone; mWand needs no session manager |
 | Behaviour in `XmToolbox.ad` / `.Xdefaults` | `Settings` block in the rc file |
 | One 1400-line `tbmain.c` | Split by concern; see `mwand/src/mwand.h` |
+| Window titled `user@host` | Titled `mWand`; `user@host` is a line in the panel (`userHostDisplay`) |
 
 ---
 

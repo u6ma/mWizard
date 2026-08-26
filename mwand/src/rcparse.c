@@ -97,6 +97,17 @@ static void parse_line(char *line, struct tb_entry *e)
 		return;	
 	}
 	
+	/*
+	 * A built-in rather than a command: mWinfo is the window manager's own
+	 * window, and mWand asks for it over the same path the Commands menu
+	 * uses. Written bare like SEPARATOR, since there is nothing to give it
+	 * -- no command to run, and the label is mWand's to supply.
+	 */
+	if(!strcmp(line,"MWINFO")){
+		e->type=TBE_MWINFO;
+		return;
+	}
+	
 	e->title = line;
 	
 	while(*p != '\0'){

@@ -51,7 +51,9 @@ The one exception is \fIrcFile\fP, which names the file the settings live in
 and so must come from the X database or from \fI-rcfile\fP\&.
 .SS "Settings"
 .IP "\fItitle\fP" 10
-Window title\&. Defaults to \fIuser\fP@\fIhost\fP\&.
+Window title\&. Defaults to \fBmWand\fP\&. xmtoolbox titled the window
+\fIuser\fP@\fIhost\fP, which a narrow panel clips; that string is a line in
+the panel now -- see \fIuserHostDisplay\fP\&.
 .IP "\fIhorizontal\fP" 10
 Lay out horizontally rather than vertically\&. Default \fBFalse\fP\&.
 .IP "\fIseparators\fP" 10
@@ -63,6 +65,12 @@ when there is only one workspace\&.
 Show the clock\&. Default \fBTrue\fP\&.
 .IP "\fIdateTimeFormat\fP" 10
 Clock format, as for \fBstrftime\fP(3)\&. Default \fB"%m/%d %l:%M %p"\fP\&.
+.IP "\fIuserHostDisplay\fP" 10
+Show who is logged in and where, as the last line of the panel\&. Default
+\fBTrue\fP\&. The host name is shortened to its first component, so
+\fBbox\&.example\&.org\fP shows as \fBbox\fP\&. If the system will not name
+the host the login is shown alone, and if it will not name either the line is
+left out\&.
 .IP "\fIoccupyAllWorkspaces\fP" 10
 Ask the window manager to show \fBmwand\fP on every workspace\&. Default
 \fBTrue\fP\&.
@@ -83,10 +91,18 @@ A top level menu is a title followed by a brace block\&. \fB&\fP marks the
 keyboard mnemonic, a colon separates an item's title from its command, and
 \fBSEPARATOR\fP places a separator\&. Menus may nest\&.
 .PP
+\fBMWINFO\fP is the one item that is not a command\&. It posts \fBmWinfo\fP,
+the window manager's About window, and is written bare like \fBSEPARATOR\fP:
+\fBmwand\fP supplies the label and asks the window manager for the window over
+the same path its own command menu uses\&. It may appear in any menu at any
+depth\&.
+.PP
 .nf
 &Programs
 {
     &Terminal: xterm
+    SEPARATOR
+    MWINFO
     SEPARATOR
     &More
     {

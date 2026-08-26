@@ -37,6 +37,7 @@ MWand.mwmDecorations: 58
 *renderTable.cascade.fontSize: 10
 
 *dateTime.renderTable: small
+*userHost.renderTable: small
 *renderTable.small.fontType: FONT_IS_XFT
 *renderTable.small.fontName: Liberation Sans
 *renderTable.small.fontSize: 9

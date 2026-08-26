@@ -216,6 +216,31 @@ char* get_login(void)
 	return login;
 }
 
+/*
+ * The host name, without its domain.
+ *
+ * Truncated at the first dot on purpose: this is shown on a panel that is
+ * usually only as wide as its menus, and a fully qualified name is exactly
+ * the sort of long string that gets clipped there. Returns NULL if the
+ * system will not say, which the caller has to expect.
+ */
+char* get_hostname(void)
+{
+	static char *host = NULL;
+	
+	if(!host) {
+		char buf[256];
+		char *dot;
+		
+		if(gethostname(buf, sizeof(buf))) return NULL;
+		buf[sizeof(buf) - 1] = '\0';
+		
+		if((dot = strchr(buf, '.'))) *dot = '\0';
+		if(*buf) host = strdup(buf);
+	}
+	return host;
+}
+
 void print_version(const char *name)
 {
 	printf("%s (%s) v%d.%d.%d\n",

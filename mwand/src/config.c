@@ -74,6 +74,9 @@ XtResource xrdb_resources[]={
 	{ "workspaceSwitcher","WorkspaceSwitcher",XmRBoolean,sizeof(Boolean),
 		RES_FIELD(switcher),XmRImmediate,(XtPointer)True
 	},
+	{ "userHostDisplay","UserHostDisplay",XmRBoolean,sizeof(Boolean),
+		RES_FIELD(show_user_host),XmRImmediate,(XtPointer)True
+	},
 	{ "occupyAllWorkspaces","OccupyAllWorkspaces",XmRBoolean,sizeof(Boolean),
 		RES_FIELD(occupy_all),XmRImmediate,(XtPointer)True
 	},

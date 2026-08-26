@@ -57,6 +57,7 @@
 #include "mwand.h"
 
 static void menu_command_cb(Widget, XtPointer, XtPointer);
+static void mwinfo_item_cb(Widget, XtPointer, XtPointer);
 static void report_exec_error(const char*, const char*, int);
 
 /*
@@ -127,6 +128,10 @@ Boolean ConstructMenu(void)
 	wlevel[0] = wmenu;
 	
 	while(cur){
+		XtCallbackRec mwinfo_callback[]={
+			{ (XtCallbackProc)mwinfo_item_cb, (XtPointer)NULL},
+			{ (XtCallbackProc)NULL, (XtPointer)NULL}
+		};
 		Widget w;
 		XmString title;
 
@@ -174,6 +179,26 @@ Boolean ConstructMenu(void)
 			XtSetArg(args[n], XmNactivateCallback, push_callback); n++;
 			w = XmCreatePushButtonGadget(
 				wlevel[cur->level], "menuButton",args,n);
+
+			XmStringFree(title);
+			XtManageChild(w);
+
+		}else if(cur->type == TBE_MWINFO){
+			/*
+			 * The MWINFO keyword. Carries no command and no label of
+			 * its own: it posts the window manager's About window
+			 * through the same path the Commands menu uses, and takes
+			 * the label from there so the two cannot drift apart.
+			 */
+			title=XmStringCreateLocalized(MWINFO_ITEM_LABEL);
+
+			n = 0;
+			XtSetArg(args[n], XmNlabelString, title); n++;
+			XtSetArg(args[n], XmNmnemonic,
+				(KeySym)MWINFO_ITEM_MNEMONIC); n++;
+			XtSetArg(args[n], XmNactivateCallback, mwinfo_callback); n++;
+			w = XmCreatePushButtonGadget(
+				wlevel[cur->level], "menuButton", args, n);
 
 			XmStringFree(title);
 			XtManageChild(w);
@@ -271,6 +296,12 @@ void ExecuteCommandDialog(void)
 void AboutWindowManagerDialog(void)
 {
 	AskWindowManager(SIGUSR2, "an About window");
+}
+
+/* The MWINFO menu item; the Commands menu reaches the same place. */
+static void mwinfo_item_cb(Widget w, XtPointer client, XtPointer call)
+{
+	AboutWindowManagerDialog();
 }
 
 /*
