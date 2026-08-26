@@ -82,6 +82,18 @@ static XtSignalId winfoSignalId;
  * would be worse than not having it. Anything that changes there should
  * change here too.
  */
+/*
+ * What it is, ahead of the legal part.
+ */
+static const char winfoAboutText[] =
+MWM_FULL_NAME " is a window manager for the X Window System: a lighter, "
+"opinionated build of EMWM, which derives in turn from the Motif Window "
+"Manager published by The Open Group.\n"
+"\n"
+"It keeps the Motif look and the mwm resource model, and configures its "
+"behaviour from a single rc file rather than from the X resource database, "
+"which is left holding appearance alone.";
+
 static const char winfoLicenseText[] =
 MWM_FULL_NAME " is a fork of EMWM, which derives from the Motif Window Manager "
 "originally published by The Open Group.\n"
@@ -107,6 +119,7 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
     Arg args[24];
     int n;
     char buf[256];
+    char body[4096];
     XmString xms;
     Widget wname, wversion, wsep1, wtext;
     Widget wsep2, wbuttons, wclose, wproject;
@@ -154,9 +167,13 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
      * rather than stranding the buttons in the middle of it.
      */
     /*
-     * Both buttons sit together in the middle, attached by position rather
-     * than to the form's edges, so they stay a pair when the window is
-     * widened instead of drifting apart to the corners.
+     * Both buttons sit together in the middle: each keeps its natural width
+     * and one edge is attached to the halfway position, so they meet there.
+     *
+     * Attaching both edges of a button by position instead would stretch it
+     * to that share of the form, and the form's preferred width would then
+     * come out as buttonWidth divided by the share -- making the buttons,
+     * rather than the text, decide how wide the window has to be.
      */
     n = 0;
     XtSetArg (args[n], XmNfractionBase, (XtArgVal) 100);		n++;
@@ -169,9 +186,6 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
     xms = XmStringCreateLocalized ("Project Page");
     n = 0;
     XtSetArg (args[n], XmNlabelString, (XtArgVal) xms);			n++;
-    XtSetArg (args[n], XmNleftAttachment,
-	(XtArgVal) XmATTACH_POSITION);					n++;
-    XtSetArg (args[n], XmNleftPosition, (XtArgVal) 12);			n++;
     XtSetArg (args[n], XmNrightAttachment,
 	(XtArgVal) XmATTACH_POSITION);					n++;
     XtSetArg (args[n], XmNrightPosition, (XtArgVal) 50);			n++;
@@ -191,9 +205,6 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
 	(XtArgVal) XmATTACH_POSITION);					n++;
     XtSetArg (args[n], XmNleftPosition, (XtArgVal) 50);			n++;
     XtSetArg (args[n], XmNleftOffset, (XtArgVal) 4);			n++;
-    XtSetArg (args[n], XmNrightAttachment,
-	(XtArgVal) XmATTACH_POSITION);					n++;
-    XtSetArg (args[n], XmNrightPosition, (XtArgVal) 88);			n++;
     XtSetArg (args[n], XmNtopAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNbottomAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNshowAsDefault, (XtArgVal) 1);			n++;
@@ -223,7 +234,7 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
     XtSetArg (args[n], XmNtopAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNleftAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNrightAttachment, (XtArgVal) XmATTACH_FORM);	n++;
-    wname = XtCreateManagedWidget ("title", xmLabelWidgetClass,
+    wname = XtCreateManagedWidget ("productName", xmLabelWidgetClass,
 				   winfoFormW, args, n);
     XmStringFree (xms);
 
@@ -262,15 +273,59 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
      * size the window is dragged to. Read-only, but still selectable, so it
      * can be copied.
      */
+    /*
+     * Assembled here rather than held as one string, because the middle of it
+     * is what this particular session is actually running -- the sort of
+     * thing that otherwise means xdpyinfo and a guess.
+     */
+    {
+	int xsiCount = 0;
+	Boolean haveXinerama = (GetXineramaScreenCount (&xsiCount) &&
+				xsiCount > 1);
+	const char *extensions;
+
+	if (haveXinerama && wmGD.xrandr_present)
+	    extensions = "Xinerama, XRandR";
+	else if (haveXinerama)
+	    extensions = "Xinerama";
+	else if (wmGD.xrandr_present)
+	    extensions = "XRandR";
+	else
+	    extensions = "none detected";
+
+	snprintf (body, sizeof (body),
+		  "%s\n"
+		  "\n"
+		  "This session\n"
+		  "Display: %s\n"
+		  "Screens: %d\n"
+		  "Workspaces: %d\n"
+		  "Server: %s\n"
+		  "Release: %d\n"
+		  "Extensions: %s\n"
+		  "Toolkit: Motif %d.%d.%d\n"
+		  "\n"
+		  "%s",
+		  winfoAboutText,
+		  DisplayString (DISPLAY),
+		  wmGD.numScreens,
+		  pSD->numWorkspaces,
+		  ServerVendor (DISPLAY),
+		  (int) VendorRelease (DISPLAY),
+		  extensions,
+		  XmVERSION, XmREVISION, XmUPDATE_LEVEL,
+		  winfoLicenseText);
+    }
+
     n = 0;
-    XtSetArg (args[n], XmNvalue, (XtArgVal) winfoLicenseText);		n++;
+    XtSetArg (args[n], XmNvalue, (XtArgVal) body);			n++;
     XtSetArg (args[n], XmNeditMode, (XtArgVal) XmMULTI_LINE_EDIT);	n++;
     XtSetArg (args[n], XmNeditable, (XtArgVal) False);			n++;
     XtSetArg (args[n], XmNcursorPositionVisible, (XtArgVal) False);	n++;
     XtSetArg (args[n], XmNwordWrap, (XtArgVal) True);			n++;
     XtSetArg (args[n], XmNscrollHorizontal, (XtArgVal) False);		n++;
-    XtSetArg (args[n], XmNrows, (XtArgVal) 14);				n++;
-    XtSetArg (args[n], XmNcolumns, (XtArgVal) 48);			n++;
+    XtSetArg (args[n], XmNrows, (XtArgVal) 18);				n++;
+    XtSetArg (args[n], XmNcolumns, (XtArgVal) 24);			n++;
     wtext = XmCreateScrolledText (winfoFormW, "license", args, n);
     XtManageChild (wtext);
 

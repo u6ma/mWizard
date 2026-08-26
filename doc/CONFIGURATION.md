@@ -445,9 +445,11 @@ see `doc/MWAND.md`.
 ## 6b. mWinfo, the About window
 
 `f.about` posts **mWinfo**: the name of the window manager spelled out, the
-version and release name it is running, a short notice naming the copyrights
-and licenses, and the address of the project page. `f.mwinfo` is an alias for
-the same function.
+version and release name it is running, what it is and where it came from,
+what this particular session is running on — display, screens, workspaces, X
+server and release, extensions in use, Motif version — and a short notice
+naming the copyrights and licenses. `f.mwinfo` is an alias for the same
+function.
 
 It is bound out of the box:
 
@@ -469,6 +471,16 @@ and close it from its frame like anything else. The notice wraps to the width
 it is given and scrolls, so nothing is cut off however small the window is
 made. **Project Page** hands the address to `xdg-open`, and **Close** puts the
 window away.
+
+The product name at the top is a widget called `productName`, so its size is
+set in the app-defaults file rather than in code:
+
+```
+MWizard*renderTable.winfoTitle.fontSize: 24
+```
+
+It is deliberately not named `title` — that name already carries the window
+frame's title font, and any widget called `title` picks it up.
 
 ---
 

@@ -25,6 +25,17 @@ MWizard*renderTable.variable.fontType: FONT_IS_XFT
 MWizard*renderTable.variable.fontName: Liberation Sans
 MWizard*renderTable.variable.fontSize: 10
 
+!! The mWinfo (About) window's product name
+!!
+!! Deliberately not called "title": that name already belongs to the window
+!! frame's title font below, and a widget named "title" anywhere would pick it
+!! up. This is the one string in mWizard meant to be read at a glance.
+MWizard*productName.renderTable: winfoTitle
+MWizard*renderTable.winfoTitle.fontType: FONT_IS_XFT
+MWizard*renderTable.winfoTitle.fontName: Liberation Sans
+MWizard*renderTable.winfoTitle.fontSize: 24
+MWizard*renderTable.winfoTitle.fontStyle: Bold
+
 !! Title bar font
 MWizard*title.renderTable: title
 MWizard*renderTable.title.fontType: FONT_IS_XFT
