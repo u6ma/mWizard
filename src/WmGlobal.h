@@ -369,6 +369,15 @@ typedef struct _KeySpec
 {
     unsigned int state;
     KeyCode      keycode;
+    /*
+     * The keysym the keycode above was resolved from, kept so that the
+     * binding can be resolved again. Keycodes are a property of the current
+     * keyboard mapping, not of the binding: plugging in a keyboard makes the
+     * server rebuild the map and hand out different ones. Without the keysym
+     * there is nothing to re-resolve from and every grab silently goes stale.
+     * See RefreshKeyBindings().
+     */
+    KeySym       keysym;
     Context	 context;
     Context	 subContext;
     WmFunction	 wmFunction;
@@ -643,6 +652,7 @@ typedef struct _MenuItem
     KeySym	 mnemonic;
     unsigned int accelState;
     KeyCode      accelKeyCode;
+    KeySym	 accelKeySym;	/* what accelKeyCode was resolved from */
     String	 accelText;
     WmFunction	 wmFunction;
     String	 wmFuncArgs;

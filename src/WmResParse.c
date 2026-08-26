@@ -163,7 +163,7 @@ Boolean ParseBtnEvent (unsigned char  **linePP,
 		       unsigned int *state,
 		       Boolean      *fClick);
 Boolean ParseKeyEvent (unsigned char **linePP, unsigned int *eventType,
-		       KeyCode *keyCode,  unsigned int *state);
+		       KeyCode *keyCode, KeySym *pKeySym, unsigned int *state);
 static Boolean ParseEvent (unsigned char **linePP, EventTableEntry *table,
 			   unsigned int *eventType, unsigned int *detail,
 			   unsigned int *state, Boolean *fClick);
@@ -1854,10 +1854,12 @@ static Boolean ParseWmAccelerator (unsigned char **linePP, MenuItem *menuItem)
     unsigned int  eventType;
     unsigned int  state;
     KeyCode       keycode;
+    KeySym        keysym;
     Boolean       status;
 
     menuItem->accelState = 0;
     menuItem->accelKeyCode = 0;
+    menuItem->accelKeySym = NoSymbol;
     menuItem->accelText = NULL;
     status = TRUE;
 
@@ -1882,7 +1884,7 @@ static Boolean ParseWmAccelerator (unsigned char **linePP, MenuItem *menuItem)
 	(*lineP != 'f')  &&
 	(*(lineP+1) != '.'))    /* skip if we have f.xxx WmFunction */
     {
-        if (ParseKeyEvent(&lineP, &eventType, &keycode, &state))
+        if (ParseKeyEvent(&lineP, &eventType, &keycode, &keysym, &state))
         {
             if ((string = (String) XtMalloc 
 		 ((unsigned int) (lineP - *linePP + 1))) == NULL)
@@ -1899,6 +1901,7 @@ static Boolean ParseWmAccelerator (unsigned char **linePP, MenuItem *menuItem)
 	        ProcessAccelText (*linePP, lineP, (unsigned char *) string);
                 menuItem->accelState = state;
                 menuItem->accelKeyCode = keycode;
+                menuItem->accelKeySym = keysym;
                 menuItem->accelText = string;
             }
         }
@@ -3053,7 +3056,9 @@ static void ParseKeySet (WmScreenData *pSD, unsigned char *lineP)
 	 * Parse the key specification.
 	 */
 	bBadKey = False;
-	if (!ParseKeyEvent(&lineP, &eventType, &keySpec->keycode, &keySpec->state))
+	keySpec->keysym = NoSymbol;
+	if (!ParseKeyEvent(&lineP, &eventType, &keySpec->keycode,
+			   &keySpec->keysym, &keySpec->state))
 	{
 	    bBadKey = True;
 	}
@@ -3552,12 +3557,14 @@ Boolean ParseBtnEvent (unsigned char  **linePP,
  *************************************<->***********************************/
 
 Boolean ParseKeyEvent (unsigned char **linePP, unsigned int *eventType,
-		       KeyCode *keyCode,  unsigned int *state)
+		       KeyCode *keyCode, KeySym *pKeySym, unsigned int *state)
 
 
 {
     Boolean      fClick;
     unsigned int keySym = 0;
+
+    if (pKeySym) *pKeySym = NoSymbol;
 
     if (!ParseEvent (linePP, keyEvents, eventType, &keySym, state, &fClick))
     {
@@ -3592,6 +3599,14 @@ Boolean ParseKeyEvent (unsigned char **linePP, unsigned int *eventType,
         }
         *keyCode = XKeysymToKeycode(DISPLAY, (KeySym) keySym);
     }
+
+    /*
+     * Handed back so the caller can keep it. The keycode above is only good
+     * for the keyboard mapping in force right now; the keysym is what the
+     * binding actually names, and is what RefreshKeyBindings() re-resolves
+     * from when the mapping changes.
+     */
+    if (pKeySym) *pKeySym = (KeySym) keySym;
 
     return (*keyCode != 0);
 

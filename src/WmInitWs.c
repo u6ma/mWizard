@@ -159,7 +159,16 @@ static void BuildLockMaskSequence(void)
 
     /*
      * Allocate the space for the mask sequence + terminator.
+     *
+     * Released first: this runs again every time the modifier map changes,
+     * not only at startup.
      */
+    if (wmGD.pLockMaskSequence)
+    {
+	XtFree ((char *) wmGD.pLockMaskSequence);
+	wmGD.pLockMaskSequence = NULL;
+    }
+
     wmGD.pLockMaskSequence = (unsigned int *) 
 			XtCalloc (num_masks+1, sizeof (unsigned int));
 
@@ -240,7 +249,7 @@ static KeySym pksLockingMods[] = {
 
 #define NUM_LOCKING_MODS (sizeof(pksLockingMods)/sizeof(KeySym))
 
-static void SetupLockingModifierMask(void)
+void SetupLockingModifierMask(void)
 {
     int i, j, start_index;
     XModifierKeymap *modifier_map = NULL;

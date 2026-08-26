@@ -48,6 +48,13 @@ void ProcessClickBRelease (XButtonEvent *buttonEvent, ClientData *pCD,
 void PullExposureEvents (void);
 int SetupKeyBindings (KeySpec *keySpecs, Window grabWindow, 
 			     int keyboardMode, long context);
+
+/*
+ * Re-resolves every key binding from its keysym and reinstalls every key
+ * grab. Call on MappingNotify: key grabs are made by keycode, and keycodes
+ * change when the server rebuilds the keyboard map.
+ */
+void RefreshKeyBindings (XMappingEvent *mappingEvent);
 Boolean WmDispatchMenuEvent (XButtonEvent *event);
 Boolean WmDispatchWsEvent (XEvent *event);
 void WmGrabButton (Display *display, unsigned int button, 

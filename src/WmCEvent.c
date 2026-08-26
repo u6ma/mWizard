@@ -494,6 +494,28 @@ Boolean HandleEventsOnSpecialWindows (XEvent *pEvent)
 		HandleRRScreenChangeNotify(pEvent);
 	}
 
+	/*
+	 * The keyboard map changed: re-resolve the key bindings and put the
+	 * grabs back on whatever keycodes the keysyms now live at.
+	 *
+	 * Handled here rather than through an Xt event handler because a
+	 * MappingNotify carries no window -- Xlib leaves xmapping.window at
+	 * zero -- so XtDispatchEvent has nothing to look a widget up by and
+	 * never reaches one. The window manager's own dispatch sees every
+	 * event before that, which is why this works and the handler on
+	 * topLevelW does not.
+	 */
+	if (pEvent->type == MappingNotify) {
+		RefreshKeyBindings (&pEvent->xmapping);
+		/*
+		 * Still handed to the toolkit: Xt keeps its own view of the
+		 * keyboard map for the translation manager that drives the
+		 * Motif widgets on both connections, and refreshes it from
+		 * this event.
+		 */
+		return (True);
+	}
+
     /*
      * The window is not a root window or a client frame window.  Check for
      * a special window manager window.  Have the toolkit dispatch the event

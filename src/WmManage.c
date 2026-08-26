@@ -470,55 +470,11 @@ ManageWindow (WmScreenData *pSD, Window clientWindow, long manageFlags)
     }
 
     /*
-     * Setup key binding handling for system menu accelerators.
+     * Setup key binding handling for system menu accelerators, and for the
+     * icon context, on this client's frame and icon windows.
      */
 
-    if (pCD->systemMenuSpec &&
-        (pCD->systemMenuSpec->accelKeySpecs))
-    {
-	SetupKeyBindings (pCD->systemMenuSpec->accelKeySpecs,
-			  pCD->clientFrameWin, GrabModeSync, F_CONTEXT_ALL);
-
-	for (i = 0; i < pCD->numInhabited; i++)
-	{
-	    if (!pCD->pWsList[i].pIconBox && pCD->pWsList[i].iconFrameWin)
-	    {
-		SetupKeyBindings (pCD->systemMenuSpec->accelKeySpecs,
-			      pCD->pWsList[i].iconFrameWin, GrabModeSync, 
-			      F_CONTEXT_ALL);
-	    }
-	}
-    }
-
-  for (i = 0; i < pCD->numInhabited; i++)
-  {
-    if (!pCD->pWsList[i].pIconBox && pCD->pWsList[i].iconFrameWin)
-    {
-	static int iconKeySpec = 1;
-	static int iconAccelSpec = 1;
-
-        if ((iconKeySpec != 0) && KEY_SPECS(pCD))
-        {
-	    iconKeySpec = SetupKeyBindings (KEY_SPECS(pCD), 
-				pCD->pWsList[i].iconFrameWin,
-				GrabModeSync, F_CONTEXT_ICON);
-        }
-
-        if ((iconAccelSpec != 0) && ACCELERATOR_MENU_COUNT(pCD))
-        {
-	    int n;
-
-	    iconAccelSpec = 0;
-	    for (n= 0; n < pSD->acceleratorMenuCount; n++)
-	    {
-	        iconAccelSpec += SetupKeyBindings (
-			    ACCELERATOR_MENU_SPECS(pCD)[n]->accelKeySpecs,
-			    pCD->pWsList[i].iconFrameWin, GrabModeSync,
-			    F_CONTEXT_ICON);
-	    }
-	}
-    }
-  }
+    SetupClientKeyBindings (pSD, pCD);
 
     /*
      * Setup keyboard focus handling if policy is "explicit".
@@ -1320,6 +1276,101 @@ void FreeIcon (ClientData *pCD)
 
 
 
+/*************************************<->*************************************
+ *
+ *  SetupClientKeyBindings (pSD, pCD)
+ *
+ *
+ *  Description:
+ *  -----------
+ *  Installs the passive key grabs that belong to one client: the system menu
+ *  accelerators on its frame and icon windows, and the icon context bindings
+ *  on the icon windows.
+ *
+ *  Split out of ManageWindow so that RefreshKeyBindings() can reinstall them
+ *  without duplicating the rules. Any grab this window already carries is
+ *  dropped first, which makes the function safe to call again on a client
+ *  that is already managed. XUngrabKey only touches grabs made by this
+ *  client, so it cannot disturb anyone else's.
+ *
+ *
+ *  Inputs:
+ *  ------
+ *  pSD = pointer to screen data
+ *  pCD = pointer to client data
+ *
+ *************************************<->***********************************/
+
+void SetupClientKeyBindings (WmScreenData *pSD, ClientData *pCD)
+{
+    int i;
+
+    if (!pCD) return;
+
+    if (pCD->clientFrameWin)
+    {
+	XUngrabKey (DISPLAY, AnyKey, AnyModifier, pCD->clientFrameWin);
+    }
+
+    for (i = 0; i < pCD->numInhabited; i++)
+    {
+	if (!pCD->pWsList[i].pIconBox && pCD->pWsList[i].iconFrameWin)
+	{
+	    XUngrabKey (DISPLAY, AnyKey, AnyModifier,
+			pCD->pWsList[i].iconFrameWin);
+	}
+    }
+
+    if (pCD->systemMenuSpec &&
+        (pCD->systemMenuSpec->accelKeySpecs))
+    {
+	SetupKeyBindings (pCD->systemMenuSpec->accelKeySpecs,
+			  pCD->clientFrameWin, GrabModeSync, F_CONTEXT_ALL);
+
+	for (i = 0; i < pCD->numInhabited; i++)
+	{
+	    if (!pCD->pWsList[i].pIconBox && pCD->pWsList[i].iconFrameWin)
+	    {
+		SetupKeyBindings (pCD->systemMenuSpec->accelKeySpecs,
+			      pCD->pWsList[i].iconFrameWin, GrabModeSync, 
+			      F_CONTEXT_ALL);
+	    }
+	}
+    }
+
+  for (i = 0; i < pCD->numInhabited; i++)
+  {
+    if (!pCD->pWsList[i].pIconBox && pCD->pWsList[i].iconFrameWin)
+    {
+	static int iconKeySpec = 1;
+	static int iconAccelSpec = 1;
+
+        if ((iconKeySpec != 0) && KEY_SPECS(pCD))
+        {
+	    iconKeySpec = SetupKeyBindings (KEY_SPECS(pCD), 
+				pCD->pWsList[i].iconFrameWin,
+				GrabModeSync, F_CONTEXT_ICON);
+        }
+
+        if ((iconAccelSpec != 0) && ACCELERATOR_MENU_COUNT(pCD))
+        {
+	    int n;
+
+	    iconAccelSpec = 0;
+	    for (n= 0; n < pSD->acceleratorMenuCount; n++)
+	    {
+	        iconAccelSpec += SetupKeyBindings (
+			    ACCELERATOR_MENU_SPECS(pCD)[n]->accelKeySpecs,
+			    pCD->pWsList[i].iconFrameWin, GrabModeSync,
+			    F_CONTEXT_ICON);
+	    }
+	}
+    }
+  }
+
+} /* END OF FUNCTION SetupClientKeyBindings */
+
+
 /*************************************<->*************************************
  *
  *  WithdrawDialog (dialogboxW)

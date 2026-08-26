@@ -46,7 +46,7 @@ Boolean ParseBtnEvent (unsigned char  **linePP,
 void            ParseButtonStr (WmScreenData *pSD, unsigned char *buttonStr);
 void            ParseKeyStr (WmScreenData *pSD, unsigned char *keyStr);
 Boolean ParseKeyEvent (unsigned char **linePP, unsigned int *eventType,
-		       KeyCode *keyCode,  unsigned int *state);
+		       KeyCode *keyCode, KeySym *pKeySym, unsigned int *state);
 MenuItem      * ParseMwmMenuStr (WmScreenData *pSD, unsigned char *menuStr);
 int             ParseWmFunction (unsigned char **linePP, unsigned int res_spec, WmFunction *pWmFunction);
 void            PWarning (char *message);

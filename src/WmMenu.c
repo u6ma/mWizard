@@ -1140,6 +1140,7 @@ Widget CreateMenuWidget (WmScreenData *pSD,
 
 		        accelKeySpec->state = menuItem->accelState;
 		        accelKeySpec->keycode = menuItem->accelKeyCode;
+		        accelKeySpec->keysym = menuItem->accelKeySym;
 		        accelKeySpec->context = topMenuSpec->accelContext;
 		        accelKeySpec->subContext = 0;
 		        accelKeySpec->wmFunction = menuItem->wmFunction;

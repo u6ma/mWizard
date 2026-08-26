@@ -33,3 +33,10 @@ void FreeClientFrame (ClientData *pCD);
 void FreeIcon (ClientData *pCD);
 void WithdrawDialog (Widget dialogboxW);
 void ReManageDialog (WmScreenData *pSD, Widget dialogboxW);
+
+/*
+ * Installs (or reinstalls) the passive key grabs belonging to one client:
+ * system menu accelerators on its frame and icon windows, and icon context
+ * bindings on the icon windows. Safe to call on an already managed client.
+ */
+void SetupClientKeyBindings (WmScreenData *pSD, ClientData *pCD);

@@ -24,6 +24,14 @@
  * Floor, Boston, MA 02110-1301 USA
 */ 
 
+/*
+ * Recomputes the mask of locking modifiers (Caps/Num/Scroll and friends) from
+ * the server's current modifier map. Called at startup and again whenever a
+ * MappingNotify says the modifier map changed, since the mask decides which
+ * modifier combinations every key and button grab is made with.
+ */
+void SetupLockingModifierMask(void);
+
 void InitWmGlobal (int argc, char *argv [], char *environ []);
 void InitWmScreen (WmScreenData *pSD, int sNum);
 void InitWmWorkspace (WmWorkspaceData *pWS, WmScreenData *pSD);

@@ -41,6 +41,7 @@
 #include "WmManage.h"
 #include "WmMenu.h"
 #include "WmICCC.h"
+#include "WmInitWs.h"
 #include "WmProperty.h"
 #include "WmWinInfo.h"
 #include "WmWinState.h"
@@ -161,6 +162,143 @@ void InitEventHandling (void)
 } /* END OF FUNCTION InitEventHandling */
 
 
+/*************************************<->*************************************
+ *
+ *  ReResolveKeySpecs (keySpecs)
+ *
+ *  Points each binding in the list at the keycode its keysym now maps to.
+ *
+ *  A binding is written as a keysym; the keycode is only how the server
+ *  happens to be addressing that keysym at the moment. A binding whose keysym
+ *  has dropped off the map entirely keeps the keycode it had, since there is
+ *  nothing better to put there.
+ *
+ *************************************<->***********************************/
+
+static void ReResolveKeySpecs (KeySpec *keySpecs)
+{
+    KeyCode keycode;
+
+    while (keySpecs)
+    {
+	if (keySpecs->keysym != NoSymbol)
+	{
+	    keycode = XKeysymToKeycode (DISPLAY, keySpecs->keysym);
+	    if (keycode != 0)
+	    {
+		keySpecs->keycode = keycode;
+	    }
+	}
+	keySpecs = keySpecs->nextKeySpec;
+    }
+}
+
+
+/*************************************<->*************************************
+ *
+ *  RefreshKeyBindings (mappingEvent)
+ *
+ *
+ *  Description:
+ *  -----------
+ *  Re-resolves every key binding and reinstalls every key grab after the
+ *  server has told us the keyboard mapping changed.
+ *
+ *  Key grabs are made by keycode, and keycodes belong to the mapping in force
+ *  when the grab was made -- not to the binding. Plugging in a keyboard, or
+ *  running xmodmap or setxkbmap, makes the server rebuild the map and hand
+ *  out different keycodes for the same keysyms. Without this the grabs stay
+ *  on the old keycodes and the bindings silently stop working, which shows up
+ *  first on keys that live on a second device: the media keys on a USB
+ *  keyboard or a headset.
+ *
+ *  Every binding keeps the keysym it was parsed from (KeySpec.keysym), which
+ *  is what makes the re-resolve possible.
+ *
+ *
+ *  Inputs:
+ *  ------
+ *  mappingEvent = the MappingNotify that reported the change
+ *
+ *************************************<->***********************************/
+
+void RefreshKeyBindings (XMappingEvent *mappingEvent)
+{
+    WmScreenData    *pSD;
+    ClientListEntry *pEntry;
+    unsigned int     n;
+    int              scr;
+
+    /*
+     * Xlib caches the keyboard and modifier maps, and every lookup below
+     * reads that cache, so it has to be brought up to date first.
+     */
+    XRefreshKeyboardMapping (mappingEvent);
+
+    /* Nothing here depends on the pointer button mapping. */
+    if (mappingEvent->request == MappingPointer) return;
+
+    /*
+     * The set of locking modifiers decides which modifier combinations each
+     * key is grabbed with, so it has to be recomputed before re-grabbing.
+     */
+    if (mappingEvent->request == MappingModifier)
+    {
+	SetupLockingModifierMask ();
+    }
+
+    for (scr = 0; scr < wmGD.numScreens; scr++)
+    {
+	pSD = &(wmGD.Screens[scr]);
+
+	if (!pSD->managed) continue;
+
+	ReResolveKeySpecs (pSD->keySpecs);
+
+	for (n = 0; n < pSD->acceleratorMenuCount; n++)
+	{
+	    ReResolveKeySpecs (pSD->acceleratorMenuSpecs[n]->accelKeySpecs);
+	}
+
+	/*
+	 * Drop this client's grabs on the root and put them all back. Only
+	 * grabs made by the window manager are affected.
+	 */
+	XUngrabKey (DISPLAY, AnyKey, AnyModifier, pSD->rootWindow);
+
+	if (pSD->keySpecs)
+	{
+	    SetupKeyBindings (pSD->keySpecs, pSD->rootWindow,
+			      GrabModeSync, F_CONTEXT_ALL);
+	}
+
+	for (n = 0; n < pSD->acceleratorMenuCount; n++)
+	{
+	    SetupKeyBindings (pSD->acceleratorMenuSpecs[n]->accelKeySpecs,
+			      pSD->rootWindow, GrabModeSync, F_CONTEXT_ALL);
+	}
+
+	/*
+	 * And the same for the frame and icon windows of every client. A
+	 * client may appear in the list under both its window and its icon
+	 * entry; doing the work twice is harmless, since each pass ungrabs
+	 * before it grabs.
+	 */
+	for (pEntry = pSD->clientList; pEntry; pEntry = pEntry->nextSibling)
+	{
+	    if (!pEntry->pCD) continue;
+
+	    ReResolveKeySpecs (pEntry->pCD->systemMenuSpec ?
+			       pEntry->pCD->systemMenuSpec->accelKeySpecs :
+			       (KeySpec *) NULL);
+
+	    SetupClientKeyBindings (pSD, pEntry->pCD);
+	}
+    }
+
+} /* END OF FUNCTION RefreshKeyBindings */
+
+
 /*************************************<->*************************************
  *
  *  _WmGrabMasks (modifiers, pnum_masks)
