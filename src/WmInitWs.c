@@ -1191,6 +1191,81 @@ void InitWmScreen (WmScreenData *pSD, int sNum)
 
 } /* END OF FUNCTION  InitWmScreen */
 
+
+/*************************************<->*************************************
+ *
+ *  InitWmWorkspace
+ *
+ *
+ *  Description:
+ *  -----------
+ *  This function initializes a workspace data block.
+ *
+ *  Inputs:
+ *  -------
+ *  pWS = pointer to preallocated workspace data block
+ *  pSD = ptr to parent screen data block
+ *
+ *  Outputs:
+ *  -------
+ *************************************<->***********************************/
+
+void InitWmWorkspace (WmWorkspaceData *pWS, WmScreenData *pSD)
+{
+	Arg args[10];
+	int argnum;
+
+	pWS->pSD = pSD;
+	pWS->pIconBox = NULL;
+	pWS->dataType = WORKSPACE_DATA_TYPE;
+	pWS->IPData = NULL;
+
+	pWS->numClients = 0;
+	pWS->sizeClientList = 0;
+	pWS->ppClients = 0;
+	pWS->buttonW = NULL;
+	pWS->keyFocus = NULL;
+	pWS->nextKeyFocus = NULL;
+
+	/*
+	 * Create widget for workspace resource hierarchy
+	 */
+	argnum = 0;
+	XtSetArg (args[argnum], XtNdepth, 
+		DefaultDepth(DISPLAY, pSD->screen));	argnum++;
+	XtSetArg (args[argnum], XtNscreen, 
+		ScreenOfDisplay(DISPLAY, pSD->screen)); 	argnum++;
+	XtSetArg (args[argnum], XtNcolormap, 
+		DefaultColormap(DISPLAY, pSD->screen)); 	argnum++;
+	XtSetArg (args[argnum], XtNwidth,  5);		argnum++;
+	XtSetArg (args[argnum], XtNheight,  5);		argnum++;
+
+	pWS->workspaceTopLevelW = XtCreateWidget (	pWS->name,
+						xmPrimitiveWidgetClass,
+    					pSD->screenTopLevelW,
+						args,
+						argnum);
+
+	/* Window handles required for EWMH virtual roots */
+	XtRealizeWidget(pWS->workspaceTopLevelW);
+
+	/* internalize the workspace name */
+	pWS->id = XInternAtom (DISPLAY, pWS->name, False);
+
+	/*
+	 * Process workspace based resources
+	 */
+	ProcessWorkspaceResources (pWS);	
+
+	/* setup icon placement */
+	if (wmGD.iconAutoPlace)
+	{
+		InitIconPlacement (pWS); 
+	}
+
+} /* END OF FUNCTION  InitWmWorkspace */
+
+
 
 
 /*************************************<->*************************************
