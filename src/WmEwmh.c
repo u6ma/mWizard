@@ -146,6 +146,20 @@ void SetupWmEwmh(void)
 		XChangeProperty(DISPLAY, check_wnd, ewmh_atoms[_NET_WM_NAME],
 			XA_UTF8_STRING, 8, PropModeReplace, (unsigned char*)MWM_NAME,
 			strlen(MWM_NAME));
+
+		/*
+		 * And the same name as WM_NAME.
+		 *
+		 * This window is a VendorShell whose widget name is the screen
+		 * name, which defaults to the screen number, so Motif has already
+		 * published WM_NAME = "0" here. Anything that reads WM_NAME --
+		 * either preferring it, or falling back to it when _NET_WM_NAME
+		 * cannot be read -- then reports the window manager as "0".
+		 * Setting both leaves no path that produces the screen number.
+		 */
+		XChangeProperty(DISPLAY, check_wnd, XA_WM_NAME,
+			XA_STRING, 8, PropModeReplace, (unsigned char*)MWM_NAME,
+			strlen(MWM_NAME));
 	}
 }
 
