@@ -48,6 +48,7 @@
 
 #include "WmGlobal.h"
 #include "WmWinfo.h"
+#include "WmEwmh.h"
 #include "WmSession.h"
 #include "WmFunction.h"
 #include "WmError.h"
@@ -550,4 +551,10 @@ void InitWinfoDialog(void)
     sa.sa_flags = SA_RESTART;
     sa.sa_handler = WinfoSignalHandler;
     (void) sigaction (SIGUSR2, &sa, (struct sigaction *) 0);
+
+    /*
+     * Only now that the handler is installed: the property is what
+     * tells mWand this signal is safe to send. See WmEwmh.h.
+     */
+    AdvertiseWmSignal (MWIZARD_SIGNAL_ABOUT);
 }

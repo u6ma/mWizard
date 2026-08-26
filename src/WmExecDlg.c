@@ -63,6 +63,7 @@
 
 #include "WmGlobal.h"
 #include "WmExecDlg.h"
+#include "WmEwmh.h"
 #include "WmSession.h"
 #include "WmError.h"
 #include "WmXinerama.h"
@@ -403,4 +404,10 @@ void InitExecDialog(void)
     sa.sa_flags = SA_RESTART;
     sa.sa_handler = ExecSignalHandler;
     (void) sigaction (SIGUSR1, &sa, (struct sigaction *) 0);
+
+    /*
+     * Only now that the handler is installed: the property is what
+     * tells mWand this signal is safe to send. See WmEwmh.h.
+     */
+    AdvertiseWmSignal (MWIZARD_SIGNAL_EXEC);
 }

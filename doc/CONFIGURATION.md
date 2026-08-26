@@ -516,7 +516,12 @@ the dialog belongs to the window manager itself, and a window manager that
 closes its own window closes the X connection it is running on.
 
 mWand's "Execute..." item posts this same dialog rather than one of its own —
-see `doc/MWAND.md`.
+see `doc/MWAND.md`. It reaches it by sending `SIGUSR1` to the pid in
+`_NET_WM_PID`, and only after finding the matching bit in `_MWIZARD_SIGNALS`
+on the `_NET_SUPPORTING_WM_CHECK` window. mWizard sets that bit in the same
+function that installs the handler, so it cannot advertise a signal nothing is
+listening for — which matters, because an unhandled `SIGUSR1` terminates the
+process, and a terminated window manager ends the X session.
 
 ---
 
@@ -535,8 +540,10 @@ It is bound out of the box:
 Alt Shift Ctrl<Key>i root|icon|window  f.about
 ```
 
-mWand's Commands menu carries it as "About mWizard...", also out of the box —
-see `doc/MWAND.md`. The shipped root menu has an entry for it commented out,
+mWand's Commands menu carries it as "About mWizard...", also out of the box,
+and the `MWINFO` rc keyword puts it in any of mWand's own menus — see
+`doc/MWAND.md`. Both use `SIGUSR2` and the same `_MWIZARD_SIGNALS` check as
+the Execute dialog above. The shipped root menu has an entry for it commented out,
 since two ways in are usually enough; uncomment it in `DefaultRootMenu` to get
 a third:
 

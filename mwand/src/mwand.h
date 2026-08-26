@@ -54,6 +54,21 @@
 #define _NET_CURRENT_DESKTOP "_NET_CURRENT_DESKTOP"
 
 /* MWM workspace presence atom, used to put mWand on all workspaces */
+/*
+ * Signals mWizard accepts on the pid in _NET_WM_PID, advertised as a CARDINAL
+ * bitmask in _MWIZARD_SIGNALS on the _NET_SUPPORTING_WM_CHECK window.
+ *
+ * Checked before signalling. Without it mWand would send SIGUSR1 or SIGUSR2
+ * to whatever pid it found, and the default action for both is to terminate:
+ * a window manager that is not mWizard, or one built before these handlers
+ * existed, dies on the spot and takes the X session with it.
+ *
+ * mWizard's copy of these definitions is in src/WmEwmh.h; the two must agree.
+ */
+#define _XA_MWIZARD_SIGNALS "_MWIZARD_SIGNALS"
+#define MWIZARD_SIGNAL_EXEC  (1L << 0)	/* SIGUSR1: the Execute dialog */
+#define MWIZARD_SIGNAL_ABOUT (1L << 1)	/* SIGUSR2: mWinfo */
+
 #define _XA_MWM_WORKSPACE_PRESENCE "_MWM_WORKSPACE_PRESENCE"
 #define _XA_MWM_WORKSPACE_ALL "all"
 

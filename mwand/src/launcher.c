@@ -235,11 +235,12 @@ Boolean ConstructMenu(void)
  * what names the thing being asked for, and appears in the message when the
  * window manager cannot provide it.
  */
-static void AskWindowManager(int sig, const char *what)
+static void AskWindowManager(int sig, long capability, const char *what)
 {
 	Display *dpy = XtDisplay(wshell);
 	Window root = RootWindowOfScreen(XtScreen(wshell));
-	Atom xa_check, xa_pid;
+	Atom xa_check, xa_pid, xa_signals;
+	long wm_signals;
 	Atom ret_type;
 	int ret_fmt;
 	unsigned long ret_items, ret_after;
@@ -253,8 +254,14 @@ static void AskWindowManager(int sig, const char *what)
 
 	xa_check = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", True);
 	xa_pid = XInternAtom(dpy, "_NET_WM_PID", True);
+	xa_signals = XInternAtom(dpy, _XA_MWIZARD_SIGNALS, True);
 
-	if(xa_check == None || xa_pid == None) {
+	/*
+	 * True on the interns above: an atom no one has created cannot name a
+	 * property anyone has set, so there is nothing to look for and nothing
+	 * to signal.
+	 */
+	if(xa_check == None || xa_pid == None || xa_signals == None) {
 		MessageDialog(False, msg);
 		return;
 	}
@@ -279,6 +286,35 @@ static void AskWindowManager(int sig, const char *what)
 	}
 	wm_pid = *((long*)data);
 	XFree(data);
+	data = NULL;
+
+	/*
+	 * The last check, and the one that matters: does the window manager say
+	 * it listens for this signal?
+	 *
+	 * Everything above only establishes that something is managing windows
+	 * and what its pid is. Signalling on that alone is what makes this
+	 * dangerous -- SIGUSR1 and SIGUSR2 terminate a process that has not
+	 * installed a handler, so getting it wrong kills the window manager and
+	 * ends the X session. mWizard sets a bit here from the same function
+	 * that installs each handler, so the property cannot promise a signal
+	 * that nothing is listening for; anything else leaves it unset and gets
+	 * the message instead. See mwand.h.
+	 */
+	if(XGetWindowProperty(dpy, wm_window, xa_signals, 0, 1, False,
+		XA_CARDINAL, &ret_type, &ret_fmt, &ret_items, &ret_after, &data)
+		!= Success || !data || !ret_items) {
+		if(data) XFree(data);
+		MessageDialog(False, msg);
+		return;
+	}
+	wm_signals = *((long*)data);
+	XFree(data);
+
+	if(!(wm_signals & capability)) {
+		MessageDialog(False, msg);
+		return;
+	}
 
 	if(kill((pid_t)wm_pid, sig) == -1)
 		MessageDialog(False, "Could not reach the window manager.");
@@ -290,12 +326,12 @@ static void AskWindowManager(int sig, const char *what)
  */
 void ExecuteCommandDialog(void)
 {
-	AskWindowManager(SIGUSR1, "a command prompt");
+	AskWindowManager(SIGUSR1, MWIZARD_SIGNAL_EXEC, "a command prompt");
 }
 
 void AboutWindowManagerDialog(void)
 {
-	AskWindowManager(SIGUSR2, "an About window");
+	AskWindowManager(SIGUSR2, MWIZARD_SIGNAL_ABOUT, "an About window");
 }
 
 /* The MWINFO menu item; the Commands menu reaches the same place. */

@@ -171,8 +171,16 @@ window manager's About window, and is written bare like `SEPARATOR` because
 there is nothing to give it — mWand supplies the label, and asks the window
 manager for the window over the same path the Commands menu uses (see
 `doc/CONFIGURATION.md` §6b). It works in any menu, at any depth, and needs no
-window manager configuration. Nothing breaks if the window manager is not
-mWizard; the item reports that it could not be reached.
+window manager configuration.
+
+Both it and `Execute...` reach mWizard by signalling the pid it publishes in
+`_NET_WM_PID`, and both first check `_MWIZARD_SIGNALS` on the
+`_NET_SUPPORTING_WM_CHECK` window, which mWizard sets from the same code that
+installs each handler. Under any other window manager — or a mWizard too old
+to have the handler — the bit is absent and the item reports that the window
+manager does not provide the window. **This check is not cosmetic:** SIGUSR1
+and SIGUSR2 terminate a process that has no handler for them, so signalling
+without it would kill the window manager and end the X session.
 
 ```
 &Utilities

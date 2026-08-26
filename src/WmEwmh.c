@@ -185,6 +185,34 @@ void SetupWmEwmh(void)
 }
 
 /*
+ * Publishes _MWIZARD_SIGNALS; see the note in WmEwmh.h.
+ *
+ * The bits accumulate, so the property is replaced rather than appended to
+ * and the two callers may run in either order.
+ */
+void AdvertiseWmSignal(unsigned long bit)
+{
+	static unsigned long bits = 0;
+	Atom prop;
+	long value;
+	int i;
+
+	bits |= bit;
+	value = (long) bits;
+
+	prop = XInternAtom(DISPLAY, MWIZARD_SIGNALS_PROPERTY, False);
+
+	for(i = 0; i < wmGD.numScreens; i++){
+		Window check_wnd = XtWindow(wmGD.Screens[i].screenTopLevelW);
+
+		if(check_wnd == None) continue;
+
+		XChangeProperty(DISPLAY, check_wnd, prop, XA_CARDINAL, 32,
+			PropModeReplace, (unsigned char*)&value, 1);
+	}
+}
+
+/*
  * Called by GetClientInfo to set up initial EWMH data for new clients
  */
 void ProcessEwmh(ClientData *pCD)
