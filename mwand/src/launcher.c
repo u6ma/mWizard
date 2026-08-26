@@ -61,6 +61,12 @@ static void exec_dialog_cb(Widget, XtPointer, XtPointer);
 static void menu_command_cb(Widget, XtPointer, XtPointer);
 static void report_exec_error(const char*, const char*, int);
 
+/*
+ * The menu bar built from the rc file. It outlives ConstructMenu(), which
+ * destroys and rebuilds it whenever SIGUSR1 asks for a reload.
+ */
+static Widget wmenu = None;
+
 Boolean ConstructMenu(void)
 {
 	Arg args[10];

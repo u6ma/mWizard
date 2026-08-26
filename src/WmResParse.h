@@ -24,6 +24,30 @@
  * Floor, Boston, MA 02110-1301 USA
 */ 
 
+void ProcessWmFile (WmScreenData *pSD);
+void ProcessCommandLine (int argc,  char *argv[]);
+void ProcessMotifBindings (void);
+void GetActionIndex (int tableSize, int *actionIndex);
+void GetFunctionTableValues (int *execIndex, int *nopIndex, int *actionIndex);
+void GetNopIndex (int tableSize, int *nopIndex);
+void GetExecIndex (int tableSize, int *execIndex);
+void            FreeMenuItem (MenuItem *menuItem);
+
+unsigned char * GetNextLine (void);
+unsigned char * GetString (unsigned char **linePP);
+unsigned int PeekAhead(unsigned char *currentChar,
+		       unsigned int currentLev);
+Boolean ParseBtnEvent (unsigned char  **linePP,
+                              unsigned int *eventType,
+                              unsigned int *button,
+                              unsigned int *state,
+                              Boolean      *fClick);
+
+void            ParseButtonStr (WmScreenData *pSD, unsigned char *buttonStr);
+void            ParseKeyStr (WmScreenData *pSD, unsigned char *keyStr);
+Boolean ParseKeyEvent (unsigned char **linePP, unsigned int *eventType,
+		       KeyCode *keyCode,  unsigned int *state);
+MenuItem      * ParseMwmMenuStr (WmScreenData *pSD, unsigned char *menuStr);
 int             ParseWmFunction (unsigned char **linePP, unsigned int res_spec, WmFunction *pWmFunction);
 void            PWarning (char *message);
 void            SaveMenuAccelerators (WmScreenData *pSD, MenuSpec *newMenuSpec);

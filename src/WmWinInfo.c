@@ -1227,19 +1227,15 @@ ProcessWmNormalHints (ClientData *pCD, Boolean firstTime, long manageFlags)
 		 * configuration. Mwm 1.1 always uses the current conventions.
 		 */
 
-		if (!(pCD->clientFlags & SM_X))
-			pCD->clientX = x;
-		if (!(pCD->clientFlags & SM_Y))
-			pCD->clientY = y;
+		pCD->clientX = x;
+		pCD->clientY = y;
 
 		/*
 		 * Use current conventions for initial window dimensions.
 		 */
 
-		if (!(pCD->clientFlags & SM_WIDTH))
-			pCD->clientWidth = width;
-		if (!(pCD->clientFlags & SM_HEIGHT))
-			pCD->clientHeight = height;
+		pCD->clientWidth = width;
+		pCD->clientHeight = height;
 	}
 	
 	/* Now that client's coordinates are known, obtain the xinerama screen */
@@ -1341,20 +1337,6 @@ ProcessWmNormalHints (ClientData *pCD, Boolean firstTime, long manageFlags)
             pCD->baseWidth = 0;
             pCD->baseHeight = 0;
         }
-    }
-
-    if (firstTime)
-    {
-	if (pCD->clientFlags & SM_WIDTH)
-	{
-	    pCD->clientWidth = ((pCD->clientWidth * pCD->widthInc) +
-				pCD->baseWidth);
-	}
-	if (pCD->clientFlags & SM_HEIGHT)
-	{
-    	    pCD->clientHeight =((pCD->clientHeight * pCD->heightInc) +
-				pCD->baseHeight);
-	}
     }
 
     /*
@@ -2414,7 +2396,6 @@ InitClientPlacement (ClientData *pCD, long manageFlags)
      *     + the window's coming up on the active screen
      *
      * Don't do it if...
-     *     + position specified in DB or by Session Manager
      *     + the user has specified a position
      *     + the window is coming up iconic 
      *     + the window is transient
@@ -2422,7 +2403,6 @@ InitClientPlacement (ClientData *pCD, long manageFlags)
      */
 
     if (wmGD.interactivePlacement && 
-	(!(pCD->clientFlags & (SM_X | SM_Y))) &&
 	!(pCD->sizeFlags & US_POSITION) &&
 	(pCD->clientState != MINIMIZED_STATE) &&
         (manageFlags == MANAGEW_NORMAL) &&
@@ -2454,7 +2434,6 @@ InitClientPlacement (ClientData *pCD, long manageFlags)
 	 */
 
 	if ((manageFlags == MANAGEW_NORMAL) && !interactivelyPlaced &&
-		(!(pCD->clientFlags & (SM_X | SM_Y))) &&
 		!(pCD->sizeFlags & US_POSITION) &&
 		!(pCD->clientFlags & CLIENT_TRANSIENT) &&
 		(pCD->inputMode != MWM_INPUT_SYSTEM_MODAL) && wmGD.clientAutoPlace) {
@@ -2501,18 +2480,15 @@ InitClientPlacement (ClientData *pCD, long manageFlags)
     if (!interactivelyPlaced && !autoPlaced)
     {
 	CalculateGravityOffset (pCD, &xoff, &yoff);
-	if (!(pCD->clientFlags & SM_X))
-	    pCD->clientX += xoff;
-	if (!(pCD->clientFlags & SM_Y))
-	    pCD->clientY += yoff;
+	pCD->clientX += xoff;
+	pCD->clientY += yoff;
     }
 
 
     /*
      * Do PositionOnScreen processing:
      */
-    if (((wmGD.positionOnScreen) && !interactivelyPlaced) &&
-	(!(pCD->clientFlags & (SM_X | SM_Y))))
+    if ((wmGD.positionOnScreen) && !interactivelyPlaced)
     {
 	PlaceFrameOnScreen (pCD, &pCD->clientX, &pCD->clientY,
 	    pCD->clientWidth, pCD->clientHeight);

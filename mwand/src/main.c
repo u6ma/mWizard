@@ -251,8 +251,8 @@ static void set_icon(Widget wshell)
 	XColor fg_color;
 	XColor tmp;
 	
-	#include "xbm/toolbox.xbm"
-	#include "xbm/toolbox_m.xbm"
+	#include "xbm/mwand.xbm"
+	#include "xbm/mwand_m.xbm"
 	
 	pscreen = XDefaultScreenOfDisplay(dpy);
 	screen = XScreenNumberOfScreen(pscreen);
@@ -266,14 +266,14 @@ static void set_icon(Widget wshell)
 	XAllocNamedColor(dpy, cmap, "LightBlue", &bg_color, &tmp);
 	
 	image = XCreatePixmapFromBitmapData(dpy, root,
-		(char*)toolbox_xbm_bits,
-		toolbox_xbm_width, toolbox_xbm_height,
+		(char*)mwand_xbm_bits,
+		mwand_xbm_width, mwand_xbm_height,
 		fg_color.pixel, bg_color.pixel, depth);
 
 	mask = XCreatePixmapFromBitmapData(dpy, root,
-		(char*)toolbox_m_xbm_bits,
-		toolbox_m_xbm_width,
-		toolbox_m_xbm_height, 1, 0, 1);
+		(char*)mwand_m_xbm_bits,
+		mwand_m_xbm_width,
+		mwand_m_xbm_height, 1, 0, 1);
 	
 	XtVaSetValues(wshell, XmNiconPixmap, image, XmNiconMask, mask, NULL);
 }
