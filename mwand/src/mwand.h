@@ -28,6 +28,10 @@
 #define APP_CLASS "MWand"
 #define RC_NAME "mwandrc"
 
+/* The per-user file is ~/.mwandrc; the one installed system wide is named
+ * system.mwandrc, the same way mWizard names system.mwizardrc. */
+#define SYS_RC_NAME "system." RC_NAME
+
 /* EWMH virtual desktop properties. mWizard has a more elaborate interface for
  * dealing with workspaces, but nothing here needs more than indexed
  * switching, and using EWMH means any conforming window manager will do. */

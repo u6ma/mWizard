@@ -540,7 +540,7 @@ char* FindRcFile(void)
 		return NULL;
 	}
 
-	len = 36 + strlen(home) + strlen(RC_NAME);
+	len = 36 + strlen(home) + strlen(SYS_RC_NAME);
 	if(lang) len += strlen(lang);
 
 	path = malloc(len);
@@ -554,10 +554,10 @@ char* FindRcFile(void)
 
 	for(i = 0; sys_paths[i] != NULL; i++){
 		if(lang){
-			snprintf(path, len, "%s/%s/%s", sys_paths[i], lang, RC_NAME);
+			snprintf(path, len, "%s/%s/%s", sys_paths[i], lang, SYS_RC_NAME);
 			if(!access(path,R_OK)) return path;
 		}
-		snprintf(path, len, "%s/%s", sys_paths[i], RC_NAME);
+		snprintf(path, len, "%s/%s", sys_paths[i], SYS_RC_NAME);
 		if(!access(path,R_OK)) return path;
 	}
 

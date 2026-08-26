@@ -70,6 +70,18 @@ Boolean MessageDialog(Boolean confirm, const char *message_str)
 		{(XtCallbackProc)NULL,(XtPointer)NULL}
 	};
 
+	/*
+	 * The rc file is located before the main window is realized, so a
+	 * startup failure reaches this with wshell still windowless. A dialog
+	 * parented on it would carry a WM_TRANSIENT_FOR pointing at a window
+	 * that does not exist, and the window manager cannot frame or place
+	 * that -- which is how a missing rc file shows up as an undecorated
+	 * rectangle instead of a message. Realizing is enough on its own:
+	 * XmNmappedWhenManaged is False, so the empty main window stays hidden
+	 * until main() maps it.
+	 */
+	if(!XtIsRealized(wshell)) XtRealizeWidget(wshell);
+
 	xm_message_str=XmStringCreateLocalized((char*)message_str);
 	xm_title=XmStringCreateLocalized(APP_TITLE);
 
