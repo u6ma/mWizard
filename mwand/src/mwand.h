@@ -66,6 +66,7 @@ struct tb_resources {
 	char *suspend_command;
 	char *reboot_command;
 	char *shutdown_command;
+	char *shell;
 };
 
 extern struct tb_resources app_res;

@@ -56,8 +56,6 @@
 #include "wswitch.h"
 #include "mwand.h"
 
-static void exec_cb(Widget, XtPointer, XtPointer);
-static void exec_dialog_cb(Widget, XtPointer, XtPointer);
 static void menu_command_cb(Widget, XtPointer, XtPointer);
 static void report_exec_error(const char*, const char*, int);
 
@@ -197,100 +195,100 @@ Boolean ConstructMenu(void)
 }
 
 /*
- * Public entry point for the command prompt, so that the command menu in
- * session.c can raise it without reaching for a static callback.
+ * Raises the window manager's Execute dialog.
+ *
+ * The prompt used to live here. It belongs to the window manager: it is
+ * wanted with or without a panel, and mWizard is the process that is always
+ * running. mWand now asks for it rather than carrying a second one.
+ *
+ * The window manager is found the standard EWMH way -- the check window
+ * named by _NET_SUPPORTING_WM_CHECK carries _NET_WM_PID -- and signalled
+ * directly, so this needs no helper program and no private protocol. Under a
+ * window manager that publishes neither, the item simply reports that there
+ * is nothing to ask.
  */
 void ExecuteCommandDialog(void)
 {
-	exec_cb(None, NULL, NULL);
-}
+	Display *dpy = XtDisplay(wshell);
+	Window root = RootWindowOfScreen(XtScreen(wshell));
+	Atom xa_check, xa_pid;
+	Atom ret_type;
+	int ret_fmt;
+	unsigned long ret_items, ret_after;
+	unsigned char *data = NULL;
+	Window wm_window;
+	long wm_pid;
 
-static void exec_cb(Widget w, XtPointer client_data, XtPointer call_data)
-{
-	static Widget wdlg = None;
-	static Widget wtext = None;
-	Arg args[5];
-	int n = 0;
+	xa_check = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", True);
+	xa_pid = XInternAtom(dpy, "_NET_WM_PID", True);
 
-	if(wdlg == None){
-		XmString xm_title;
-		XmString xm_prompt;
-		XtCallbackRec callback[]={
-			{(XtCallbackProc)exec_dialog_cb, (XtPointer) NULL},
-			{(XtCallbackProc)NULL, (XtPointer)NULL}
-		};
-		/* Reset text field's Home/End translations to defaults, since the
-		 * selection box widget overrides them to control the list above,
-		 * which is rather unexpected and not very useful either */
-		char alt_tt_src[] = 
-			":s <Key>osfEndLine: end-of-line(extend)\n"
-			":s <Key>osfBeginLine: beginning-of-line(extend)\n"
-			":<Key>osfEndLine: end-of-line()\n"
-			":<Key>osfBeginLine: beginning-of-line()\n";
-		XtTranslations alt_tt = NULL;
-
-		n = 0;
-		xm_title = XmStringCreateLocalized(APP_TITLE);
-		xm_prompt = XmStringCreateLocalized("Specify a command");
-		XtSetArg(args[n], XmNdialogTitle, xm_title); n++;
-		XtSetArg(args[n], XmNokCallback, callback); n++;
-		XtSetArg(args[n], XmNcancelCallback, callback); n++;
-		XtSetArg(args[n], XmNselectionLabelString, xm_prompt); n++;
-
-		wdlg = XmCreatePromptDialog(wshell, "promptDialog", args, n);
-		XmStringFree(xm_title);
-		XmStringFree(xm_prompt);
-
-		wtext = XmSelectionBoxGetChild(wdlg, XmDIALOG_TEXT);
-		alt_tt = XtParseTranslationTable(alt_tt_src);
-		if(alt_tt) XtOverrideTranslations(wtext, alt_tt);
-
-		XtUnmanageChild(XmSelectionBoxGetChild(wdlg, XmDIALOG_HELP_BUTTON));
-	} else {
-		char *text;
-		size_t len;
-		
-		text = XmTextFieldGetString(wtext);
-		if( (len = strlen(text)) ) {
-			XmTextFieldSetSelection(wtext, 0, len,
-				XtLastTimestampProcessed(XtDisplay(wtext)));
-		}
-		XtFree(text);
-	}
-	XtManageChild(wdlg);
-}
-
-static void exec_dialog_cb(Widget w, XtPointer client_data, XtPointer call_data)
-{
-	char *command;
-	char *exp_cmd;
-	int errval;
-	XmSelectionBoxCallbackStruct *cbs=
-		(XmSelectionBoxCallbackStruct*)call_data;
-
-	if(cbs->reason == XmCR_CANCEL) return;
-
-	command = (char*)XmStringUnparse(cbs->value, NULL, 0,
-			XmCHARSET_TEXT, NULL, 0, XmOUTPUT_ALL);
-	if(!command) return;
-
-	if(!strlen(command)) {
-		XtFree(command);
+	if(xa_check == None || xa_pid == None) {
+		MessageDialog(False, "The window manager does not provide "
+			"a command prompt.");
 		return;
 	}
 
-	errval = expand_env_vars(command, &exp_cmd);
-	XtFree(command);
-
-	if(errval) {
-		report_exec_error("Failed to parse command string", command, errval);
+	if(XGetWindowProperty(dpy, root, xa_check, 0, 1, False, XA_WINDOW,
+		&ret_type, &ret_fmt, &ret_items, &ret_after, &data) != Success
+		|| !data || !ret_items) {
+		if(data) XFree(data);
+		MessageDialog(False, "No EWMH window manager is running.");
 		return;
 	}
+	wm_window = *((Window*)data);
+	XFree(data);
+	data = NULL;
 
-	if((errval = RunCommand(exp_cmd)))
-		report_exec_error("Error executing command", exp_cmd, errval);
-		
-	free(exp_cmd);
+	if(XGetWindowProperty(dpy, wm_window, xa_pid, 0, 1, False, XA_CARDINAL,
+		&ret_type, &ret_fmt, &ret_items, &ret_after, &data) != Success
+		|| !data || !ret_items) {
+		if(data) XFree(data);
+		MessageDialog(False, "The window manager does not provide "
+			"a command prompt.");
+		return;
+	}
+	wm_pid = *((long*)data);
+	XFree(data);
+
+	if(kill((pid_t)wm_pid, SIGUSR1) == -1)
+		MessageDialog(False, "Could not reach the window manager.");
+}
+
+/*
+ * Runs a command through the shell named by the "shell" setting.
+ *
+ * Unset by default, in which case RunCommand() splits the command itself and
+ * execs it directly -- which is what mWand has always done, and keeps a
+ * stray metacharacter in a menu entry from being interpreted. Setting it
+ * hands the string to a shell instead, so the Execute dialog accepts
+ * pipelines, redirection, "&" and $VAR the same way mWizard's f.exec does.
+ */
+static int RunCommandInShell(const char *shell, const char *cmd_spec)
+{
+	pid_t pid;
+	const char *shellname;
+	volatile int errval = 0;
+
+	shellname = strrchr(shell, '/');
+	shellname = shellname ? (shellname + 1) : shell;
+
+	pid = vfork();
+	if(pid == 0) {
+		setsid();
+
+		/*
+		 * execlp rather than execl: a shell named without a path -- an
+		 * rc file saying "shell bash" -- has to be found on PATH.
+		 */
+		if(execlp(shell, shellname, "-c", cmd_spec, (char*)NULL) == (-1))
+			errval = errno;
+
+		_exit(127);
+	} else if(pid == -1) {
+		errval = errno;
+	}
+
+	return errval;
 }
 
 int RunCommand(const char *cmd_spec)
@@ -304,7 +302,10 @@ int RunCommand(const char *cmd_spec)
 	size_t argv_size = 0;
 	unsigned int argc = 0;
 	volatile int errval = 0;
-	
+
+	if(app_res.shell && *app_res.shell)
+		return RunCommandInShell(app_res.shell, cmd_spec);
+
 	str = strdup(cmd_spec);
 
 	p = str;

@@ -205,6 +205,7 @@ does in detail; this is the index.
 | `lockCommand` | command | *(empty)* |
 | `lockTimeout` | minutes | `0` (disabled) |
 | `trayCommand` | command | *(empty)* |
+| `execShell` | shell path | *(empty)* |
 
 See sections 6, 7 and 8.
 
@@ -246,6 +247,35 @@ Programs mWizard starts inherit these; programs your session file started
 before mWizard do not. mWand is normally in the second group, so it reads its
 own `Variables` block from `~/.mwandrc` — see `doc/MWAND.md`. Export them from
 `~/.xinitrc` instead and both pick them up, and you can drop both blocks.
+
+---
+
+## 3b. The `Startup` block
+
+Programs to run when the session starts, so they need not go in `~/.xinitrc`:
+
+```
+Startup
+{
+    dunst
+!   mwand
+}
+```
+
+One command per line — a whole command line, not a name and a value, so
+quoting is optional. They run through the same shell as `f.exec`, after the
+window manager is ready to manage what they map, and with the `Variables`
+block already in effect.
+
+**Skipped on `f.restart`.** A restart re-execs the window manager while its
+clients keep running, so running these again would leave a second copy of
+everything. mWizard knows it restarted from the `_MOTIF_WM_INFO` property the
+previous instance left on the root window — the same reason `trayCommand`
+checks the tray selection before starting one.
+
+Nothing here is a substitute for the session file itself: a command that must
+run *before* the window manager, such as a wallpaper setter you want painted
+first, still belongs in `~/.xinitrc`.
 
 ---
 
@@ -386,6 +416,35 @@ Menu DefaultRootMenu
     "Shut Down..."  f.shutdown
 }
 ```
+
+---
+
+## 6a. The Execute dialog
+
+`f.run` posts a prompt for a command to run:
+
+```
+Alt<Key>F1 root|icon|window  f.run
+"Execute..."                 f.run
+```
+
+The command is run the same way an `f.exec` string is, so `Variables`,
+pipelines and `&` all work. The dialog keeps the last command, so raising it
+again and pressing Return repeats it.
+
+mWand's "Execute..." item posts this same dialog rather than one of its own —
+see `doc/MWAND.md`.
+
+### Which shell runs commands
+
+`execShell` names the shell used for `f.exec`, the Execute dialog, the
+`Startup` block, and the session and tray commands. Left empty it falls back
+to `$WMSHELL`, then `$SHELL`, then `/bin/sh`.
+
+Worth setting to `/bin/sh` if your login shell is a slow interactive one: a
+fresh copy is started for every command, sourcing whatever your profile does
+each time. It takes precedence over both environment variables so the rc file
+can settle this without you having to change your login shell.
 
 ---
 

@@ -34,6 +34,12 @@ Settings
 	# labelled "Commands" instead.
 	sessionMenu          True
 
+	# Shell used to run menu commands. Unset by default, in which case a
+	# command is split here and exec'd directly -- no pipes, no "&", and a
+	# stray metacharacter in a menu entry stays literal. Set it to run
+	# commands through a shell instead, the way mWizard's f.exec does.
+	# shell              /bin/sh
+
 	# Commands the session menu runs. An entry with an empty command is not
 	# shown at all, so leave one blank to hide it. Logout, reboot and
 	# shutdown ask for confirmation first.

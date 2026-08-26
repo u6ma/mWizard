@@ -68,6 +68,7 @@
 #include "stdio.h"
 #include "WmResParse.h"
 #include "WmSession.h"
+#include "WmExecDlg.h"
 #include "WmSettings.h"
 #include "WmXmP.h"
 #include "WmXinerama.h"
@@ -890,7 +891,9 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
 	InitKeyboardFocus();
 	InitWmDisplayEnv();
 	InitIdleLock();
+	InitExecDialog();
 	InitSystemTray();
+	RunStartupCommands();
 	
 	ShowWaitState (FALSE);
 

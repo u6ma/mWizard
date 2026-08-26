@@ -1768,6 +1768,7 @@ typedef struct _WmGlobalData
     String	suspendCommand;			/* resource */
     String	lockCommand;			/* resource */
     String	trayCommand;			/* resource */
+    String	execShell;			/* resource */
     int		lockTimeout;			/* resource, minutes; 0 disables */
     Boolean     raiseKeyFocus;                  /* resource */
     Boolean     multiScreen;                  	/* resource */

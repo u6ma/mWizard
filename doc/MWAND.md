@@ -188,6 +188,15 @@ stays active and the error is reported.
 
 ## 5. The session menu
 
+> **"Execute..." is the window manager's dialog.** mWand used to carry its own
+> command prompt; it now asks mWizard to post one, since a run prompt is
+> wanted with or without a panel. mWand finds the window manager through
+> `_NET_SUPPORTING_WM_CHECK` and signals the pid in `_NET_WM_PID`, so it needs
+> no helper program — but under a window manager that publishes neither, the
+> item reports that there is nothing to ask. Bind `f.run` in `~/.mwizardrc` to
+> reach the same dialog from the keyboard.
+
+
 The command menu always holds **Execute...**, which prompts for a command to
 run. With `sessionMenu True` it also holds the session actions and is labelled
 *Session*; with `sessionMenu False` it holds only Execute and is labelled

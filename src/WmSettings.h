@@ -50,6 +50,12 @@
 void LoadRcSettings(void);
 
 /*
+ * Runs the commands from the rc file's Startup block. Call once the window
+ * manager is ready to manage clients; does nothing on a restart.
+ */
+void RunStartupCommands(void);
+
+/*
  * True if a top-level rc keyword names a block that LoadRcSettings has
  * already consumed, so that the main rc parse knows to skip over it.
  */

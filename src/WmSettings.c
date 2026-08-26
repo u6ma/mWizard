@@ -15,19 +15,31 @@
 #include "WmResource.h"
 #include "WmResParse.h"
 #include "WmError.h"
+#include "WmSession.h"
 
 #define SETTINGS_KEYWORD	"settings"
 #define CLIENT_KEYWORD		"client"
 #define WORKSPACE_KEYWORD	"workspace"
 #define VARIABLES_KEYWORD	"variables"
+#define STARTUP_KEYWORD		"startup"
 
 /* Which resource tables a block's names are validated against. */
 typedef enum {
     BLOCK_SETTINGS,	/* global and per-screen behaviour */
     BLOCK_CLIENT,	/* per-client behaviour */
     BLOCK_WORKSPACE,	/* per-workspace */
-    BLOCK_VARIABLES	/* command variables, exported to the environment */
+    BLOCK_VARIABLES,	/* command variables, exported to the environment */
+    BLOCK_STARTUP	/* commands to run once the window manager is up */
 } BlockKind;
+
+/*
+ * Commands from the Startup block, collected here and run later by
+ * RunStartupCommands(). They are not run as they are read: the rc file is
+ * scanned before the screens are managed, and a client that maps in that
+ * window would race the window manager.
+ */
+static char **startupCmds = NULL;
+static int    numStartupCmds = 0;
 
 #define RC_LINE_MAX		(MAXWMPATH + 1)
 
@@ -210,12 +222,70 @@ static Boolean SplitEntry(char *line, char **namep, char **valuep)
     return (True);
 }
 
+/*
+ * Records one entry of the Startup block.
+ *
+ * Unlike every other block here an entry is a whole command line rather than
+ * a name and a value, so it is taken as it stands -- quoting it is optional
+ * and only matters for leading or trailing spaces.
+ */
+static void AddStartupCommand(char *cmd)
+{
+    size_t len;
+
+    len = strlen (cmd);
+    if (len >= 2 && cmd[0] == '"' && cmd[len-1] == '"')
+    {
+	cmd[len-1] = '\0';
+	cmd++;
+    }
+    if (!*cmd) return;
+
+    startupCmds = (char **) XtRealloc ((char *)startupCmds,
+				       (numStartupCmds + 1) * sizeof(char *));
+    startupCmds[numStartupCmds++] = XtNewString (cmd);
+}
+
+/*
+ * Runs the Startup block, once the window manager is ready to manage what
+ * those commands map.
+ *
+ * Skipped on a restart. f.restart re-execs the window manager while its
+ * clients keep running, so running these again would leave a second copy of
+ * everything -- the same reason InitSystemTray() checks the tray selection
+ * first. wmRestarted is set from the _MOTIF_WM_INFO property the previous
+ * instance left on the root window.
+ */
+void RunStartupCommands(void)
+{
+    int i;
+
+    if (wmGD.wmRestarted) return;
+
+    for (i = 0; i < numStartupCmds; i++)
+    {
+	if (!SpawnCommand (startupCmds[i]))
+	{
+	    const char fmt[] = "could not run startup command \"%s\".";
+	    size_t len;
+	    char *msg;
+
+	    len = snprintf (NULL, 0, fmt, startupCmds[i]);
+	    msg = XtMalloc (len + 1);
+	    sprintf (msg, fmt, startupCmds[i]);
+	    Warning (msg);
+	    XtFree (msg);
+	}
+    }
+}
+
 Boolean IsSettingsKeyword(const char *keyword)
 {
     return (!strcmp (keyword, SETTINGS_KEYWORD) ||
 	    !strcmp (keyword, CLIENT_KEYWORD) ||
 	    !strcmp (keyword, WORKSPACE_KEYWORD) ||
-	    !strcmp (keyword, VARIABLES_KEYWORD));
+	    !strcmp (keyword, VARIABLES_KEYWORD) ||
+	    !strcmp (keyword, STARTUP_KEYWORD));
 }
 
 
@@ -288,6 +358,12 @@ static void HandleSegment(ScanState *st, char *seg)
 	    st->pendingKind = BLOCK_VARIABLES;
 	    st->pendingPrefix[0] = '\0';
 	}
+	else if (!strcmp (first, STARTUP_KEYWORD))
+	{
+	    st->pending = True;
+	    st->pendingKind = BLOCK_STARTUP;
+	    st->pendingPrefix[0] = '\0';
+	}
 	else if ((!strcmp (first, CLIENT_KEYWORD) ||
 		  !strcmp (first, WORKSPACE_KEYWORD)) && *rest)
 	{
@@ -314,6 +390,12 @@ static void HandleSegment(ScanState *st, char *seg)
     }
 
     if (!st->inBlock || st->depth != 1) return;
+
+    if (st->kind == BLOCK_STARTUP)
+    {
+	AddStartupCommand (seg);
+	return;
+    }
 
     if (!SplitEntry (seg, &name, &value)) return;
 

@@ -64,6 +64,7 @@
 #include "WmWinList.h"
 #include "WmWinState.h"
 #include "WmSession.h"
+#include "WmExecDlg.h"
 #include "WmEwmh.h"
 #include "WmXmP.h"
 
@@ -2515,6 +2516,17 @@ Boolean F_Resize (String args, ClientData *pCD, XEvent *event)
  *  manager.
  *
  *************************************<->***********************************/
+
+/*
+ * f.run -- posts the Execute dialog.
+ *
+ * The dialog itself lives in WmExecDlg.c; this is only the rc binding for it.
+ */
+Boolean F_Run (String args, ClientData *pCD, XEvent *event)
+{
+    PostExecDialog ();
+    return (False);
+}
 
 Boolean F_Restart (String args, ClientData *pCD, XEvent *event)
 {

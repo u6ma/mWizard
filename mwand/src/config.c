@@ -97,6 +97,9 @@ XtResource xrdb_resources[]={
 	{ "shutdownCommand","ShutdownCommand",XmRString,sizeof(String),
 		RES_FIELD(shutdown_command),XmRImmediate,
 		(XtPointer)"systemctl poweroff"
+	},
+	{ "shell","Shell",XmRString,sizeof(String),
+		RES_FIELD(shell),XmRImmediate,(XtPointer)NULL
 	}
 };
 

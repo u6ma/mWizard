@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <math.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
@@ -99,6 +100,7 @@ static char *ewmh_atom_names[_NUM_EWMH_ATOMS]={
 /* Initialized in SetupEwhm() */
 static Atom ewmh_atoms[_NUM_EWMH_ATOMS];
 static Atom XA_UTF8_STRING;
+static Atom XA_NET_WM_PID;
 
 /*
  * Initializes data and sets up root window properties for EWMH support.
@@ -109,6 +111,7 @@ void SetupWmEwmh(void)
 
 	XInternAtoms(DISPLAY, ewmh_atom_names, _NUM_EWMH_ATOMS, False, ewmh_atoms);
 	XA_UTF8_STRING = XInternAtom(DISPLAY, "UTF8_STRING", False);
+	XA_NET_WM_PID = XInternAtom(DISPLAY, "_NET_WM_PID", False);
 
 	/* Add root properties indicating what EWMH protocols we support */
 	for(i = 0; i < wmGD.numScreens; i++){
@@ -160,6 +163,24 @@ void SetupWmEwmh(void)
 		XChangeProperty(DISPLAY, check_wnd, XA_WM_NAME,
 			XA_STRING, 8, PropModeReplace, (unsigned char*)MWM_NAME,
 			strlen(MWM_NAME));
+
+		/*
+		 * Our process id, so that a program which found this window can
+		 * signal us. mWand uses it to raise the Execute dialog, and it
+		 * is what any EWMH client expects to find on a check window.
+		 *
+		 * Interned separately rather than added to the ewmh_atoms table:
+		 * everything in that table is advertised in _NET_SUPPORTED, and
+		 * listing _NET_WM_PID there would claim we do something with the
+		 * property on client windows, which we do not.
+		 */
+		{
+			long pid = (long) getpid();
+
+			XChangeProperty(DISPLAY, check_wnd, XA_NET_WM_PID,
+				XA_CARDINAL, 32, PropModeReplace,
+				(unsigned char*)&pid, 1);
+		}
 	}
 }
 

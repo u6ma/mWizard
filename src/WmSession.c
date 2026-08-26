@@ -72,9 +72,17 @@ Boolean SpawnCommand(const char *command)
 	RestoreDefaultSignalHandlers ();
 
 	/*
-	 * Exec the command using $WMSHELL if set, or $SHELL, or sh.
+	 * Exec the command using the execShell resource if set, then
+	 * $WMSHELL, then $SHELL, then sh.
+	 *
+	 * execShell comes first because it is the one an rc file can state:
+	 * $SHELL is whatever the login shell happens to be, which on many
+	 * systems is an interactive shell that sources a profile on every
+	 * f.exec, and the rc file should be able to say "use /bin/sh" without
+	 * the user having to change their login shell.
 	 */
-	if (((shell = getenv ("WMSHELL")) != NULL) ||
+	if (((shell = wmGD.execShell) != NULL && *shell) ||
+	    ((shell = getenv ("WMSHELL")) != NULL) ||
 	    ((shell = getenv ("SHELL")) != NULL))
 	{
 	    shellname = strrchr (shell, '/');

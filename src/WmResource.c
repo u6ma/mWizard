@@ -544,6 +544,16 @@ XtResource wmGlobalResources[] =
     },
 
     {
+	WmNexecShell,
+	WmCExecShell,
+	XtRString,
+	sizeof (String),
+	XtOffsetOf(WmGlobalData, execShell),
+	XtRString,
+	(XtPointer)NULL
+    },
+
+    {
 	WmNlockTimeout,
 	WmCLockTimeout,
 	XtRInt,

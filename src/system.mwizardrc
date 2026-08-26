@@ -20,10 +20,32 @@ Variables
 	EDITOR		nedit
 }
 
+! Programs to run at startup.
+!
+! One command per line, run once the window manager is ready to manage what
+! they map -- so this replaces adding them to ~/.xinitrc. Commands go through
+! the same shell as f.exec, so "$TERMINAL", pipelines and "&" all work, and
+! the Variables block above is already in effect.
+!
+! Skipped on f.restart. A restart re-execs the window manager while its
+! clients keep running, so running these again would leave a second copy of
+! everything.
+Startup
+{
+	! Notification daemon. A dunst configuration matching the Motif colors
+	! is installed as /etc/X11/dunstrc; copy it to ~/.config/dunst/dunstrc.
+	! Harmless if dunst is not installed -- the command simply fails.
+	dunst
+
+	! The launcher panel, if you built it with "make mwand".
+!	mwand
+}
+
 ! Root Menu
 Menu DefaultRootMenu
 {
 	"Main Menu"		f.title
+	"Execute..."		f.run
 	"New Terminal"		f.exec "$TERMINAL &"
 	"Web Browser"		f.exec "$BROWSER &"
 	"Text Editor"		f.exec "$EDITOR &"
@@ -97,14 +119,12 @@ Keys DefaultKeyBindings
 	! Terminal
 	Alt Shift<Key>Return root|icon|window	f.exec "$TERMINAL &"
 
-	! The command prompt. mWizard has no run dialog of its own, so this
-	! signals mWand, which raises its "Execute..." window. Does nothing if
-	! mWand is not running.
+	! The command prompt.
 	!
 	! F1 rather than the more usual F2: the window menu above already binds
 	! Alt<Key>F2 to f.workspace_presence, and menu accelerators are grabbed
 	! the same way these are.
-	Alt<Key>F1 root|icon|window		f.exec "pkill -USR2 -x mwand"
+	Alt<Key>F1 root|icon|window		f.run
 
 	! Media and other XF86 keys.
 	!
@@ -191,6 +211,15 @@ Settings
 	! Bind f.exec to the same command to lock on demand.
 	lockCommand		""
 	lockTimeout		0
+
+	! Shell used to run commands -- f.exec, the Execute dialog, the session
+	! and tray commands, and the Startup block above. Empty uses $WMSHELL,
+	! then $SHELL, then /bin/sh.
+	!
+	! Worth setting to /bin/sh if your login shell is a slow interactive
+	! one: it is started afresh for every command, sourcing whatever your
+	! profile does each time.
+	execShell		""
 
 	! System tray. mWizard has none of its own; this runs whichever one you
 	! prefer, at startup, and skips it if a tray is already running. Empty
