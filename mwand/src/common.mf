@@ -9,11 +9,14 @@ mwand_libs = -lXm -lXt -lX11
 mwand_objs = main.o launcher.o switcher.o clock.o session.o \
 	dialogs.o config.o rcparse.o wswitch.o common.o
 
+mwand_hdrs = common.h mwand.h rcparse.h wswitch.h wswitchp.h
+
 mwand: $(mwand_objs)
 	$(CC) -o $@ $(LDFLAGS) $(LIBDIRS) $(mwand_objs) $(mwand_libs)
 
-.depend:
-	$(CC) -MM $(INCDIRS) $(mwand_objs:.o=.c) > $@
+# Every object depends on every header; see the same rule in ../../src/common.mf
+# for why this replaced a generated .depend rather than being added alongside it.
+$(mwand_objs): $(mwand_hdrs)
 
 .PHONY: clean install common_install uninstall
 
@@ -35,4 +38,3 @@ uninstall:
 
 clean:
 	-rm -f $(mwand_objs) mwand
-	-rm -f .depend

@@ -20,17 +20,41 @@ mwm_objs = \
 	WmPresence.o WmWrkspace.o WmXinerama.o WmEwmh.o WmExecDlg.o \
 	WmWinfo.o
 
+mwm_hdrs = \
+	WmBitmap.h WmCDecor.h WmCDInfo.h WmCEvent.h WmCmd.h WmColormap.h \
+	WmCPlace.h WmDebug.h WmError.h WmEvent.h WmEwmh.h WmExecDlg.h \
+	WmFeedback.h WmFunction.h WmGlobal.h WmGraphics.h WmIBitmap.h \
+	WmICCC.h WmIconBox.h WmIDecor.h WmImage.h WmInitWs.h WmIPlace.h \
+	WmKeyFocus.h WmManage.h WmMenu.h WmPresence.h WmProperty.h \
+	WmProtocol.h WmResCvt.h WmResNames.h WmResource.h WmResParse.h \
+	WmSession.h WmSettings.h WmSignal.h WmWinConf.h WmWinfo.h \
+	WmWinInfo.h WmWinList.h WmWinState.h WmWrkspace.h WmXinerama.h \
+	WmXmP.h
+
 mwizard: $(mwm_objs)
 	$(CC) $(LDFLAGS) $(LIBDIRS) -o $@ $(mwm_objs) $(SYSLIBS)
 
-.depend:
-	$(CC) -MM $(INCDIRS) $(mwm_objs:.o=.c) > $@
+# Every object depends on every header.
+#
+# Coarse on purpose. This replaces a generated .depend, which was wired up on
+# two of the six platform makefiles, was written without $(DEFINES) so it did
+# not see conditional includes, and -- having no prerequisites of its own --
+# was never regenerated once it existed. The failure it caused is a quiet one:
+# a header changes, make rebuilds nothing, and the binary keeps the old value
+# compiled into it. Editing MWM_VERSION in WmGlobal.h and finding the About
+# window still naming the previous release is what it looks like.
+#
+# The cost is that touching one header rebuilds all of them, which on a
+# program this size is a few seconds. It is a plain prerequisite list, so it
+# works under BSD make and GNU make alike and there is nothing to generate --
+# but it does have to be kept in step with the headers, the same way mwm_objs
+# is kept in step with the sources.
+$(mwm_objs): $(mwm_hdrs)
 
 .PHONY: clean install common_install install-goodies uninstall-goodies
 
 clean:
 	-rm -f $(mwm_objs) $(wsm_objs) mwizard
-	-rm .depend
 
 common_install:
 	install -m 755 mwizard $(PREFIX)/bin/mwizard
