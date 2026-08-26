@@ -28,10 +28,20 @@ GOODIES_BLD = goodies/build
 # NOTE: every target here must be declared explicitly. The .DEFAULT rule at
 # the bottom treats any unknown target as a platform name and fails.
 
+# Guarded the same way install-goodies is. src/ has no makefile until a
+# platform one has been symlinked there, and installing before building fails
+# inside install(1) on a missing binary; neither error names the real problem.
+# mWand's equivalents are guarded in mwand/Makefile.
+
 install:
+	@if [ ! -x src/mwizard ]; then \
+		echo "mWizard is not built. Run 'make' first." && exit 1; fi
 	$(MAKE) -C src install
 
 uninstall:
+	@if [ ! -e src/Makefile ]; then \
+		echo "No platform makefile selected, so the install paths are" && \
+		echo "unknown. Run 'make' first." && exit 1; fi
 	$(MAKE) -C src uninstall
 
 clean:

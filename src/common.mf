@@ -57,6 +57,7 @@ clean:
 	-rm -f $(mwm_objs) $(wsm_objs) mwizard
 
 common_install:
+	install -m 755 -d $(PREFIX)/bin
 	install -m 755 mwizard $(PREFIX)/bin/mwizard
 	install -m 755 -d $(MANDIR)/man1
 	install -m 644 mwizard.1 $(MANDIR)/man1/mwizard.1
