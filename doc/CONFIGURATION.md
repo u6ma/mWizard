@@ -1,6 +1,7 @@
 # Configuring mWizard
 
-mWizard is configured from **one file**: `~/.mwizardrc`.
+motifWizard, abbreviated mWizard, is configured from **one file**:
+`~/.mwizardrc`.
 
 EMWM split configuration in two. Key bindings, mouse bindings and menus lived
 in `~/.emwmrc`, while every behaviour knob — focus policy, window placement,
@@ -438,6 +439,37 @@ closes its own window closes the X connection it is running on.
 
 mWand's "Execute..." item posts this same dialog rather than one of its own —
 see `doc/MWAND.md`.
+
+---
+
+## 6b. mWinfo, the About window
+
+`f.about` posts **mWinfo**: the name of the window manager spelled out, the
+version and release name it is running, a short notice naming the copyrights
+and licenses, and the address of the project page. `f.mwinfo` is an alias for
+the same function.
+
+It is bound out of the box:
+
+```
+Alt Shift Ctrl<Key>i root|icon|window  f.about
+```
+
+mWand's Commands menu carries it as "About mWizard...", also out of the box —
+see `doc/MWAND.md`. The shipped root menu has an entry for it commented out,
+since two ways in are usually enough; uncomment it in `DefaultRootMenu` to get
+a third:
+
+```
+"About mWizard..."      f.about
+```
+
+Unlike the Execute dialog, mWinfo is an ordinary window: move it, resize it,
+and close it from its frame like anything else. The **Project Page** button
+hands the address to `xdg-open`; if that is not installed the address is still
+on screen in a field you can select and copy from.
+
+---
 
 ### Which shell runs commands
 

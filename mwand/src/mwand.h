@@ -24,6 +24,13 @@
 #include <Xm/Xm.h>
 
 #define APP_TITLE "mWand"
+
+/*
+ * The name spelled out. APP_TITLE is the short form and is what goes in the
+ * title bar, which on a panel this narrow has no room for anything longer;
+ * this is for the places that introduce the program.
+ */
+#define APP_FULL_TITLE "motifWand"
 #define APP_NAME "mwand"
 #define APP_CLASS "MWand"
 #define RC_NAME "mwandrc"
@@ -90,6 +97,7 @@ char* FindRcFile(void);
 /* launcher.c */
 Boolean ConstructMenu(void);
 void ExecuteCommandDialog(void);
+void AboutWindowManagerDialog(void);
 int RunCommand(const char *cmd_spec);
 
 /* switcher.c */

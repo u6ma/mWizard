@@ -46,6 +46,10 @@ Menu DefaultRootMenu
 {
 	"Main Menu"		f.title
 	"Execute..."		f.run
+	! mWinfo, the About window. Off here by default because it is already
+	! on Alt Shift Ctrl<Key>i and in mWand's Commands menu; uncomment to
+	! have it in the root menu as well.
+!	"About mWizard..."	f.about
 	"New Terminal"		f.exec "$TERMINAL &"
 	"Web Browser"		f.exec "$BROWSER &"
 	"Text Editor"		f.exec "$EDITOR &"
@@ -125,6 +129,9 @@ Keys DefaultKeyBindings
 	! Alt<Key>F2 to f.workspace_presence, and menu accelerators are grabbed
 	! the same way these are.
 	Alt<Key>F1 root|icon|window		f.run
+
+	! mWinfo: the name, the version, the licenses and the project page.
+	Alt Shift Ctrl<Key>i root|icon|window	f.about
 
 	! Media and other XF86 keys.
 	!

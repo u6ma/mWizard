@@ -1,6 +1,7 @@
 .TH mWand 1
 .SH "NAME"
-\fBmwand\fP \(em application launcher, workspace switcher and clock for mWizard
+\fBmwand\fP \(em motifWand, an application launcher, workspace switcher and
+clock for motifWizard
 .SH "SYNOPSIS"
 .PP
 \fBmwand\fP [\fI-rcfile\fP \fBfile\fP] [\fI-title\fP \fBtitle\fP]
@@ -8,7 +9,8 @@
 [\fI-version\fP]
 .SH "DESCRIPTION"
 .PP
-\fBmwand\fP is a small panel holding user defined launcher menus, a workspace
+\fBmotifWand\fP, abbreviated \fBmWand\fP and invoked as \fBmwand\fP, is a small
+panel holding user defined launcher menus, a workspace
 switcher, a clock, and optionally a menu of session commands\&. It is an
 optional companion to \fBmwizard\fP(1) and is built and installed separately\&.
 .PP
@@ -103,6 +105,16 @@ other title\&.
 .IP "\fBSIGUSR1\fP" 10
 Re-read the configuration file\&. On a parse error the previous configuration
 stays active and the error is reported\&.
+.SH "WINDOW MANAGER UTILITIES"
+.PP
+The Commands menu carries two items that belong to the window manager rather
+than to \fBmWand\fP: \fBExecute\&.\&.\&.\fP, a prompt for a command to run,
+and \fBAbout mWizard\&.\&.\&.\fP, which posts \fBmWinfo\fP\&. Neither is
+configurable and neither can be missing: \fBmWand\fP finds the window manager
+through \fB_NET_SUPPORTING_WM_CHECK\fP and \fB_NET_WM_PID\fP and signals it,
+sending \fBSIGUSR1\fP for the first and \fBSIGUSR2\fP for the second\&. Under
+a window manager that publishes neither property, or that does not provide
+these windows, the item says so\&.
 .SH "FILES"
 .PP
 .nf

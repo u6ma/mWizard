@@ -2,11 +2,12 @@
 .TH "mwizardrc" "special file"
 .SH "NAME"
 \fBmwizardrc\fP \(em the
-Enhanced Motif Window Manager Resource Description File
+motifWizard Resource Description File
 .SH "DESCRIPTION"
 .PP
 The \fBmwizardrc\fP file is a supplementary resource
-file that controls much of the behavior of the Enhanced Motif window manager \fBmwizard\fP\&. 
+file that controls much of the behavior of the motifWizard window manager
+\fBmwizard\fP\&. 
 It contains descriptions of resources that cannot easily be
 written using standard X Window System, Version 11 resource syntax\&. The resource
 description file contains entries that are referred to by X resources in
@@ -90,6 +91,12 @@ has the following syntax:
 .PP
 The following functions are supported\&. If a function is specified that
 isn\&'t one of the supported functions then it is interpreted by \fBmwizard\fP as \fBf\&.nop\fP\&.
+.IP "\fBf\&.about\fP" 10
+This function posts \fBmWinfo\fP, the About window: the name of the window
+manager, the version it is running, a short notice naming the copyrights and
+licenses, and the address of the project page\&. \fBf\&.mwinfo\fP is an alias
+for it\&. The window is an ordinary one and is closed, moved and resized like
+any other\&.
 .IP "\fBf\&.beep\fP" 10
 This function causes a beep\&.
 .IP "\fBf\&.circle_down\fP [ \fIicon\fP | \fIwindow\fP]" 10
@@ -174,6 +181,8 @@ with their associated primary window\&. There is only one icon for a primary
 window and all its secondary windows\&.
 .IP "\fBf\&.move\fP" 10
 This function initiates an interactive move of a client window\&.
+.IP "\fBf\&.mwinfo\fP" 10
+An alias for \fBf\&.about\fP\&.
 .IP "\fBf\&.next_cmap\fP" 10
 This function installs the next colormap in the list of colormaps for
 the window with the colormap focus\&.
@@ -364,6 +373,7 @@ tab();
 lw(2.289841i) lw(1.851594i) lw(1.358566i).
 FunctionContextsResources
 _
+\fBf\&.about\fProot,icon,windowbutton,key,menu
 \fBf\&.beep\fProot,icon,windowbutton,key,menu
 \fBf\&.circle_down\fProot,icon,windowbutton,key,menu
 \fBf\&.circle_up\fProot,icon,windowbutton,key,menu
@@ -379,6 +389,7 @@ _
 \fBf\&.menu\fProot,icon,windowbutton,key,menu
 \fBf\&.minimize\fPwindowbutton,key,menu
 \fBf\&.move\fPicon,windowbutton,key,menu
+\fBf\&.mwinfo\fProot,icon,windowbutton,key,menu
 \fBf\&.next_cmap\fProot,icon,windowbutton,key,menu
 \fBf\&.next_key\fProot,icon,windowbutton,key,menu
 \fBf\&.next_workspace\fProot,icon,windowbutton,key,menu

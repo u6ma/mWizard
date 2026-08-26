@@ -170,7 +170,8 @@ int main (int argc, char *argv [], char *environ [])
 
 void PrintVersionInfo(void)
 {
-	fprintf(stdout, "%s - Version %d.%d (Motif %d.%d.%d)\n\n",
-		MWM_NAME, MWM_VERSION, MWM_REVISION,
+	fprintf(stdout, "%s (%s) - Version %d.%d.%d \"%s\" (Motif %d.%d.%d)\n\n",
+		MWM_FULL_NAME, MWM_NAME,
+		MWM_VERSION, MWM_REVISION, MWM_PATCHLEVEL, MWM_CODENAME,
 		XmVERSION, XmREVISION, XmUPDATE_LEVEL);
 }

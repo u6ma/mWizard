@@ -13,8 +13,10 @@
  * makes mWand usable under any window manager, and makes the whole session
  * section switchable off with one setting.
  *
- * "Execute..." lives here rather than in launcher.c because it belongs to
- * this menu; it stays available whether or not the session actions do.
+ * "Execute..." and "About mWizard..." live here rather than in launcher.c
+ * because they belong to this menu; they stay available whether or not the
+ * session actions do. Both are windows the window manager owns and mWand
+ * only asks for -- see AskWindowManager() in launcher.c.
  */
 
 #include <stdlib.h>
@@ -29,6 +31,7 @@
 #include "mwand.h"
 
 static void exec_item_cb(Widget, XtPointer, XtPointer);
+static void about_item_cb(Widget, XtPointer, XtPointer);
 static void command_item_cb(Widget, XtPointer, XtPointer);
 static Widget AddItem(Widget wpulldown, const char *name, const char *label,
 	KeySym mnemonic, XtCallbackProc cb, XtPointer data);
@@ -36,6 +39,11 @@ static Widget AddItem(Widget wpulldown, const char *name, const char *label,
 static void exec_item_cb(Widget w, XtPointer client_data, XtPointer call_data)
 {
 	ExecuteCommandDialog();
+}
+
+static void about_item_cb(Widget w, XtPointer client_data, XtPointer call_data)
+{
+	AboutWindowManagerDialog();
 }
 
 /*
@@ -102,8 +110,8 @@ static Widget AddItem(Widget wpulldown, const char *name, const char *label,
  * Builds the menu bar and its single cascade.
  *
  * The cascade is called "Session" when it carries session actions and
- * "Commands" when it does not, so that a menu holding nothing but
- * "Execute..." is not misleadingly labelled.
+ * "Commands" when it does not, so that a menu holding nothing but the two
+ * window manager utilities is not misleadingly labelled.
  */
 Widget CreateCommandMenu(Widget wparent)
 {
@@ -147,6 +155,14 @@ Widget CreateCommandMenu(Widget wparent)
 
 	AddItem(wpulldown, "execute", "Execute...", (KeySym)'E',
 		(XtCallbackProc)exec_item_cb, NULL);
+
+	/*
+	 * mWinfo. Like Execute..., this is the window manager's own window and
+	 * mWand only asks for it, so it is always offered -- there is nothing
+	 * to configure and nothing that can be missing.
+	 */
+	AddItem(wpulldown, "about", "About mWizard...", (KeySym)'A',
+		(XtCallbackProc)about_item_cb, NULL);
 
 	if(any_session) {
 		w = XmCreateSeparatorGadget(wpulldown, "separator", NULL, 0);

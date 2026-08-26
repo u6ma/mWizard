@@ -65,6 +65,7 @@ Boolean F_Kill (String args, ClientData *pCD, XEvent *event);
 Boolean F_Refresh (String args, ClientData *pCD, XEvent *event);
 Boolean F_Resize (String args, ClientData *pCD, XEvent *event);
 Boolean F_Run (String args, ClientData *pCD, XEvent *event);
+Boolean F_About (String args, ClientData *pCD, XEvent *event);
 Boolean F_Restart (String args, ClientData *pCD, XEvent *event);
 Boolean F_Restore (String args, ClientData *pCD, XEvent *event);
 Boolean F_Restore_And_Raise (String args, ClientData *pCD, 

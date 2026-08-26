@@ -1,8 +1,9 @@
 mWizard
 =======
 
-mWizard is a lighter, opinionated build of EMWM: a Motif window manager for
-the X Window System.
+motifWizard, abbreviated mWizard, is a lighter, opinionated build of EMWM: a
+Motif window manager for the X Window System. Its optional panel is motifWand,
+abbreviated mWand.
 
 14mb excluding X server during use.
 

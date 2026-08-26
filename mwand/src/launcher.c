@@ -195,19 +195,22 @@ Boolean ConstructMenu(void)
 }
 
 /*
- * Raises the window manager's Execute dialog.
+ * Asks the window manager to put up one of its own windows.
  *
- * The prompt used to live here. It belongs to the window manager: it is
+ * Both the Execute prompt and mWinfo belong to the window manager: they are
  * wanted with or without a panel, and mWizard is the process that is always
- * running. mWand now asks for it rather than carrying a second one.
+ * running. mWand asks for them rather than carrying second copies.
  *
  * The window manager is found the standard EWMH way -- the check window
  * named by _NET_SUPPORTING_WM_CHECK carries _NET_WM_PID -- and signalled
  * directly, so this needs no helper program and no private protocol. Under a
  * window manager that publishes neither, the item simply reports that there
  * is nothing to ask.
+ *
+ * what names the thing being asked for, and appears in the message when the
+ * window manager cannot provide it.
  */
-void ExecuteCommandDialog(void)
+static void AskWindowManager(int sig, const char *what)
 {
 	Display *dpy = XtDisplay(wshell);
 	Window root = RootWindowOfScreen(XtScreen(wshell));
@@ -218,13 +221,16 @@ void ExecuteCommandDialog(void)
 	unsigned char *data = NULL;
 	Window wm_window;
 	long wm_pid;
+	char msg[256];
+
+	snprintf(msg, sizeof(msg),
+		"The window manager does not provide %s.", what);
 
 	xa_check = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", True);
 	xa_pid = XInternAtom(dpy, "_NET_WM_PID", True);
 
 	if(xa_check == None || xa_pid == None) {
-		MessageDialog(False, "The window manager does not provide "
-			"a command prompt.");
+		MessageDialog(False, msg);
 		return;
 	}
 
@@ -243,15 +249,28 @@ void ExecuteCommandDialog(void)
 		&ret_type, &ret_fmt, &ret_items, &ret_after, &data) != Success
 		|| !data || !ret_items) {
 		if(data) XFree(data);
-		MessageDialog(False, "The window manager does not provide "
-			"a command prompt.");
+		MessageDialog(False, msg);
 		return;
 	}
 	wm_pid = *((long*)data);
 	XFree(data);
 
-	if(kill((pid_t)wm_pid, SIGUSR1) == -1)
+	if(kill((pid_t)wm_pid, sig) == -1)
 		MessageDialog(False, "Could not reach the window manager.");
+}
+
+/*
+ * SIGUSR1 is the Execute prompt, SIGUSR2 is mWinfo. See WmExecDlg.c and
+ * WmWinfo.c on the window manager side.
+ */
+void ExecuteCommandDialog(void)
+{
+	AskWindowManager(SIGUSR1, "a command prompt");
+}
+
+void AboutWindowManagerDialog(void)
+{
+	AskWindowManager(SIGUSR2, "an About window");
 }
 
 /*

@@ -51,8 +51,23 @@
 
 /* Version info */
 #define MWM_NAME "mWizard"
+
+/*
+ * The name spelled out. MWM_NAME is the short form used everywhere a name has
+ * to be short -- window titles, _NET_WM_NAME, warnings on stderr -- and this
+ * is what mWinfo puts at the top of the About window.
+ */
+#define MWM_FULL_NAME "motifWizard"
+
 #define MWM_VERSION  1
 #define MWM_REVISION 0
+#define MWM_PATCHLEVEL 1
+
+/* Release name, shown alongside the version by mWinfo and -version */
+#define MWM_CODENAME "Elixir"
+
+/* Where the source lives; shown by mWinfo */
+#define MWM_PROJECT_URL "https://github.com/u6ma/mWizard"
 
 /* window manager name and class used to get resources: */
 #define	WM_RESOURCE_CLASS	"MWizard"

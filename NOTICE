@@ -1,9 +1,9 @@
 mWizard
 =======
 
-mWizard is a fork of EMWM (https://github.com/alx210/emwm), which is itself
-derived from the Motif Window Manager (mwm), originally published by
-The Open Group.
+mWizard, in full motifWizard, is a fork of EMWM
+(https://github.com/alx210/emwm), which is itself derived from the Motif
+Window Manager (mwm), originally published by The Open Group.
 
 mWizard is not affiliated with, sponsored by, or endorsed by alx@fastestcode.org
 or The Open Group. "Motif" is a trademark of The Open Group; mWizard links
@@ -77,8 +77,9 @@ f.suspend) backed by user-configurable commands, with an optional idle lock
 timer; f.rename_workspace, replacing the removed protocol's NAMWKSPC verb;
 an extended rc file format with Settings, Client and Workspace blocks, so
 behaviour is configured in one place and the X resource database carries
-appearance only; EWMH dock, strut and sticky support; and optional
-integration with stalonetray.
+appearance only; EWMH dock, strut and sticky support; optional integration
+with stalonetray; an Execute dialog (f.run) in the window manager itself; and
+mWinfo (f.about), an About window naming the version and these licenses.
 
 Unchanged on purpose: X atom names. _MOTIF_WM_HINTS, _MWM_WM_HINTS,
 _MWM_WORKSPACE_*, WM_STATE, WM_PROTOCOLS and the _NET_* set are the

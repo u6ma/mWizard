@@ -65,6 +65,7 @@
 #include "WmWinState.h"
 #include "WmSession.h"
 #include "WmExecDlg.h"
+#include "WmWinfo.h"
 #include "WmEwmh.h"
 #include "WmXmP.h"
 
@@ -2525,6 +2526,17 @@ Boolean F_Resize (String args, ClientData *pCD, XEvent *event)
 Boolean F_Run (String args, ClientData *pCD, XEvent *event)
 {
     PostExecDialog ();
+    return (False);
+}
+
+/*
+ * f.about (alias f.mwinfo) -- posts mWinfo, the About window.
+ *
+ * The window itself lives in WmWinfo.c; this is only the rc binding for it.
+ */
+Boolean F_About (String args, ClientData *pCD, XEvent *event)
+{
+    PostWinfoDialog ();
     return (False);
 }
 

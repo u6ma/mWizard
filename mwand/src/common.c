@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <pwd.h>
 #include "common.h"
+#include "mwand.h"
 
 /* Reliable signal handling (using POSIX sigaction) */
 sigfunc_t rsignal(int sig, sigfunc_t handler)
@@ -217,6 +218,6 @@ char* get_login(void)
 
 void print_version(const char *name)
 {
-	printf("%s v%d.%d.%d\n",
-		name, VER_MAJOR, VER_MINOR, VER_UPLVL);
+	printf("%s (%s) v%d.%d.%d\n",
+		APP_FULL_TITLE, name, VER_MAJOR, VER_MINOR, VER_UPLVL);
 }

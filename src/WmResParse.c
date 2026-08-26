@@ -256,6 +256,14 @@ typedef struct {
  */
 
 FunctionTableEntry functionTable[] = {
+    /*
+     * Kept in strcmp order: ParseWmFunction() binary searches this table.
+     */
+    {"f.about",		0,
+			CRS_ANY,
+			0,
+			F_About,
+			(FunctionTableParseProcT)ParseWmFuncNoArg},
     {"f.beep",		0,
 			CRS_ANY,
 			0,
@@ -342,6 +350,11 @@ FunctionTableEntry functionTable[] = {
 			CRS_ANY,
 			MWM_FUNC_MOVE,
 			F_Move,
+			(FunctionTableParseProcT)ParseWmFuncNoArg},
+    {"f.mwinfo",	0,
+			CRS_ANY,
+			0,
+			F_About,
 			(FunctionTableParseProcT)ParseWmFuncNoArg},
     {"f.next_cmap",	0,
 			CRS_ANY,

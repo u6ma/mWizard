@@ -171,24 +171,17 @@ int main(int argc, char **argv)
 	}
 	xa_cdesk = XInternAtom(dpy, _NET_CURRENT_DESKTOP, False);
 
-	if(!app_res.title){
-		char *title;
-		char *login;
-		char host[256]="localhost";
-
-		if( (login = get_login()) ) {
-			gethostname(host,255);
-
-			title = malloc(strlen(login)+strlen(host)+2);
-			if(!title){
-				perror("malloc");
-				return EXIT_FAILURE;
-			}
-			sprintf(title, "%s@%s", login,host);
-			XtVaSetValues(wshell, XmNtitle, title, NULL);
-			free(title);
-		}
-	}
+	/*
+	 * Just the name.
+	 *
+	 * xmtoolbox titled the window "login@host", which is fine on a wide
+	 * title bar and useless on a narrow one: mWand is a panel, it is
+	 * usually only as wide as its menus, and a long user or host name is
+	 * simply clipped. The "title" setting is still there for anyone who
+	 * wants the old string, or any other.
+	 */
+	if(!app_res.title)
+		XtVaSetValues(wshell, XmNtitle, APP_TITLE, NULL);
 
 	wframe = XmVaCreateManagedFrame(wshell, "mainFrame",
 		XmNshadowType, XmSHADOW_OUT, NULL);

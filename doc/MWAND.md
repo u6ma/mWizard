@@ -1,7 +1,7 @@
 # Configuring mWand
 
-mWand is a small panel for mWizard: launcher menus, a workspace switcher, a
-clock, and an optional session menu. It is optional and is built and installed
+motifWand, abbreviated mWand, is a small panel for motifWizard: launcher menus,
+a workspace switcher, a clock, and an optional session menu. It is optional and is built and installed
 on its own.
 
 ```sh
@@ -188,19 +188,22 @@ stays active and the error is reported.
 
 ## 5. The session menu
 
-> **"Execute..." is the window manager's dialog.** mWand used to carry its own
-> command prompt; it now asks mWizard to post one, since a run prompt is
-> wanted with or without a panel. mWand finds the window manager through
-> `_NET_SUPPORTING_WM_CHECK` and signals the pid in `_NET_WM_PID`, so it needs
-> no helper program — but under a window manager that publishes neither, the
-> item reports that there is nothing to ask. Bind `f.run` in `~/.mwizardrc` to
-> reach the same dialog from the keyboard.
+> **"Execute..." and "About mWizard..." are the window manager's windows.**
+> mWand used to carry its own command prompt; it now asks mWizard to post one,
+> since a run prompt is wanted with or without a panel, and mWinfo works the
+> same way. mWand finds the window manager through `_NET_SUPPORTING_WM_CHECK`
+> and signals the pid in `_NET_WM_PID` — `SIGUSR1` for the prompt, `SIGUSR2`
+> for mWinfo — so it needs no helper program. Under a window manager that
+> publishes neither property, the item reports that there is nothing to ask.
+> Bind `f.run` and `f.about` in `~/.mwizardrc` to reach the same windows from
+> the keyboard; `f.about` is already on `Alt Shift Ctrl<Key>i`.
 
 
-The command menu always holds **Execute...**, which prompts for a command to
-run. With `sessionMenu True` it also holds the session actions and is labelled
-*Session*; with `sessionMenu False` it holds only Execute and is labelled
-*Commands*.
+The command menu always holds two window manager utilities: **Execute...**,
+which prompts for a command to run, and **About mWizard...**, which posts
+mWinfo — the name, version, licenses and project page. With `sessionMenu True`
+it also holds the session actions and is labelled *Session*; with
+`sessionMenu False` it holds only those two and is labelled *Commands*.
 
 | Item | Runs | Confirms first |
 |---|---|---|
