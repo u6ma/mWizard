@@ -661,6 +661,17 @@ void ConfirmAction (WmScreenData *pSD, int nbr)
         n = 0;
         XtSetArg(args[n], XmNx, x); n++;
         XtSetArg(args[n], XmNy, y); n++;
+	/*
+	 * Do not wait for the window manager to answer a geometry request:
+	 * the window manager is this process. XtNwaitForWm defaults to True,
+	 * and Xt's root geometry manager then blocks in a nested
+	 * XtAppProcessEvent() loop until the reply arrives or XtNwmTimeout
+	 * (5 seconds) expires. That loop dispatches through XtDispatchEvent()
+	 * only, so main()'s WmDispatchWsEvent()/WmDispatchClientEvent() -- the
+	 * code that would answer -- never runs, and the reply cannot come.
+	 * wspSetPosition() does the same for the presence dialog.
+	 */
+        XtSetArg(args[n], XmNwaitForWm, (XtArgVal) False);  n++;
         XtSetArg(args[n], XtNallowShellResize, (XtArgVal) TRUE);  n++;
         XtSetArg(args[n], XtNkeyboardFocusPolicy, (XtArgVal) XmEXPLICIT);  n++;
         XtSetArg(args[n], XtNdepth, 
@@ -759,6 +770,9 @@ void ConfirmAction (WmScreenData *pSD, int nbr)
         n = 0;
         XtSetArg(args[n], XmNx, (XtArgVal) x); n++;
         XtSetArg(args[n], XmNy, (XtArgVal) y); n++;
+	/* Restated here: this call is the one that reaches the root geometry
+	 * manager, since the shell is realized by now. */
+        XtSetArg(args[n], XmNwaitForWm, (XtArgVal) False); n++;
         XtSetValues (dialogShellW, (ArgList) args, n);
 
         ManageWindow (pSD, XtWindow(dialogShellW), MANAGEW_CONFIRM_BOX);

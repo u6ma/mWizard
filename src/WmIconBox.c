@@ -349,9 +349,21 @@ void MakeShell (WmWorkspaceData *pWS, IconBoxData *pIBD)
 
     i=0;
 
-    XtSetArg (setArgs[i], XmNallowShellResize, (XtArgVal)True); i++; 
-    
-    XtSetArg (setArgs[i], XmNborderWidth, (XtArgVal)0); i++; 
+    XtSetArg (setArgs[i], XmNallowShellResize, (XtArgVal)True); i++;
+
+    /*
+     * With allowShellResize on, every icon added or removed sends a geometry
+     * request to the window manager -- which is this process. XtNwaitForWm
+     * defaults to True, and Xt's root geometry manager then blocks in a
+     * nested XtAppProcessEvent() loop waiting for a reply that cannot come:
+     * that loop dispatches through XtDispatchEvent() only, so main()'s
+     * WmDispatchWsEvent()/WmDispatchClientEvent(), which are what answer a
+     * ConfigureRequest, never run inside it. Same reason wspSetPosition()
+     * turns it off for the presence dialog.
+     */
+    XtSetArg (setArgs[i], XmNwaitForWm, (XtArgVal)False); i++;
+
+    XtSetArg (setArgs[i], XmNborderWidth, (XtArgVal)0); i++;
 
     XtSetArg (setArgs[i], XmNkeyboardFocusPolicy, (XtArgVal)XmEXPLICIT); i++;
 

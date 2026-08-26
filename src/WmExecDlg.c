@@ -22,15 +22,17 @@
  * The prompt started life in mWand as XmCreatePromptDialog() parented on the
  * application shell. Moved here unchanged, that is wrong in three ways:
  *
- *  - XmCreatePromptDialog() builds an XmDialogShell, which is a Motif
- *    VendorShell. A VendorShell talks to the window manager synchronously:
- *    on a geometry change it sends its request and then waits for the
- *    window manager's reply (XmNwaitForWm, XmNwmTimeout). Here the window
- *    manager is this same process and this same event loop, so nothing can
- *    answer while Motif is waiting. That is exactly why WmInitWs.c turns
- *    XmNuseAsyncGeometry on for topLevelW/topLevelW1 and why wspCreateShell()
- *    does the same for the presence dialog. Every other window mWizard puts
- *    on the screen is a plain Xt shell for this reason, so this one is too.
+ *  - It waited for itself. Any top level shell asks the window manager for
+ *    geometry and then blocks until the answer comes back; XtNwaitForWm is
+ *    True by default on every WMShell, Motif's and Xt's alike. Since the
+ *    window manager is this process, the answer cannot come, and the wait
+ *    runs to the full XtNwmTimeout with mWizard's own dispatcher shut out of
+ *    the nested event loop that Xt spins meanwhile. See the note on
+ *    XtNwaitForWm in MakeExecDialog(), which is where this is turned off.
+ *    XmCreatePromptDialog() also builds an XmDialogShell, a Motif
+ *    VendorShell, which layers its own synchronous handshake on top of that
+ *    one; every other window mWizard puts on the screen is a plain Xt shell,
+ *    so this one is too.
  *
  *  - It was parented on wmGD.topLevelW1, the global application shell, which
  *    is 10x10, parked at x=10000 and never mapped. A dialog centred on that
@@ -110,6 +112,29 @@ static Boolean MakeExecDialog(WmScreenData *pSD)
      * being managed rather than left to the second connection's default.
      */
     n = 0;
+    /*
+     * XtNwaitForWm must be off, and this is the one that matters.
+     *
+     * It is a WMShell resource, so it is on every top level shell and not
+     * just Motif's. It defaults to True, which makes Xt's root geometry
+     * manager send its ConfigureRequest and then sit in a nested
+     * XtAppProcessEvent() loop until the window manager answers, or until
+     * XtNwmTimeout (5 seconds) runs out.
+     *
+     * The window manager here is this process. That nested loop dispatches
+     * through XtDispatchEvent() only; main()'s WmDispatchWsEvent() and
+     * WmDispatchClientEvent() -- which are what actually answer a
+     * ConfigureRequest -- never run inside it. So the reply cannot arrive,
+     * mWizard blocks against itself for the full timeout, and every event
+     * that turns up meanwhile is eaten by the nested loop without the window
+     * manager half of the dispatch ever seeing it. That is what left the
+     * root menu wedged afterwards.
+     *
+     * wspSetPosition() turns it off on the presence dialog for this reason,
+     * and XmNuseAsyncGeometry in WmInitWs.c is the VendorShell spelling of
+     * the same thing for topLevelW/topLevelW1.
+     */
+    XtSetArg (args[n], XtNwaitForWm, (XtArgVal) False);			n++;
     XtSetArg (args[n], XtNallowShellResize, (XtArgVal) True);		n++;
     XtSetArg (args[n], XtNtitle, (XtArgVal) MWM_NAME);			n++;
     XtSetArg (args[n], XtNdepth,
@@ -162,6 +187,13 @@ static Boolean MakeExecDialog(WmScreenData *pSD)
 	XtOverrideTranslations (execTextW, alt_tt);
     }
 
+    /*
+     * Positioned before realizing. On an unrealized shell this only writes
+     * core.x/core.y; once it is realized the same call becomes a request to
+     * the window manager, and there is no reason to make one here.
+     */
+    PlaceExecDialog (pSD);
+
     XtRealizeWidget (execShellW);
 
     /*
@@ -190,7 +222,7 @@ static Boolean MakeExecDialog(WmScreenData *pSD)
  */
 static void PlaceExecDialog(WmScreenData *pSD)
 {
-    Arg args[2];
+    Arg args[4];
     int n;
     Dimension width = 0, height = 0;
     Position x, y;
@@ -216,8 +248,9 @@ static void PlaceExecDialog(WmScreenData *pSD)
     if (y < 0) y = 0;
 
     n = 0;
-    XtSetArg (args[n], XmNx, (XtArgVal) x);	n++;
-    XtSetArg (args[n], XmNy, (XtArgVal) y);	n++;
+    XtSetArg (args[n], XmNx, (XtArgVal) x);		n++;
+    XtSetArg (args[n], XmNy, (XtArgVal) y);		n++;
+    XtSetArg (args[n], XtNwaitForWm, (XtArgVal) False);	n++;
     XtSetValues (execShellW, args, n);
 }
 
