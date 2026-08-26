@@ -268,15 +268,26 @@ quoting is optional. They run through the same shell as `f.exec`, after the
 window manager is ready to manage what they map, and with the `Variables`
 block already in effect.
 
-**Skipped on `f.restart`.** A restart re-execs the window manager while its
-clients keep running, so running these again would leave a second copy of
-everything. mWizard knows it restarted from the `_MOTIF_WM_INFO` property the
-previous instance left on the root window — the same reason `trayCommand`
-checks the tray selection before starting one.
+**Run again on `f.restart`.** A restart re-reads this file and starts the
+block over from what it now says. Nothing is duplicated: on its way out, the
+old instance ends the programs it started from this block and waits for them
+to go, so what comes back is one copy of the current configuration rather than
+a second copy of the old one. `trayCommand` is ended and started the same way.
 
-Nothing here is a substitute for the session file itself: a command that must
+That is what makes a restart a refresh of the session rather than of the
+window manager alone, and it is how to try out a change to this block — edit
+it, restart, and the notification daemon or panel you just changed is the one
+running.
+
+It ends what *it* started, and nothing else. Windows you opened yourself,
+programs the session file started before mWizard, and anything run from
+`f.exec` or the Execute dialog are ordinary clients and are left alone —
+a restart has never touched those and still does not.
+
+Nothing here is a substitute for the session file itself. A command that must
 run *before* the window manager, such as a wallpaper setter you want painted
-first, still belongs in `~/.xinitrc`.
+first, still belongs in `~/.xinitrc` — and so does anything that should run
+once for the whole life of the X session rather than once per window manager.
 
 ---
 
@@ -372,6 +383,72 @@ changed at runtime with `f.rename_workspace`.
 
 ---
 
+## 5a. The root menu
+
+The menu on the right button of the desktop is a `Menu` block named by
+`DefaultRootMenu`. Its full syntax — labels, mnemonics, accelerators, bitmap
+labels — is in `mwizardrc(4)`; what follows is only how the shipped one is
+laid out and why.
+
+An entry whose function is `f.menu` is a **pull-right**: it opens the menu
+named after it instead of doing something.
+
+```
+Menu DefaultRootMenu
+{
+    "Main Menu"          f.title
+    "Programs"      _P   f.menu   ProgramsMenu
+    ...
+}
+
+Menu ProgramsMenu
+{
+    "New Terminal"  _T   f.exec "$TERMINAL &"
+    ...
+}
+```
+
+The menu it names is an ordinary `Menu` block, defined anywhere in the file
+and free to contain another `f.menu` in turn — so menus nest as deep as you
+care to take them, the way mWand's launcher menus do (`doc/MWAND.md`). mWizard
+notices a menu that reaches itself and refuses to post it rather than
+recursing.
+
+The shipped root menu is organized around that. Four pull-rights carry
+everything that belongs to a category:
+
+| Entry | Holds |
+|---|---|
+| `ProgramsMenu` | the programs from `Variables` — terminal, browser, editor |
+| `WindowsMenu` | `f.circle_up`, `f.circle_down`, `f.pack_icons`, `f.refresh` |
+| `WorkspacesMenu` | move between workspaces, add one, remove one |
+| `SessionMenu` | lock, restart, log out, suspend, reboot, shut down |
+
+and only `f.title`, those pull-rights and `Execute...` are on the first press.
+Adding a program means adding a line to `ProgramsMenu`, so the first press
+stays the same length however much you add — which is the point of arranging
+it this way rather than listing everything at the top level.
+
+Nothing about it is fixed. Move an entry up into `DefaultRootMenu` and it is
+back on the first press; the earlier flat menu is a matter of doing that to
+all of them. Which menu the desktop posts at all is the `f.menu` argument in
+the `Buttons` blocks —
+
+```
+<Btn3Down>   root   f.menu   DefaultRootMenu
+```
+
+— so a menu of your own replaces it by being named there instead. All three
+shipped `Buttons` blocks carry that line; change the one `buttonBindings`
+selects, or all of them.
+
+`WorkspacesMenu` carries `f.create_workspace` and `f.delete_workspace`.
+Removing a workspace is not a way to lose windows — clients that live only
+there are moved to the next workspace first, and the last remaining workspace
+cannot be removed.
+
+---
+
 ## 6. Session functions
 
 These replace EMWM's XSMP session management, which only did anything when an
@@ -402,19 +479,20 @@ nothing rather than failing in some confusing way.
 The confirmation dialogs are governed by `showFeedback`; `showFeedback -quit`
 turns them off for all of them, including `f.logout`.
 
-In a menu:
+In a menu — in the shipped configuration these are a pull-right of their own,
+`SessionMenu`, rather than the tail of the root menu:
 
 ```
-Menu DefaultRootMenu
+Menu SessionMenu
 {
-    "Lock Screen"   f.exec "i3lock -c 000000"
-     no-label       f.separator
-    "Restart..."    f.restart
-    "Log Out..."    f.logout
-     no-label       f.separator
-    "Suspend"       f.suspend
-    "Reboot..."     f.reboot
-    "Shut Down..."  f.shutdown
+    "Lock Screen"   _L  f.exec "i3lock -c 000000"
+     no-label           f.separator
+    "Restart..."    _R  f.restart
+    "Log Out..."    _O  f.logout
+     no-label           f.separator
+    "Suspend"       _S  f.suspend
+    "Reboot..."     _b  f.reboot
+    "Shut Down..."  _D  f.shutdown
 }
 ```
 
@@ -545,8 +623,14 @@ Settings
 ```
 
 Empty by default, in which case nothing is started. The command only runs when
-nothing already owns the `_NET_SYSTEM_TRAY_S<screen>` selection, so `f.restart`
-re-execs the window manager without leaving a second tray behind.
+nothing already owns the `_NET_SYSTEM_TRAY_S<screen>` selection, so a tray
+mWizard did not start — one from your session file, say — is never duplicated.
+
+A tray mWizard *did* start is ended by `f.restart` along with the `Startup`
+block, and started again by the instance that replaces it, so a change to
+`trayCommand` or to the tray's own configuration takes effect on a restart.
+Icons docked in it re-dock themselves; a tray that handles that badly is an
+argument for starting it from `~/.xinitrc` instead.
 
 A stalonetray config tuned for mWizard is installed as
 `/etc/X11/stalonetrayrc`. There is no build-time dependency on stalonetray or

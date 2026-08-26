@@ -60,10 +60,14 @@
 #define MWM_FULL_NAME "motifWizard"
 
 #define MWM_VERSION  1
-#define MWM_REVISION 0
-#define MWM_PATCHLEVEL 1
+#define MWM_REVISION 1
+#define MWM_PATCHLEVEL 0
 
-/* Release name, shown alongside the version by mWinfo and -version */
+/*
+ * Release name, shown alongside the version by mWinfo and -version. It names
+ * the major version, not the release: every 1.x is Elixir, and a new name is
+ * chosen when MWM_VERSION changes.
+ */
 #define MWM_CODENAME "Elixir"
 
 /* Where the source lives; shown by mWinfo */

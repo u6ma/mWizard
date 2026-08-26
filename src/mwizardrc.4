@@ -314,6 +314,12 @@ it to its normalized state and raises it to the top of the window stack\&.
 This function causes mwizard to be restarted (effectively terminated and
 re-executed)\&. Restart is necessary for \fBmwizard\fP to incorporate
 changes in both the \fBmwizardrc\fP file and X resources\&.
+.IP
+The programs \fBmwizard\fP itself started -- those named by \fItrayCommand\fP
+and by the \fIStartup\fP block -- are ended first and started again by the new
+instance from the file as it now reads, so a restart refreshes the session
+rather than the window manager alone\&. Ordinary clients, including anything
+run from \fBf\&.exec\fP, are unaffected and keep running across the restart\&.
 .IP "\fBf\&.screen\fP\ [ \fInext\fP | \fIprev\fP | \fIback\fP | \fIscreen_number\fP]" 10
 This function causes the pointer to be warp to a specific screen number
 or to the \fInext\fP, \fIprevious\fP, or last visited (\fIback\fP)
@@ -571,8 +577,10 @@ names one to run at startup -- \fBstalonetray\fP(1) is the usual choice\&. It is
 empty by default, in which case no tray is started\&.
 .PP
 The command is only run when nothing already owns the
-\fB_NET_SYSTEM_TRAY_S<screen>\fP selection, so restarting the window manager with
-\fBf\&.restart\fP does not leave a second tray behind\&.
+\fB_NET_SYSTEM_TRAY_S<screen>\fP selection, so a tray \fBmwizard\fP did not
+start is never duplicated\&. A tray it did start is ended by \fBf\&.restart\fP
+and started again by the new instance, so a change to \fItrayCommand\fP or to
+the tray's own configuration takes effect on a restart\&.
 .PP
 .nf
 Settings

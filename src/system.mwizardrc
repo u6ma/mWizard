@@ -27,9 +27,14 @@ Variables
 ! the same shell as f.exec, so "$TERMINAL", pipelines and "&" all work, and
 ! the Variables block above is already in effect.
 !
-! Skipped on f.restart. A restart re-execs the window manager while its
-! clients keep running, so running these again would leave a second copy of
-! everything.
+! Run again on f.restart: the copies started by the previous instance are
+! ended first, so a restart re-reads this file and starts what it now says.
+! That is how to try out a change to this block, and it means a restart
+! refreshes the session rather than the window manager alone.
+!
+! Anything that should survive a restart untouched does not belong here -- a
+! wallpaper setter, or anything else that should run once for the life of the
+! X session, still belongs in ~/.xinitrc.
 Startup
 {
 	! Notification daemon. A dunst configuration matching the Motif colors
@@ -41,34 +46,76 @@ Startup
 !	mwand
 }
 
-! Root Menu
+! Root Menu.
+!
+! What opens on the first press is kept short: anything that names a whole
+! class of things pulls right into a menu of its own, the way mWand's launcher
+! menus do. f.menu is what makes a pull-right, and the menu it names is an
+! ordinary Menu block like this one -- defined below, and free to contain
+! another f.menu in turn.
+!
+! Nothing stops you flattening it again: move an entry up here and it is on
+! the first press. The three most-reached-for things already are.
 Menu DefaultRootMenu
 {
 	"Main Menu"		f.title
-	"Execute..."		f.run
+	"Programs"	_P	f.menu	ProgramsMenu
+	"Windows"	_W	f.menu	WindowsMenu
+	"Workspaces"	_k	f.menu	WorkspacesMenu
+	 no-label		f.separator
+	"Execute..."	_E	f.run
 	! mWinfo, the About window. Off here by default because it is already
 	! on Alt Shift Ctrl<Key>i and in mWand's Commands menu; uncomment to
 	! have it in the root menu as well.
-!	"About mWizard..."	f.about
-	"New Terminal"		f.exec "$TERMINAL &"
-	"Web Browser"		f.exec "$BROWSER &"
-	"Text Editor"		f.exec "$EDITOR &"
+!	"About mWizard..." _A	f.about
 	 no-label		f.separator
-	"Shuffle Up"		f.circle_up
-	"Shuffle Down"		f.circle_down
-	"Pack Icons"		f.pack_icons
+	"Session"	_S	f.menu	SessionMenu
+}
+
+! The programs from the Variables block at the top of this file. Add your own
+! here rather than to the root menu and the first press stays one line long
+! however many you end up with.
+Menu ProgramsMenu
+{
+	"New Terminal"	_T	f.exec "$TERMINAL &"
+	"Web Browser"	_W	f.exec "$BROWSER &"
+	"Text Editor"	_E	f.exec "$EDITOR &"
+}
+
+Menu WindowsMenu
+{
+	"Shuffle Up"	_U	f.circle_up
+	"Shuffle Down"	_D	f.circle_down
 	 no-label		f.separator
-	"Next Workspace" f.next_workspace
-	"Prev. Workspace" f.prev_workspace
+	"Pack Icons"	_P	f.pack_icons
+	"Refresh"	_R	f.refresh
+}
+
+! Add Workspace and Remove Workspace act on the active workspace. Removing one
+! is not a way to lose windows: clients that live only there are moved to the
+! next workspace first, and the last workspace cannot be removed at all.
+Menu WorkspacesMenu
+{
+	"Next Workspace"	_N	f.next_workspace
+	"Prev. Workspace"	_P	f.prev_workspace
+	 no-label			f.separator
+	"Add Workspace"		_A	f.create_workspace
+	"Remove Workspace"	_R	f.delete_workspace
+}
+
+! Suspend, Reboot and Shut Down run the commands set in the Settings block
+! below; an empty one there disables its entry here. Restart re-reads this
+! file and starts the Startup block over -- see the comment on that block.
+Menu SessionMenu
+{
+	"Lock Screen"	_L	f.exec "i3lock -c 000000"
 	 no-label		f.separator
-	"Lock Screen"	f.exec "i3lock -c 000000"
+	"Restart..."	_R	f.restart
+	"Log Out..."	_O	f.logout
 	 no-label		f.separator
-	"Restart..."	f.restart
-	"Log Out..."	f.logout
-	 no-label		f.separator
-	"Suspend"		f.suspend
-	"Reboot..."		f.reboot
-	"Shut Down..."	f.shutdown
+	"Suspend"	_S	f.suspend
+	"Reboot..."	_b	f.reboot
+	"Shut Down..."	_D	f.shutdown
 }
 
 ! Window menu

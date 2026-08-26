@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
+#include <time.h>
 #include <X11/Intrinsic.h>
 #include <X11/Xatom.h>
 
@@ -42,20 +44,23 @@ _X_NORETURN void ExitWM(int exitCode)
 }
 
 /*
- * Runs a shell command in a detached child process.
+ * Runs a shell command in a detached child process, and reports which one.
  *
  * This is the body F_Exec has always used; it lives here so that the session
  * functions and the idle lock timer can share it. As in F_Exec, DISPLAY is
  * set for the active screen before forking and restored afterwards, so that
  * the child lands on the screen the user acted on.
+ *
+ * Most callers want SpawnCommand() and its yes-or-no answer. The pid is for
+ * SpawnManagedCommand() below, which has to be able to find the child again.
  */
-Boolean SpawnCommand(const char *command)
+static pid_t SpawnCommandPid(const char *command)
 {
-    int   pid;
+    pid_t pid;
     char *shell;
     char *shellname;
 
-    if (!command || !(*command)) return (False);
+    if (!command || !(*command)) return ((pid_t) -1);
 
     if (wmGD.pActiveSD && wmGD.pActiveSD->displayString)
     {
@@ -122,7 +127,110 @@ Boolean SpawnCommand(const char *command)
 	putenv (wmGD.displayString);
     }
 
-    return (pid != -1);
+    return (pid);
+}
+
+Boolean SpawnCommand(const char *command)
+{
+    return (SpawnCommandPid (command) != (pid_t) -1);
+}
+
+/*
+ * The children mWizard started itself and starts again every time it comes
+ * up: the Startup block and the system tray.
+ *
+ * They are remembered so that f.restart can end them on its way out, which is
+ * what makes a restart a refresh of the whole session rather than of the
+ * window manager alone -- the new instance re-reads the rc file and starts
+ * them again from it. Nothing else is recorded here: an f.exec from a menu is
+ * the user's own window and is no more the window manager's to close than any
+ * other client is.
+ */
+static pid_t *managedPids = NULL;
+static int    numManagedPids = 0;
+
+Boolean SpawnManagedCommand(const char *command)
+{
+    pid_t pid;
+
+    if ((pid = SpawnCommandPid (command)) == (pid_t) -1) return (False);
+
+    managedPids = (pid_t *) XtRealloc ((char *)managedPids,
+				       (numManagedPids + 1) * sizeof(pid_t));
+    managedPids[numManagedPids++] = pid;
+
+    return (True);
+}
+
+/*
+ * Ends those children, and does not come back until they are gone.
+ *
+ * Waiting matters: the caller re-execs immediately afterwards, and the new
+ * instance decides whether to start a tray by asking who owns the tray
+ * selection. Leave before the old tray has dropped it and the session comes
+ * back with none.
+ *
+ * The wait cannot be a waitpid(): SetupWmSignalHandlers() sets SIGCHLD to
+ * SIG_IGN, so a child is reaped by the kernel the moment it dies and there is
+ * nothing left to wait for. kill(pid, 0) answers the same question -- it
+ * fails with ESRCH once the pid is gone -- and it is the reaping that makes
+ * that answer trustworthy, since an unreaped zombie would still accept it.
+ *
+ * The signal goes to the process group rather than the process. SpawnCommand
+ * puts every child in a session of its own through setsid(), so the group is
+ * exactly this command and whatever it started -- which is how a Startup
+ * entry written as a pipeline, or one that backgrounds its real work and lets
+ * the shell exit, is ended along with the shell that ran it.
+ *
+ * That same setsid() is what the getpgid() check leans on. A pid is only
+ * meaningful while its process lives, and these have been reaped, so in a
+ * long-lived session one could in principle have been handed out again by the
+ * time this runs. A pid that is no longer its own group leader is certainly
+ * not one of ours, and is left alone.
+ */
+void TerminateManagedChildren(void)
+{
+    struct timespec slice;
+    int  i, tries;
+    Boolean anyLeft = False;
+
+    for (i = 0; i < numManagedPids; i++)
+    {
+	if (getpgid (managedPids[i]) != managedPids[i] ||
+	    kill (-managedPids[i], SIGTERM) != 0)
+	{
+	    managedPids[i] = 0;
+	    continue;
+	}
+	anyLeft = True;
+    }
+
+    slice.tv_sec  = 0;
+    slice.tv_nsec = 20 * 1000 * 1000;		/* 20ms */
+
+    /* Two seconds of asking, then insist. */
+    for (tries = 0; anyLeft && tries < 100; tries++)
+    {
+	nanosleep (&slice, NULL);
+
+	anyLeft = False;
+	for (i = 0; i < numManagedPids; i++)
+	{
+	    if (managedPids[i] == 0) continue;
+
+	    if (kill (managedPids[i], 0) != 0)
+		managedPids[i] = 0;
+	    else
+		anyLeft = True;
+	}
+    }
+
+    for (i = 0; i < numManagedPids; i++)
+	if (managedPids[i] != 0) kill (-managedPids[i], SIGKILL);
+
+    XtFree ((char *)managedPids);
+    managedPids = NULL;
+    numManagedPids = 0;
 }
 
 /*
@@ -240,9 +348,11 @@ Boolean F_Suspend (String args, ClientData *pCD, XEvent *event)
  * Starts the system tray named by trayCommand, if one is not running already.
  *
  * mWizard has no tray of its own; this runs whatever the user configured,
- * typically stalonetray. The selection check matters because f.restart
- * re-execs the window manager while its clients keep running -- without it
- * every restart would leave another tray behind.
+ * typically stalonetray. The selection check is what keeps a tray the window
+ * manager did not start from being duplicated -- one the session file started
+ * before mWizard, say, or one left behind by a restart that could not end it.
+ * The tray mWizard does start is recorded, and f.restart ends it before
+ * re-execing, so this finds the selection free and starts it afresh.
  */
 void InitSystemTray(void)
 {
@@ -261,7 +371,7 @@ void InitSystemTray(void)
 		sel_atom = XInternAtom(DISPLAY, sel_name, False);
 
 		if(XGetSelectionOwner(DISPLAY, sel_atom) == None) {
-			SpawnCommand(wmGD.trayCommand);
+			SpawnManagedCommand(wmGD.trayCommand);
 			return;
 		}
 	}

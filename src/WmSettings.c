@@ -250,11 +250,17 @@ static void AddStartupCommand(char *cmd)
  * Runs the Startup block, once the window manager is ready to manage what
  * those commands map.
  *
- * Skipped on a restart. f.restart re-execs the window manager while its
- * clients keep running, so running these again would leave a second copy of
- * everything -- the same reason InitSystemTray() checks the tray selection
- * first. wmRestarted is set from the _MOTIF_WM_INFO property the previous
- * instance left on the root window.
+ * Run on a restart as well, which is what makes f.restart a way of reloading
+ * the whole session rather than the window manager alone: the rc file is read
+ * again, and the programs it names are started again from what it now says.
+ * Nothing is left over to duplicate because RestartWm() ends the previous
+ * instance's copies before re-execing -- which is also why these go through
+ * SpawnManagedCommand() rather than SpawnCommand(), so there is something to
+ * end.
+ *
+ * Programs that must survive a restart untouched do not belong here: a
+ * wallpaper setter, or anything else that should run once for the life of the
+ * X session, still belongs in the session file.
  */
 void RunStartupCommands(void)
 {
@@ -262,23 +268,9 @@ void RunStartupCommands(void)
 
     if (numStartupCmds == 0) return;
 
-    /*
-     * Say so rather than doing nothing quietly. f.restart is how the rc file
-     * gets reloaded, so it is also how someone will test a Startup entry
-     * they just added -- and without this they would see no effect and no
-     * reason for it.
-     */
-    if (wmGD.wmRestarted)
-    {
-	Warning ("Startup block skipped: the window manager was restarted "
-		 "rather than started, and its clients are still running. "
-		 "Log out and back in to run it.");
-	return;
-    }
-
     for (i = 0; i < numStartupCmds; i++)
     {
-	if (!SpawnCommand (startupCmds[i]))
+	if (!SpawnManagedCommand (startupCmds[i]))
 	{
 	    const char fmt[] = "could not run startup command \"%s\".";
 	    size_t len;

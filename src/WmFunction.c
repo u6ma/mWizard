@@ -2646,6 +2646,19 @@ void RestartWm (long startupFlags)
     XSync (DISPLAY, False);
 
     /*
+     * End the programs this instance started -- the Startup block and the
+     * tray -- so that the next one starts them again from the rc file as it
+     * now reads. Waits for them to go, so that a tray does not still own the
+     * tray selection when the instance that would replace it looks.
+     *
+     * Deliberately after the clients have been let go above and after the
+     * focus has been settled: what follows is the exec, and nothing that
+     * needs the display happens between here and it.
+     */
+
+    TerminateManagedChildren ();
+
+    /*
      * Restart the window manager with the initial arguments plus
      * the restart settings.
      */

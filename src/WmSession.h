@@ -37,6 +37,21 @@ _X_NORETURN void ExitWM(int exitCode);
 Boolean SpawnCommand(const char *command);
 
 /*
+ * The same, for a command mWizard is expected to start again every time it
+ * comes up -- the Startup block and the system tray. The child is remembered
+ * so that TerminateManagedChildren() can end it.
+ */
+Boolean SpawnManagedCommand(const char *command);
+
+/*
+ * Ends every child started through SpawnManagedCommand() and waits for them
+ * to go, so that RestartWm() can re-exec into an instance that starts them
+ * again. Called on the way to a restart and nowhere else: on the way out of
+ * the session there is nothing to hand them over to.
+ */
+void TerminateManagedChildren(void);
+
+/*
  * Starts (or, when the settings change, restarts) the idle lock timer.
  * Does nothing unless lockTimeout is greater than zero and lockCommand is
  * a non-empty string. Compiled out entirely without IDLE_LOCK.
