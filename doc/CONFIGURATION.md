@@ -404,6 +404,12 @@ A stalonetray config tuned for mWizard is installed as
 `/etc/X11/stalonetrayrc`. There is no build-time dependency on stalonetray or
 on any other tray — it is a string you set.
 
+It configures the tray as an **ordinary framed window**: `decorations all` and
+`window_type normal`, so it carries the same Motif borders as anything else and
+can be moved and resized by them, while `sticky true` keeps it on every
+workspace. To trade that for dock behaviour, set `window_type dock` and
+`window_strut auto` — see the two sections below for what each implies.
+
 ### What mWizard does for a tray
 
 A window that sets `_NET_WM_WINDOW_TYPE_DOCK` gets:
@@ -416,6 +422,14 @@ A window that sets `_NET_WM_WINDOW_TYPE_DOCK` gets:
   `_NET_WM_STRUT_PARTIAL`. Maximized windows then stop at the tray edge instead
   of passing underneath, and `_NET_WORKAREA` reports the reduced area to any
   other EWMH client that asks.
+
+The window type is applied before the client's own `_MOTIF_WM_HINTS`, and the
+frame is then intersected with what that property asks for. Since a dock starts
+from no decoration at all, **an explicit decoration request cannot add anything
+back** — a tray configured with both `window_type dock` and `decorations all`
+still comes up bare. Dock windows are also move-only, so no decoration setting
+makes one resizable. If you want a frame you can drag and resize, the tray must
+not call itself a dock.
 
 `_NET_WM_STATE_STICKY` works on any window, not just docks, and maps onto the
 same occupy-all-workspaces state.

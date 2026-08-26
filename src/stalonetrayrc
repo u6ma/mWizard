@@ -10,25 +10,37 @@
 #
 # See stalonetray(1) for every option.
 
-# No frame. stalonetray sets this through _MOTIF_WM_HINTS, which mWizard
-# honours natively, so the tray comes up undecorated even on a build without
-# EWMH dock support.
-decorations none
+# Full Motif frame. stalonetray sets this through _MOTIF_WM_HINTS, which
+# mWizard honours natively, so the tray gets the same borders as any other
+# window and can be moved and resized by them.
+decorations all
 
-# Ask to be treated as a dock. mWizard maps this onto no decoration, move
-# only, and present on every workspace.
-window_type dock
+# Treated as an ordinary window rather than a dock.
+#
+# mWizard maps _NET_WM_WINDOW_TYPE_DOCK onto no decoration at all and move as
+# the only permitted function, so a dock has no frame to grab and can never be
+# resized. Set this back to "dock" to get that behaviour -- but note that
+# "decorations all" cannot override it: the window type is applied first and
+# the frame is then intersected with what the client asks for, so nothing can
+# add back what the dock branch removed.
+window_type normal
 
-# Reserve screen edge space so maximized windows stop at the tray. Set to
-# none if you would rather have windows maximize underneath it.
-window_strut auto
+# No reserved screen edge.
+#
+# A window you can move and resize cannot sensibly reserve one: maximized
+# windows would go on avoiding a band the tray may have been dragged out of.
+# Use "auto" together with "window_type dock" if you would rather have the
+# tray own an edge and keep maximized windows clear of it.
+window_strut none
 
-# Keep the tray on every workspace and out of window lists.
+# Keep the tray on every workspace and out of window lists. mWizard honours
+# _NET_WM_STATE_STICKY on any window, so this still works without dock type.
 sticky true
 skip_taskbar true
 
-# Sit below normal windows rather than floating over them.
-window_layer bottom
+# Stack like any other window. mWizard does not implement _NET_WM_STATE_BELOW,
+# and a framed tray you interact with should not be pinned under everything.
+window_layer normal
 
 # Icon slot geometry. icon_size is the icon itself, slot_size the cell it
 # sits in; width and height below are counted in slots, not pixels.
