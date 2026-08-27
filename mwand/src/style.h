@@ -29,7 +29,7 @@
  * database. Must run before any resource is fetched from it, and before the
  * widgets are made.
  */
-void LoadStyleFile(Display *dpy);
+void LoadStyleFile(Widget w);
 
 /*
  * The render table for one role, or the base font's if that role was not

@@ -141,6 +141,13 @@ static const char *color_names[] = {
 	"activeBottomShadowPixmap"
 };
 
+/*
+ * The rendition tag each role ended up bound to: the role's own name
+ * normally, a fallback tag when the font it asked for was unusable, NULL
+ * when nothing usable could be made. See LoadStyleFile().
+ */
+static const char *font_tags[NUM_FONT_ROLES];
+
 static char *font_specs[NUM_FONT_ROLES];
 static XmRenderTable font_tables[NUM_FONT_ROLES];
 static Boolean font_tables_tried[NUM_FONT_ROLES];
@@ -148,6 +155,15 @@ static Boolean font_tables_tried[NUM_FONT_ROLES];
 static char style_file[STYLE_PATH_MAX];
 static XrmDatabase style_db;
 static Display *style_dpy;
+static Widget style_widget;
+
+/*
+ * Motif's own, and the same one mWizard declares in src/WmXmP.h: it reports
+ * zero height for a render table whose font never loaded, which is the only
+ * check here that does not depend on guessing why one failed.
+ */
+void XmRenderTableGetDefaultFontExtents(XmRenderTable,
+	int *height, int *ascent, int *descent);
 
 static int FontRoleIndex(const char *role);
 
@@ -381,6 +397,27 @@ static XmRenderTable RenderTableForTag(Widget w, const char *tag)
 	return rt;
 }
 
+/*
+ * Whether Motif can build a render table with a font in it from this tag.
+ *
+ * A rendition whose font never loaded keeps XmNfont at its default, XmAS_IS,
+ * which is the integer 255 -- and Motif hands that to XChangeGC as a Font id,
+ * which is a BadFont naming nothing and the end of the process. Zero font
+ * height is what such a table reports.
+ */
+static Boolean TagIsUsable(const char *tag)
+{
+	XmRenderTable rt;
+	int height = 0;
+
+	if(!style_widget) return True;	/* nothing to check with; let it be */
+
+	rt = RenderTableForTag(style_widget, tag);
+	if(rt) XmRenderTableGetDefaultFontExtents(rt, &height, NULL, NULL);
+
+	return (height > 0) ? True : False;
+}
+
 XmRenderTable StyleFont(Widget w, const char *role)
 {
 	int i = FontRoleIndex(role);
@@ -388,20 +425,18 @@ XmRenderTable StyleFont(Widget w, const char *role)
 
 	if(i < 0 || !w) return NULL;
 
-	if(!font_specs[i]) {
+	if(!font_tags[i]) {
 		/* Not named in the style file: this role is the base font. */
 		base = FontRoleIndex(StyleFontBase);
-		if(base < 0 || base == i || !font_specs[base]) return NULL;
+		if(base < 0 || base == i) return NULL;
 		i = base;
 	}
 
+	if(!font_tags[i]) return NULL;
+
 	if(!font_tables_tried[i]) {
 		font_tables_tried[i] = True;
-		font_tables[i] = RenderTableForTag(w, font_roles[i].role);
-
-		if(!font_tables[i])
-			fprintf(stderr, "%s: could not make the font \"%s\".\n",
-				APP_NAME, font_specs[i]);
+		font_tables[i] = RenderTableForTag(w, font_tags[i]);
 	}
 
 	return font_tables[i];
@@ -614,8 +649,9 @@ static FILE* FopenStyleFile(void)
 	return NULL;
 }
 
-void LoadStyleFile(Display *dpy)
+void LoadStyleFile(Widget w)
 {
+	Display *dpy = XtDisplay(w);
 	FILE *fp;
 	char buf[STYLE_LINE_MAX];
 	char seg[STYLE_LINE_MAX];
@@ -625,6 +661,7 @@ void LoadStyleFile(Display *dpy)
 	Boolean in_quotes;
 
 	style_dpy = dpy;
+	style_widget = w;
 	style_db = XtScreenDatabase(DefaultScreenOfDisplay(dpy));
 
 	/*
@@ -678,7 +715,9 @@ void LoadStyleFile(Display *dpy)
 	 * twice has to end up with the last value rather than both.
 	 */
 	for(i = 0; i < NUM_FONT_ROLES; i++) {
+		char alt_tag[64];
 		const char *usable;
+		const char *tag;
 		int b;
 
 		if(!font_specs[i] || !font_roles[i].bindings[0]) continue;
@@ -689,10 +728,46 @@ void LoadStyleFile(Display *dpy)
 			font_specs[i] = strdup(usable);
 		}
 
-		PutFontRendition(font_roles[i].role, font_specs[i]);
+		tag = font_roles[i].role;
+		PutFontRendition(tag, font_specs[i]);
+
+		/*
+		 * Ask Motif to build it before anything is bound to it. A font
+		 * that cannot be made is not a cosmetic problem: the first
+		 * string drawn with it ends the process on a BadFont, and the
+		 * X error names no font. Better one nobody asked for.
+		 */
+		if(!TagIsUsable(tag)) {
+			/*
+			 * Under a second tag rather than by rewriting the
+			 * first, because Xt may hand back the conversion it
+			 * has already made for a tag it has seen.
+			 */
+			snprintf(alt_tag, sizeof(alt_tag), "%sFallback",
+				font_roles[i].role);
+			PutFontRendition(alt_tag, STYLE_LAST_RESORT_FONT);
+
+			if(!TagIsUsable(alt_tag)) {
+				fprintf(stderr, "%s: neither \"%s\" nor \"%s\" "
+					"could be made into a usable font; "
+					"leaving %s to Motif.\n", APP_NAME,
+					font_specs[i], STYLE_LAST_RESORT_FONT,
+					font_roles[i].role);
+				continue;	/* bind nothing */
+			}
+
+			fprintf(stderr, "%s: \"%s\" could not be made into a "
+				"usable font; using \"%s\" for %s.\n", APP_NAME,
+				font_specs[i], STYLE_LAST_RESORT_FONT,
+				font_roles[i].role);
+
+			/* alt_tag is this iteration's stack; font_tags keeps it */
+			tag = strdup(alt_tag);
+		}
+
+		font_tags[i] = tag;
 
 		for(b = 0; font_roles[i].bindings[b]; b++)
-			PutStyle(font_roles[i].bindings[b], "",
-				font_roles[i].role);
+			PutStyle(font_roles[i].bindings[b], "", tag);
 	}
 }

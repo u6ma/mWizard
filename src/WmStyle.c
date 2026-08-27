@@ -62,6 +62,7 @@
 #include "WmStyle.h"
 #include "WmResource.h"
 #include "WmError.h"
+#include "WmXmP.h"
 
 #define STYLE_LINE_MAX		(MAXWMPATH + 1)
 
@@ -144,6 +145,13 @@ static const ColorComponent colorComponents[] = {
 
 /* The font spec for each role, as the file wrote it. NULL if unset. */
 static char *fontSpecs[NUM_FONT_ROLES];
+
+/*
+ * The rendition tag each role ended up bound to. Normally the role's own
+ * name; the fallback tag when the font it asked for turned out unusable, and
+ * NULL when nothing usable could be made at all. See LoadStyleFile().
+ */
+static const char *fontTags[NUM_FONT_ROLES];
 
 /* Render tables built from those, on demand. See StyleFont(). */
 static XmRenderTable fontTables[NUM_FONT_ROLES];
@@ -442,6 +450,26 @@ static XmRenderTable RenderTableForTag(const char *tag)
     return (rt);
 }
 
+/*
+ * Whether Motif can build a render table with a font in it from this tag.
+ *
+ * The one check that does not depend on guessing why a font failed. A
+ * rendition whose font never loaded keeps XmNfont at its default, XmAS_IS,
+ * which is the integer 255 -- and Motif will hand that to XChangeGC as a
+ * Font id and take the program down with a BadFont naming nothing. Zero font
+ * height is what such a table reports, and it is the same test
+ * MakeAppearanceResources() has always used on the title bar's table.
+ */
+static Boolean TagIsUsable(const char *tag)
+{
+    XmRenderTable rt = RenderTableForTag (tag);
+    int height = 0;
+
+    if (rt) XmRenderTableGetDefaultFontExtents (rt, &height, NULL, NULL);
+
+    return (height > 0);
+}
+
 XmRenderTable StyleFont(const char *role)
 {
     int i = FontRoleIndex (role);
@@ -449,22 +477,20 @@ XmRenderTable StyleFont(const char *role)
 
     if (i < 0) return (NULL);
 
-    if (!fontSpecs[i])
+    if (!fontTags[i])
     {
 	/* Not named in the style file: this role is the base font. */
 	base = FontRoleIndex (WmStyleFont);
-	if (base < 0 || base == i || !fontSpecs[base]) return (NULL);
+	if (base < 0 || base == i) return (NULL);
 	i = base;
     }
+
+    if (!fontTags[i]) return (NULL);
 
     if (!fontTablesTried[i])
     {
 	fontTablesTried[i] = True;
-	fontTables[i] = RenderTableForTag (fontRoles[i].role);
-
-	if (!fontTables[i])
-	    StyleWarning ("style file: could not make the font \"%s\".",
-			  fontSpecs[i]);
+	fontTables[i] = RenderTableForTag (fontTags[i]);
     }
 
     return (fontTables[i]);
@@ -789,7 +815,9 @@ void LoadStyleFile(void)
      */
     for (i = 0; i < NUM_FONT_ROLES; i++)
     {
+	char altTag[64];
 	const char *usable;
+	const char *tag;
 	int b;
 
 	if (!fontSpecs[i] || !fontRoles[i].bindings[0]) continue;
@@ -801,9 +829,49 @@ void LoadStyleFile(void)
 	    fontSpecs[i] = XtNewString (usable);
 	}
 
-	PutFontRendition (fontRoles[i].role, fontSpecs[i]);
+	tag = fontRoles[i].role;
+	PutFontRendition (tag, fontSpecs[i]);
+
+	/*
+	 * Ask Motif to build it before anything is bound to it. A font that
+	 * cannot be made is not a cosmetic problem: the first string drawn
+	 * with it ends the process on a BadFont. Better a font nobody asked
+	 * for than a window manager that will not start, and better still to
+	 * say which font it was, since the X error will not.
+	 */
+	if (!TagIsUsable (tag))
+	{
+	    /*
+	     * Under a second tag rather than by rewriting the first, because
+	     * Xt may hand back the conversion it has already made for a tag
+	     * it has seen.
+	     */
+	    snprintf (altTag, sizeof(altTag), "%sFallback", fontRoles[i].role);
+	    PutFontRendition (altTag, STYLE_LAST_RESORT_FONT);
+
+	    if (!TagIsUsable (altTag))
+	    {
+		StyleWarning ("neither \"%s\" nor \"%s\" could be made into a "
+			      "usable font; leaving %s to Motif.",
+			      fontSpecs[i], STYLE_LAST_RESORT_FONT,
+			      fontRoles[i].role);
+		continue;	/* bind nothing; Motif keeps its own default */
+	    }
+
+	    StyleWarning ("\"%s\" could not be made into a usable font; "
+			  "using \"%s\" for %s.",
+			  fontSpecs[i], STYLE_LAST_RESORT_FONT,
+			  fontRoles[i].role);
+	    /*
+	     * Copied: altTag is this iteration's stack, and fontTags holds
+	     * what StyleFont() converts from for the life of the process.
+	     */
+	    tag = XtNewString (altTag);
+	}
+
+	fontTags[i] = tag;
 
 	for (b = 0; fontRoles[i].bindings[b]; b++)
-	    PutStyle (fontRoles[i].bindings[b], "", fontRoles[i].role);
+	    PutStyle (fontRoles[i].bindings[b], "", tag);
     }
 }

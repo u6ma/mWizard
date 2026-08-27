@@ -165,7 +165,7 @@ int main(int argc, char **argv)
 	 * reads too -- see style.c. Merged into the same database, and for
 	 * the same reason: it has to be there before any widget is made.
 	 */
-	LoadStyleFile(dpy);
+	LoadStyleFile(wshell);
 
 	XtGetApplicationResources(wshell, &app_res, xrdb_resources,
 		num_xrdb_resources, NULL, 0);
