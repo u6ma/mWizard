@@ -951,17 +951,25 @@ XtResource wmScreenResources[] =
     /*
      * Docks: system trays and panels.
      *
-     * EWMH says a dock is furniture, so the defaults are what that implies --
-     * no frame, and move as the only function. They are resources rather
-     * than the constants they used to be because "no frame" and "a tray that
-     * grows as icons are docked in it" do not go together: with nothing to
-     * grab and no button to press, a tray that has outgrown its corner can
-     * only be dealt with by restarting it. The shipped rc file gives docks a
-     * title bar with a minimize button for exactly that reason.
+     * EWMH says a dock is furniture -- no frame, move and nothing else --
+     * and that is what these used to be, as constants. It does not work for
+     * a system tray, which grows every time something docks an icon in it:
+     * with no button to press and only the window itself to grab, a tray
+     * that has spread across the screen can only be dealt with by
+     * restarting it.
      *
-     * This is the only way to change them. ProcessEwmhWindowType() runs
-     * before Client blocks are applied and overwrites what they set, so
-     * clientDecoration in a Client block cannot reach a dock.
+     * So the default is a title bar with a minimize button. Minimize it and
+     * it becomes an icon like anything else, with its icons still in it when
+     * it comes back. Close is deliberately absent -- closing a tray strands
+     * every icon docked in it. "dockDecoration none" and "dockFunctions
+     * move" restore the bare EWMH behaviour.
+     *
+     * These resources are the only way to reach a dock. ProcessEwmhWindowType()
+     * runs after Client blocks and overwrites what they set, so
+     * clientDecoration in a Client block cannot affect one; and it runs
+     * before the client's own _MOTIF_WM_HINTS, whose request is then
+     * intersected with what is granted here, so a tray asking for full
+     * decorations cannot add back what was withheld.
      */
     {
 	WmNdockDecoration,
@@ -970,7 +978,7 @@ XtResource wmScreenResources[] =
 	sizeof (int),
 	XtOffsetOf (WmScreenData, dockDecoration),
 	XtRImmediate,
-	(XtPointer)(WM_DECOR_NONE)
+	(XtPointer)(WM_DECOR_MINIMIZE | WM_DECOR_BORDER)
     },
 
     {
@@ -980,7 +988,7 @@ XtResource wmScreenResources[] =
 	sizeof (int),
 	XtOffsetOf (WmScreenData, dockFunctions),
 	XtRImmediate,
-	(XtPointer)(MWM_FUNC_MOVE)
+	(XtPointer)(MWM_FUNC_MOVE | MWM_FUNC_MINIMIZE)
     },
 
     {

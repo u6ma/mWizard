@@ -215,6 +215,9 @@ void HandleClientFrameMove (ClientData *pcd, XEvent *pev)
     int newX, newY;
     XEvent event, KeyEvent;
 
+    /* See StartClientMove(); this catches the drag that already has a grab. */
+    if (pcd && (pcd->clientState == MAXIMIZED_STATE)) return;
+
     if (pev) {
 	firstTime = True;
     }
@@ -1752,7 +1755,6 @@ void RecomputeMaxConfig(ClientData *pCD)
 	XineramaScreenInfo si;
 	int waX, waY, waWidth, waHeight;
 	int x1, y1, x2, y2;
-	Boolean clipped = False;
  
     int frmWidth = pCD->clientOffset.x * 2;
     int frmHeight = pCD->clientOffset.x + pCD->clientOffset.y;
@@ -1782,8 +1784,6 @@ void RecomputeMaxConfig(ClientData *pCD)
 
     /* Ignore the struts entirely rather than produce an unusable rectangle */
     if((x2 - x1) > frmWidth && (y2 - y1) > frmHeight) {
-	clipped = ((x1 != si.x_org) || (y1 != si.y_org) ||
-		((x2 - x1) != si.width) || ((y2 - y1) != si.height));
 	si.x_org = x1;
 	si.y_org = y1;
 	si.width = x2 - x1;
@@ -1813,22 +1813,21 @@ void RecomputeMaxConfig(ClientData *pCD)
     if(pCD->heightInc > 0)
 	pCD->maxHeight -= ((pCD->maxHeight - pCD->baseHeight) % pCD->heightInc);
 
-    if(clipped) {
-	/*
-	 * Space is reserved on this monitor, so pin the maximized window to
-	 * the usable origin. Leaving it at the client position and relying on
-	 * PlaceFrameOnScreen would only keep it on screen, which is no longer
-	 * the same thing as keeping it clear of the tray.
-	 */
-	pCD->maxX = si.x_org + pCD->clientOffset.x;
-	pCD->maxY = si.y_org + pCD->clientOffset.y;
-    } else {
-	pCD->maxX = pCD->clientX;
-	pCD->maxY = pCD->clientY;
-
-	PlaceFrameOnScreen(pCD, &pCD->maxX, &pCD->maxY,
-		pCD->maxWidth, pCD->maxHeight);
-    }
+    /*
+     * The maximized frame goes at the origin of the usable area -- the
+     * monitor the window is on, less anything a tray reserved.
+     *
+     * This used to be done only when a strut had actually clipped that
+     * rectangle. Everywhere else it took the window's current position and
+     * asked PlaceFrameOnScreen() to drag it back if it hung off the edge,
+     * which is a different thing and a much weaker one: a window sitting at
+     * 400,300 grew to full size and stayed at 400,300, so maximizing changed
+     * the size and left the position alone. Since maxWidth and maxHeight are
+     * measured from this rectangle in the first place, this is the only
+     * origin at which the window is the size it was just told to be.
+     */
+    pCD->maxX = si.x_org + pCD->clientOffset.x;
+    pCD->maxY = si.y_org + pCD->clientOffset.y;
 }
 
 
@@ -2373,6 +2372,24 @@ Boolean StartClientMove (ClientData *pcd, XEvent *pev)
     Boolean grabbed;
     int junk;
     Window child;
+
+    /*
+     * Not while maximized.
+     *
+     * A maximized window could be dragged, and ProcessNewConfiguration()
+     * takes a position change on a maximized window as a new maximized
+     * position and writes it into maxX/maxY -- leaving a window that is
+     * still "maximized", still the size of the screen, and no longer
+     * anywhere near it. Maximized means filling the screen; a maximized
+     * window somewhere else is not a state worth being able to reach.
+     *
+     * Guarded here and in HandleClientFrameMove() rather than in F_Move(),
+     * because the title bar drag never goes through F_Move: it reaches
+     * HandleClientFrameMove() from HandleCMotionNotify() once the move
+     * threshold is passed, and _NET_WM_MOVERESIZE reaches both directly.
+     * Icons are unaffected -- a minimized client is in MINIMIZED_STATE.
+     */
+    if (pcd && (pcd->clientState == MAXIMIZED_STATE)) return (False);
 
     /*
      *	Do our grabs if we're just starting out

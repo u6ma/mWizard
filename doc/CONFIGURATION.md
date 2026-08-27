@@ -135,8 +135,8 @@ does in detail; this is the index.
 | `transientFunctions` | function list | all but maximize/minimize |
 | `utilityDecoration` | decoration list | `system title resizeh` |
 | `utilityFunctions` | function list | all but maximize |
-| `dockDecoration` | decoration list | `none` (shipped rc: `minimize border`) |
-| `dockFunctions` | function list | `move` (shipped rc: `move minimize`) |
+| `dockDecoration` | decoration list | `minimize border` |
+| `dockFunctions` | function list | `move minimize` |
 
 `dockDecoration` and `dockFunctions` are new in 1.2 and are the only way to
 reach a `_NET_WM_WINDOW_TYPE_DOCK` window — see section 8.
@@ -714,13 +714,16 @@ everything unmaximizable.
 
 ### Giving a dock a minimize button — new in 1.2
 
-EWMH treats a dock as furniture, so mWizard's built-in default is no frame and
-move as the only function. That is wrong for a tray specifically: it **grows
-every time something docks an icon in it**, and with no button to press and
-only the window itself to grab, a tray that has spread across the screen can
-only be dealt with by restarting it.
+EWMH treats a dock as furniture — no frame, move and nothing else. That is
+wrong for a tray specifically: it **grows every time something docks an icon
+in it**, and with no button to press and only the window itself to grab, a
+tray that has spread across the screen can only be dealt with by restarting
+it.
 
-So the shipped rc file gives docks a title bar with a minimize button:
+So mWizard's default is a title bar with a minimize button. The shipped rc
+file also states it explicitly, which is only documentation — the default is
+built in, so it applies to an `~/.mwizardrc` that predates 1.2 and says
+nothing about docks:
 
 ```
 Settings
