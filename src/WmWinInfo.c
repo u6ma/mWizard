@@ -58,6 +58,7 @@
 #include "WmResource.h"
 #include "WmWrkspace.h"
 #include "WmWinList.h"
+#include "WmWinConf.h"
 #include "WmPresence.h"
 #include "WmSession.h"
 #include "WmXinerama.h"
@@ -2469,25 +2470,8 @@ InitClientPlacement (ClientData *pCD, long manageFlags)
 			((pCD->usePPosition == USE_PPOSITION_NONZERO) &&
 			((pCD->clientX != 0) || (pCD->clientY != 0))))) ){
 
-			XineramaScreenInfo xsi;
-
 			FindClientPlacement (pCD);
 			autoPlaced = True;
-
-			/* If xinerama is active, we'll need to update max config as well */
-			if(GetXineramaScreenFromLocation(pCD->clientX, pCD->clientY, &xsi)) {
-				pCD->maxWidth = xsi.width - (pCD->clientOffset.x * 2);
-				pCD->maxHeight = xsi.height - (pCD->clientOffset.x + pCD->clientOffset.y);
-
-				if(pCD->maxWidth > pCD->maxWidthLimit)
-					pCD->maxWidth = pCD->maxWidthLimit;
-
-				if(pCD->maxHeight > pCD->maxHeightLimit)
-					pCD->maxHeight = pCD->maxHeightLimit;
-
-				pCD->maxWidth -= ((pCD->maxWidth - pCD->baseWidth) % pCD->widthInc);
-				pCD->maxHeight -= ((pCD->maxHeight - pCD->baseHeight) % pCD->heightInc);
-			}
 		}
 	}
 
@@ -2516,13 +2500,18 @@ InitClientPlacement (ClientData *pCD, long manageFlags)
 
 
     /*
-     * Position the maximized frame:
+     * Work out the maximized configuration.
+     *
+     * Through RecomputeMaxConfig() rather than by hand, because getting it
+     * right means the monitor the window is actually on, minus whatever a
+     * tray or panel has reserved, rounded down to the client's resize
+     * increment -- and that function is where all three already live. It was
+     * only ever called when a window changed its decorations or moved between
+     * monitors, so until then every window carried the maximized size
+     * ProcessWmNormalHints() had guessed from the whole display: the full
+     * width of a multi-monitor desktop, and no allowance for a tray.
      */
-
-    pCD->maxX = pCD->clientX;
-    pCD->maxY = pCD->clientY;
-    PlaceFrameOnScreen (pCD, &pCD->maxX, &pCD->maxY, pCD->maxWidth,
-	pCD->maxHeight);
+    RecomputeMaxConfig (pCD);
 
 
     if (!wmGD.iconAutoPlace)
