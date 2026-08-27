@@ -1801,8 +1801,17 @@ void RecomputeMaxConfig(ClientData *pCD)
     if(pCD->maxHeight > pCD->maxHeightLimit)
 	    pCD->maxHeight = pCD->maxHeightLimit;
 
-    pCD->maxWidth -= ((pCD->maxWidth - pCD->baseWidth) % pCD->widthInc);
-    pCD->maxHeight -= ((pCD->maxHeight - pCD->baseHeight) % pCD->heightInc);
+    /*
+     * Round down to whole resize increments -- a terminal cannot be a
+     * fraction of a character cell wide. Guarded because this now runs for
+     * every window as it is managed, not only for the auto-placed ones it
+     * used to: an increment of zero would be a division by zero, and taking
+     * the window manager down with it.
+     */
+    if(pCD->widthInc > 0)
+	pCD->maxWidth -= ((pCD->maxWidth - pCD->baseWidth) % pCD->widthInc);
+    if(pCD->heightInc > 0)
+	pCD->maxHeight -= ((pCD->maxHeight - pCD->baseHeight) % pCD->heightInc);
 
     if(clipped) {
 	/*

@@ -410,6 +410,18 @@ static int x_err_handler(Display *dpy, XErrorEvent *evt)
 	return 0;
 }
 
+/*
+ * Installed only around the XGrabKey calls in setup_hotkeys(), to turn the
+ * BadAccess a key already grabbed by something else produces into a message
+ * rather than a mystery.
+ *
+ * Anything else that lands in that window is not the grab's: X errors are
+ * asynchronous, so a request made earlier can be reported here. This used to
+ * call exit(EXIT_FAILURE) on those -- with no message at all, so an
+ * unrelated error arriving at the wrong moment ended the process silently
+ * and looked for all the world like mWand appearing and then vanishing.
+ * Report it the ordinary way instead.
+ */
 static int xgrabkey_err_handler(Display *dpy, XErrorEvent *evt)
 {
 	if(evt->error_code == BadAccess){
@@ -417,7 +429,7 @@ static int xgrabkey_err_handler(Display *dpy, XErrorEvent *evt)
 			"Specified key code is used by another application.\n",stderr);
 		return 0;
 	}
-	exit(EXIT_FAILURE); /* shouldn't normally happen */
+	return x_err_handler(dpy, evt);
 }
 
 static void handle_root_event(XEvent *evt)
