@@ -54,6 +54,7 @@
 #include "common.h"
 #include "wswitch.h"
 #include "mwand.h"
+#include "style.h"
 
 /* Forward declarations */
 static void set_icon(Widget);
@@ -158,6 +159,13 @@ int main(int argc, char **argv)
 
 		if(rc_file_path) LoadRcSettings(dpy, rc_file_path);
 	}
+
+	/*
+	 * Appearance comes from the style file, which the window manager
+	 * reads too -- see style.c. Merged into the same database, and for
+	 * the same reason: it has to be there before any widget is made.
+	 */
+	LoadStyleFile(dpy);
 
 	XtGetApplicationResources(wshell, &app_res, xrdb_resources,
 		num_xrdb_resources, NULL, 0);

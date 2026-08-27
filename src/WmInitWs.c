@@ -71,6 +71,7 @@
 #include "WmExecDlg.h"
 #include "WmWinfo.h"
 #include "WmSettings.h"
+#include "WmStyle.h"
 #include "WmXmP.h"
 #include "WmXinerama.h"
 #include "WmEwmh.h"
@@ -503,6 +504,13 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
 
 	LoadRcSettings ();
     }
+
+    /*
+     * And appearance out of the style file, into the same databases and for
+     * the same reason. Kept apart from the rc file because mWand reads this
+     * one too; see the note at the top of WmStyle.c.
+     */
+    LoadStyleFile ();
 
     /* 
      * Determine the screen management policy (all or none)

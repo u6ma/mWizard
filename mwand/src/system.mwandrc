@@ -4,6 +4,9 @@
 # Behaviour settings. Everything here used to live in the X resource
 # database as XmToolbox*name; it is read from this file now, and what is set
 # here overrides any leftover X resource of the same name.
+#
+# Behaviour only. Fonts and colors are in the style file, ~/.mstylesrc,
+# which mWizard reads too -- see doc/STYLE.md.
 
 Settings
 {

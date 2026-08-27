@@ -9,14 +9,10 @@ The \fBmwizardrc\fP file is a supplementary resource
 file that controls much of the behavior of the motifWizard window manager
 \fBmwizard\fP\&. 
 It contains descriptions of resources that cannot easily be
-written using standard X Window System, Version 11 resource syntax\&. The resource
-description file contains entries that are referred to by X resources in
-defaults files (for example, \fB/etc/X11/app-defaults/MWizard\fP)
-or in the \fBRESOURCE_MANAGER\fP property on the
-root window\&. For example, the resource description file enables you to specify
-different types of window menus; however, an X resource is used to specify
-which of these window menus \fBmwizard\fP should use for a particular
-window\&. 
+written using standard X Window System, Version 11 resource syntax, together
+with the \fBSettings\fP, \fBClient\fP and \fBWorkspace\fP blocks that hold
+window manager behavior\&. Appearance -- colors, shadows, pixmaps and fonts --
+is in the style file instead; see \fBdoc/STYLE\&.md\fP\&. 
 .SS "Location"
 .PP
 The window manager searches for one of the following resource description
@@ -512,8 +508,9 @@ prefix)\&.
 .SH "SETTINGS"
 .PP
 \fBmwizard\fP reads its behavior from this file rather than from the X
-resource database\&. The database is left holding appearance only -- colors,
-shadows, pixmaps and fonts -- as described in \fBmwizard\fP(1)\&.
+resource database\&. Appearance -- colors, shadows, pixmaps and fonts -- is
+read from the style file, \fB$HOME/\&.mstylesrc\fP, which \fBmwand\fP(1) reads
+as well; see \fBdoc/STYLE\&.md\fP\&.
 .PP
 The syntax for a settings specification is:
 .PP
@@ -534,7 +531,7 @@ character\&. Lines beginning with \fB!\fP are comments\&.
 The names and values are exactly those documented in the "General Appearance
 and Behavior Resources" and "Screen Specific Resources" sections of
 \fBmwizard\fP(1), minus the \fIMWizard*\fP prefix\&. A name that is not one of
-them -- including an appearance resource, which belongs in the X database --
+them -- including an appearance resource, which belongs in the style file --
 is reported as an error at startup rather than being ignored\&.
 .PP
 For example:
@@ -771,4 +768,8 @@ $HOME/\&.mwizardrc
 .SH "RELATED INFORMATION"
 .PP
 \fBmwizard\fP(1),
+\fBmwand\fP(1),
 \fBX\fP(1)\&.
+.PP
+\fBdoc/STYLE\&.md\fP describes the style file, which holds appearance for
+\fBmwizard\fP and \fBmwand\fP alike\&.

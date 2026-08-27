@@ -1581,6 +1581,8 @@ XtResource wmAppearanceResources[] =
 
 };
 
+Cardinal wmNumAppearanceResources = XtNumber (wmAppearanceResources);
+
 
 
 /*************************************<->*************************************

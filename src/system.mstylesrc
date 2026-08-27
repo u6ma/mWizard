@@ -1,0 +1,114 @@
+!!
+!! system.mstylesrc -- appearance for motifWizard and motifWand.
+!!
+!! Copy it to ~/.mstylesrc and edit that:
+!!
+!!     cp /etc/X11/system.mstylesrc ~/.mstylesrc
+!!
+!! This file holds appearance and nothing else: fonts, colors, and the odd
+!! Motif resource that is neither. Behaviour lives in the rc files --
+!! ~/.mwizardrc for the window manager, ~/.mwandrc for the panel.
+!!
+!! Same syntax as those: "!" starts a comment, one entry per line, the name is
+!! the first word and the value is everything after it. Quotes are only needed
+!! to keep leading or trailing spaces.
+!!
+!! Both programs read this file. A block with no program name applies to both;
+!! one written "Fonts mwand" or "Colors mwizard" applies to that program alone.
+!!
+!! See doc/STYLE.md for the whole list.
+!!
+
+!! -------------------------------------------------------------------------
+!! Fonts
+!!
+!! "font" is the base: everything is drawn in it unless a role below says
+!! otherwise, so changing that one line changes every piece of text both
+!! programs draw. The others exist to be uncommented, not to be kept in step.
+!!
+!! A font is either a core X font -- an XLFD, or an alias such as "fixed" --
+!! or an Xft font written family:size or family:size:style. The colon is what
+!! tells them apart. To see what is installed: xlsfonts(1) for core fonts,
+!! fc-list(1) for Xft ones.
+!!
+!!     font    fixed
+!!     font    "-*-helvetica-medium-r-normal--12-*-*-*-*-*-iso8859-1"
+!!     font    "Liberation Sans:10"
+!!     font    "Liberation Sans:10:bold"
+!! -------------------------------------------------------------------------
+
+Fonts
+{
+    !! Motif's own font, and what mWizard has always drawn its menus in.
+    !! Pixelated on purpose: it is a bitmap font, it is on every X server
+    !! there is, and it needs no fontconfig.
+    font            fixed
+
+    !! Uncomment any of these to let one place differ from the base.
+    !! A comment has to be on a line of its own: everything after the name
+    !! is the value, trailing "!" and all.
+    !!
+    !! window title bars
+    !! titleFont       "Liberation Sans:10:bold"
+    !!
+    !! icon labels
+    !! iconFont        "Liberation Sans:10:italic"
+    !!
+    !! menu items, and menu titles
+    !! menuFont        fixed
+    !! menuTitleFont   fixed
+    !!
+    !! the move and resize boxes, and the workspace presence dialog
+    !! feedbackFont    fixed
+    !!
+    !! the Execute window, mWinfo, and message boxes
+    !! dialogFont      fixed
+    !!
+    !! mWand's clock and user@host lines
+    !! panelFont       fixed
+}
+
+!! -------------------------------------------------------------------------
+!! Colors
+!!
+!! Component appearance resources. Written on their own they apply to
+!! everything; written "component.name" they apply to one part:
+!!
+!!     client    window frames        icon      icons and the icon box
+!!     title     title bars           feedback  move/resize and presence
+!!     menu      menus                panel     mWand
+!!
+!! Names: background, foreground, topShadowColor, bottomShadowColor,
+!! backgroundPixmap, topShadowPixmap, bottomShadowPixmap, and each of those
+!! with an "active" prefix for the focused window -- activeBackground,
+!! activeForeground, activeTopShadowColor and so on.
+!! -------------------------------------------------------------------------
+
+Colors
+{
+    client.background        #8C8C8C
+    client.activeBackground  #7399BA
+    icon.activeBackground    #7399BA
+}
+
+!! -------------------------------------------------------------------------
+!! Resources
+!!
+!! The escape hatch: written into the resource database untouched, under the
+!! program's own name. For Motif resources that are appearance but are not
+!! fonts or colors -- margins, shadow thicknesses, spacing. Nothing here is
+!! validated, because there is no list to validate against.
+!! -------------------------------------------------------------------------
+
+Resources mwizard
+{
+    !! Roomier buttons in the workspace presence dialog.
+    feedback*XmPushButton.marginWidth   5
+    feedback*XmPushButton.marginHeight  5
+}
+
+Resources mwand
+{
+    !! mWand's frame. A thicker shadow suits a borderless panel.
+    mainFrame.shadowThickness  1
+}

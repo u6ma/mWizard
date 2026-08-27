@@ -29,6 +29,7 @@
 #include <Xm/SeparatoG.h>
 #include "common.h"
 #include "mwand.h"
+#include "style.h"
 
 static void exec_item_cb(Widget, XtPointer, XtPointer);
 static void about_item_cb(Widget, XtPointer, XtPointer);
@@ -90,6 +91,7 @@ static Widget AddItem(Widget wpulldown, const char *name, const char *label,
 	XmString title;
 	Widget w;
 	Arg args[6];
+	XmRenderTable rt;
 	int n = 0;
 
 	cbr[0].callback = cb;
@@ -99,6 +101,12 @@ static Widget AddItem(Widget wpulldown, const char *name, const char *label,
 	XtSetArg(args[n], XmNlabelString, title); n++;
 	XtSetArg(args[n], XmNmnemonic, mnemonic); n++;
 	XtSetArg(args[n], XmNactivateCallback, cbr); n++;
+
+	/* See the note in launcher.c: menu entries name their own font. */
+	if((rt = StyleFont(wpulldown, StyleFontMenu))) {
+		XtSetArg(args[n], XmNrenderTable, rt); n++;
+	}
+
 	w = XmCreatePushButtonGadget(wpulldown, (char*)name, args, n);
 	XmStringFree(title);
 	XtManageChild(w);
@@ -121,6 +129,7 @@ Widget CreateCommandMenu(Widget wparent)
 	Widget w;
 	XmString title;
 	Arg args[10];
+	XmRenderTable rt;
 	int n;
 	Boolean any_session = False;
 
@@ -149,6 +158,9 @@ Widget CreateCommandMenu(Widget wparent)
 	XtSetArg(args[n], XmNlabelString, title); n++;
 	XtSetArg(args[n], XmNmnemonic, (KeySym)(any_session ? 'S' : 'C')); n++;
 	XtSetArg(args[n], XmNsubMenuId, wpulldown); n++;
+	if((rt = StyleFont(wmenu, StyleFontMenuTitle))) {
+		XtSetArg(args[n], XmNrenderTable, rt); n++;
+	}
 	wcascade = XmCreateCascadeButtonGadget(wmenu, "commands", args, n);
 	XmStringFree(title);
 	XtManageChild(wcascade);

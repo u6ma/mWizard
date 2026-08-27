@@ -34,7 +34,9 @@ To start from the shipped sample:
 cp /etc/X11/system.mwandrc ~/.mwandrc
 ```
 
-Appearance comes from `/etc/X11/app-defaults/MWand`.
+Appearance comes from the style file, `~/.mstylesrc`, which mWizard reads too
+— see [STYLE.md](STYLE.md). The app-defaults file mWand used to install as
+`/etc/X11/app-defaults/MWand` is gone as of 1.2.
 
 > **`rcFile` is the one setting that cannot live in the rc file**, since it
 > names the file the settings live in. Set it with `-rcfile`, or as
@@ -263,23 +265,45 @@ having them in two places.
 
 ---
 
-## 6. What stays in the X resource database
+## 6. Where appearance lives
 
-Fonts and render tables only, in `/etc/X11/app-defaults/MWand`. The addressable
-parts are `XmPushButtonGadget` (menu items), `XmCascadeButtonGadget` (menu
-titles), `dateTime` (the clock), `userHost` (the login line) and `mainFrame`.
+In the **style file**, `~/.mstylesrc`, shared with mWizard. A block with no
+program name applies to both; one written `Fonts mwand` applies to mWand
+alone.
+
+```
+Fonts
+{
+    font  fixed
+}
+
+Fonts mwand
+{
+    panelFont  "Liberation Sans:9"
+}
+```
+
+The font roles mWand draws are `font` (everything), `menuFont` (menu items),
+`menuTitleFont` (menu titles), `dialogFont` (message boxes) and `panelFont`
+(the clock and the `user@host` line). Colors go in a `Colors` block, where
+`panel.` addresses everything mWand draws and `menu.` its menus.
+[STYLE.md](STYLE.md) has the whole list.
+
+Sharing the file is the point: a panel whose menus are not the window
+manager's menus is a panel that looks bolted on.
+
+### What is still an X resource
+
+Three settings are read by Xt when mWand's shell is created, before any file
+has been opened, so they cannot come from either file:
 
 ```
 MWand.x: 8
 MWand.y: 28
 MWand.mwmDecorations: 58
-
-*XmPushButtonGadget.renderTable: menu
-*renderTable.menu.fontType: FONT_IS_XFT
-*renderTable.menu.fontName: Liberation Sans
-*renderTable.menu.fontSize: 10
 ```
 
+Those are the built-in defaults; override them in `.Xdefaults` if you need to.
 `mwmDecorations` is a bitmask composed from `MwmUtil.h`. Useful values:
 borderless with title buttons `56`, borderless without `8`, borders with title
 buttons `58`, borders without `10`.
@@ -295,15 +319,15 @@ mv ~/.toolboxrc ~/.mwandrc
 Menus carry over unchanged. Then, for each `XmToolbox*name: value` line in your
 `.Xdefaults`:
 
-- **fonts and render tables** — change the prefix to `MWand*` and leave them
-  where they are.
-- **everything else** — move it into a `Settings` block, dropping the prefix
-  and the colon.
+- **everything but fonts** — move it into a `Settings` block in `~/.mwandrc`,
+  dropping the prefix and the colon.
+- **fonts and render tables** — move them into `~/.mstylesrc`; see
+  [STYLE.md](STYLE.md).
 
 ```
 XmToolbox*horizontal:      True    →   Settings { horizontal True }
 XmToolbox*dateTimeFormat:  %R      →   Settings { dateTimeFormat "%R" }
-XmToolbox*renderTable...           →   MWand*renderTable...
+XmToolbox*renderTable...           →   Fonts { font "Liberation Sans:10" }
 ```
 
 `x`, `y` and `mwmDecorations` stay in the X database — they are shell
@@ -317,6 +341,7 @@ resources read by Xt before mWand sees them.
 | Menu hidden per `xmsm` config flags | `sessionMenu`, plus per-entry commands |
 | "xmsm not running?" error at startup | Gone; mWand needs no session manager |
 | Behaviour in `XmToolbox.ad` / `.Xdefaults` | `Settings` block in the rc file |
+| Fonts in `XmToolbox.ad` / `.Xdefaults` | `~/.mstylesrc`, shared with mWizard |
 | One 1400-line `tbmain.c` | Split by concern; see `mwand/src/mwand.h` |
 | Window titled `user@host` | Titled `mWand`; `user@host` is a line in the panel (`userHostDisplay`) |
 
@@ -325,5 +350,6 @@ resources read by Xt before mWand sees them.
 ## See also
 
 - `mwand(1)`
+- `doc/STYLE.md` — the style file: fonts and colors, for mWand and mWizard
 - `doc/CONFIGURATION.md` — configuring mWizard itself
 - `NOTICE` — licensing, including the notices inherited from emwm-utils

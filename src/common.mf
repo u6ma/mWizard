@@ -18,7 +18,7 @@ mwm_objs = \
 	WmResParse.o WmResource.o WmSignal.o WmWinConf.o WmWinInfo.o WmWinList.o \
 	WmWinState.o WmSession.o WmSettings.o WmImage.o WmInitWs.o WmMenu.o	WmProtocol.o \
 	WmPresence.o WmWrkspace.o WmXinerama.o WmEwmh.o WmExecDlg.o \
-	WmWinfo.o
+	WmWinfo.o WmStyle.o
 
 mwm_hdrs = \
 	WmBitmap.h WmCDecor.h WmCDInfo.h WmCEvent.h WmCmd.h WmColormap.h \
@@ -27,9 +27,9 @@ mwm_hdrs = \
 	WmICCC.h WmIconBox.h WmIDecor.h WmImage.h WmInitWs.h WmIPlace.h \
 	WmKeyFocus.h WmManage.h WmMenu.h WmPresence.h WmProperty.h \
 	WmProtocol.h WmResCvt.h WmResNames.h WmResource.h WmResParse.h \
-	WmSession.h WmSettings.h WmSignal.h WmWinConf.h WmWinfo.h \
+	WmSession.h WmSettings.h WmSignal.h WmStyle.h WmWinConf.h WmWinfo.h \
 	WmWinInfo.h WmWinList.h WmWinState.h WmWrkspace.h WmXinerama.h \
-	WmXmP.h
+	WmXmP.h xbm/mwizard_logo.xbm
 
 mwizard: $(mwm_objs)
 	$(CC) $(LDFLAGS) $(LIBDIRS) -o $@ $(mwm_objs) $(SYSLIBS)
@@ -65,10 +65,9 @@ common_install:
 	install -m 644 mwizardrc.4 $(MANDIR)/man4/mwizardrc.4
 	install -m 755 -d $(RCDIR)
 	install -m 644 system.mwizardrc $(RCDIR)/system.mwizardrc
+	install -m 644 system.mstylesrc $(RCDIR)/system.mstylesrc
 	install -m 644 stalonetrayrc $(RCDIR)/stalonetrayrc
 	install -m 644 dunstrc $(RCDIR)/dunstrc
-	install -m 755 -d $(APPLRESDIR)
-	install -m 644 MWizard.ad $(APPLRESDIR)/MWizard
 
 # --- goodies -------------------------------------------------------------
 #
@@ -122,7 +121,10 @@ uninstall:
 	rm -f $(MANDIR)/man1/mwizard.1
 	rm -f $(MANDIR)/man4/mwizardrc.4
 	rm -f $(RCDIR)/system.mwizardrc
+	rm -f $(RCDIR)/system.mstylesrc
 	rm -f $(RCDIR)/stalonetrayrc
 	rm -f $(RCDIR)/dunstrc
+	# Left over from before appearance moved into the style file; removed
+	# here so an upgrade-then-uninstall does not strand it.
 	rm -f $(APPLRESDIR)/MWizard
 

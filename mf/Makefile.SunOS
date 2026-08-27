@@ -3,6 +3,9 @@
 PREFIX = /usr
 MANDIR = /usr/share/man
 RCDIR = /usr/lib/X11
+
+# Only used to clear away the app-defaults file versions before 1.2
+# installed; appearance is in the style file now. See doc/STYLE.md.
 APPLRESDIR = /usr/lib/X11/app-defaults
 
 CC = gcc
@@ -16,6 +19,5 @@ install:
 	install -m 664 -f $(MANDIR)/man4 mwizardrc.4
 	install -m 775 -d $(RCDIR)
 	install -m 664 -f $(RCDIR) system.mwizardrc
+	install -m 664 -f $(RCDIR) system.mstylesrc
 	install -m 664 -f $(RCDIR) stalonetrayrc
-	# If Tribblix packages Xft enabled Motif
-	# cp MWizard.ad MWizard && install -m 664 -f $(APPLRESDIR) MWizard

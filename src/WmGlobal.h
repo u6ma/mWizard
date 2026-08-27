@@ -60,7 +60,7 @@
 #define MWM_FULL_NAME "motifWizard"
 
 #define MWM_VERSION  1
-#define MWM_REVISION 1
+#define MWM_REVISION 2
 #define MWM_PATCHLEVEL 0
 
 /*

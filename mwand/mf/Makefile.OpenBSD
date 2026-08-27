@@ -7,7 +7,8 @@ MANDIR = $(PREFIX)/share/man
 # X11 configuration directory. Should match the one mWizard was built with.
 RCDIR = /usr/local/lib/X11
 
-# Default application resources directory.
+# Only used to clear away the app-defaults file versions before 1.2
+# installed; appearance is in the style file now. See doc/STYLE.md.
 APPLRESDIR = $(RCDIR)/app-defaults
 
 # Usually nothing needs to be changed beyond this point

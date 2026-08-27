@@ -71,6 +71,7 @@
 #include "WmIconBox.h"
 #include "WmImage.h"
 #include "WmError.h"
+#include "WmStyle.h"
 #include "WmXinerama.h"
 #include "WmWrkspace.h"
 
@@ -827,6 +828,21 @@ Widget CreateMenuWidget (WmScreenData *pSD,
     XmString    tmpstr;
     Screen     *scr;
 
+    /*
+     * Set on every item rather than left to the resource database.
+     *
+     * A menu item is an XmLabelGadget, XmPushButtonGadget or
+     * XmCascadeButtonGadget, and Motif resolves the font of one of those
+     * from its ancestor menu shell when nothing more specific applies --
+     * which is how mWizard's menus came to be the one thing on the screen
+     * still drawn in Motif's default font while everything else followed
+     * the app-defaults file. Naming the render table here removes the
+     * question: the style file's menuFont, or its base font, and nothing
+     * else. See WmStyle.c.
+     */
+    XmRenderTable menuFont = StyleFont (WmStyleMenuFont);
+    XmRenderTable menuTitleFont = StyleFont (WmStyleMenuTitleFont);
+
 
     /* check for bad input values. */
     if ((menuName == NULL) || (pSD == NULL))
@@ -1025,6 +1041,11 @@ Widget CreateMenuWidget (WmScreenData *pSD,
 		}
 
                 XtSetArg (args[i], XmNalignment, XmALIGNMENT_CENTER); i++; 
+		if (menuTitleFont)
+		{
+		    XtSetArg (args[i], XmNrenderTable,
+			      (XtArgVal) menuTitleFont); i++;
+		}
 	        children[n] = XmCreateLabelGadget (menuW, TITLE_NAME,
 					           (ArgList) args, i); n++;
                 children[n] = XmCreateSeparatorGadget (menuW, SEPARATOR_NAME,
@@ -1052,6 +1073,12 @@ Widget CreateMenuWidget (WmScreenData *pSD,
 	         * Set any mnemonic text.
 	         */
                 XtSetArg (args[i], XmNalignment, XmALIGNMENT_BEGINNING); i++;
+
+		if (menuFont)
+		{
+		    XtSetArg (args[i], XmNrenderTable,
+			      (XtArgVal) menuFont); i++;
+		}
 
                 if (menuItem->mnemonic)
                 {

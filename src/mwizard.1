@@ -324,11 +324,19 @@ each of which runs a command named by a setting in the rc file\&. See
 \fBmwizardrc\fP(4)\&.
 .SS "X Resources"
 .PP
-\fBmwizard\fP reads its \fIappearance\fP from the X resource database: colors,
-shadows, pixmaps and fonts\&. Its \fIbehavior\fP -- focus policy, placement,
-window and icon decoration, workspaces, session commands and everything else
-described below as an "appearance and behavior" resource -- is read from the
-rc file instead, in a \fBSettings\fP block\&. See \fBmwizardrc\fP(4)\&.
+\fBmwizard\fP reads its \fIappearance\fP -- colors, shadows, pixmaps and
+fonts -- from the style file, \fB$HOME/\&.mstylesrc\fP, which \fBmwand\fP(1)
+reads as well\&. Its \fIbehavior\fP -- focus policy, placement, window and
+icon decoration, workspaces, session commands and everything else described
+below as an "appearance and behavior" resource -- is read from the rc file, in
+a \fBSettings\fP block\&. See \fBmwizardrc\fP(4) and \fBdoc/STYLE\&.md\fP\&.
+.PP
+Neither file is the X resource database, but both are merged into it, which is
+why the resources below are still the reference for what each name means\&. A
+color documented here as \fIMWizard*client*background\fP is written in the
+style file as \fIclient\&.background\fP inside a \fBColors\fP block, and a font
+resource -- the \fIrenderTable\fP rendition dance -- becomes one entry in a
+\fBFonts\fP block\&.
 .PP
 The resource names and values are unchanged, so a resource documented here as
 \fIMWizard*moveOpaque: True\fP is written in the rc file as \fImoveOpaque True\fP
@@ -345,23 +353,20 @@ names the rc file itself and so must come from the X database or from
 The database is built from the following sources\&. They are listed
 in order of precedence, low to high:
 .PP
-\fB/etc/X11/app-defaults/MWizard\fP
-.PP
-\fB$HOME/MWizard\fP
-.PP
 \fBRESOURCE_MANAGER\fP root window property or \fB$HOME/\&.Xdefaults\fP
 .PP
 \fBXENVIRONMENT\fP variable or \fB$HOME/\&.Xdefaults-host\fP
 .PP
 \fBmwizard\fP command line options
 .PP
+the style file: \fB$MSTYLESRC\fP, else \fB$HOME/\&.mstylesrc\fP, else
+\fB/etc/X11/system\&.mstylesrc\fP
+.PP
 the \fBSettings\fP, \fBClient\fP and \fBWorkspace\fP blocks of the rc file
 .PP
-The file names \fB/etc/X11/app-defaults/MWizard\fP and \fB$HOME/MWizard\fP represent customary locations for these files\&. The actual
-location of the system-wide class resource file may depend on the \fBXFILESEARCHPATH\fP environment variable and the
-current language environment\&. The actual location of the user-specific class
-resource file may depend on the \fBXUSERFILESEARCHPATH\fP and \fBXAPPLRESDIR\fP
-environment variables and the current language environment\&.
+Versions before 1\&.2 also read an app-defaults file installed as
+\fB/etc/X11/app-defaults/MWizard\fP\&. It is gone; the style file replaced it,
+and \fImake uninstall\fP removes any copy an earlier version left behind\&.
 .PP
 Entries in the resource database may refer to other resource files for
 specific types of resources\&. These include files that contain bitmaps, fonts,
@@ -1404,21 +1409,28 @@ The \fBmwizard\fP window manager uses the environment variable
 \fBWMSHELL\fP (or \fBSHELL\fP, \fIif\fP \fBWMSHELL\fP is not set), specifying
 the shell to use when executing commands via the \fBf\&.exec\fP
 function\&.
+.PP
+\fBMSTYLESRC\fP, if set, names the style file to read instead of
+\fB$HOME/\&.mstylesrc\fP\&. \fBmwand\fP(1) honours it too, so one setting
+restyles both\&.
 .SS "Files"
 .PP
 \fB/etc/X11/$LANG/system\&.mwizardrc\fP\(dg
 .PP
 \fB/etc/X11/system\&.mwizardrc\fP\(dg
 .PP
-\fB/etc/X11/app-defaults/MWizard\fP\(dg
-.PP
-\fB$HOME/MWizard\fP
+\fB/etc/X11/system\&.mstylesrc\fP\(dg
 .PP
 \fB$HOME/$LANG/\&.mwizardrc\fP
 .PP
 \fB$HOME/\&.mwizardrc\fP
 .PP
+\fB$HOME/\&.mstylesrc\fP
+.PP
 \(dg Paths may vary depending on system/distribution.
 .SS "SEE ALSO"
 .PP
-\fBmwizardrc\fP(4), \fBVirtualBindings\fP(3), \fBxrdb\fP(1), \fBX\fP(1)\&.
+\fBmwizardrc\fP(4), \fBmwand\fP(1), \fBVirtualBindings\fP(3), \fBxrdb\fP(1),
+\fBX\fP(1)\&.
+.PP
+\fBdoc/STYLE\&.md\fP describes the style file in full\&.

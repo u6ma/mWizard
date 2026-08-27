@@ -55,6 +55,7 @@
 #include "WmXinerama.h"
 
 static Boolean MakeWinfoDialog(WmScreenData *pSD);
+static Pixmap MakeWinfoLogo(WmScreenData *pSD, Widget parent);
 static void PlaceWinfoDialog(WmScreenData *pSD);
 static void UnpostWinfoDialog(void);
 static void WinfoCloseCB(Widget, XtPointer, XtPointer);
@@ -67,6 +68,7 @@ static Widget winfoShellW = NULL;
 static Widget winfoFormW = NULL;
 static WmScreenData *winfoPSD = NULL;
 static Boolean winfoOnScreen = False;
+static Pixmap winfoLogo = None;
 static XtSignalId winfoSignalId;
 
 /*
@@ -227,17 +229,32 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
     wsep2 = XtCreateManagedWidget ("separator", xmSeparatorGadgetClass,
 				   winfoFormW, args, n);
 
-    /* Top down: the name, the version, a rule, then the notice. */
-    xms = XmStringCreateLocalized (MWM_FULL_NAME);
+    /* Top down: the logo, the version, a rule, then the notice. */
     n = 0;
-    XtSetArg (args[n], XmNlabelString, (XtArgVal) xms);			n++;
     XtSetArg (args[n], XmNalignment, (XtArgVal) XmALIGNMENT_CENTER);	n++;
     XtSetArg (args[n], XmNtopAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNleftAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNrightAttachment, (XtArgVal) XmATTACH_FORM);	n++;
+
+    if ((winfoLogo = MakeWinfoLogo (pSD, winfoFormW)) != None)
+    {
+	XtSetArg (args[n], XmNlabelType, (XtArgVal) XmPIXMAP);		n++;
+	XtSetArg (args[n], XmNlabelPixmap, (XtArgVal) winfoLogo);	n++;
+	xms = NULL;
+    }
+    else
+    {
+	/*
+	 * No pixmap: the name in words, which is what was here before the
+	 * wordmark existed and is still better than an empty gap.
+	 */
+	xms = XmStringCreateLocalized (MWM_FULL_NAME);
+	XtSetArg (args[n], XmNlabelString, (XtArgVal) xms);		n++;
+    }
+
     wname = XtCreateManagedWidget ("productName", xmLabelWidgetClass,
 				   winfoFormW, args, n);
-    XmStringFree (xms);
+    if (xms) XmStringFree (xms);
 
     snprintf (buf, sizeof (buf),
 	      "%s %d.%d.%d \"%s\"\nMotif %d.%d.%d",
@@ -365,6 +382,38 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
 }
 
 /*
+ * The wordmark, as a pixmap the label can wear.
+ *
+ * A one-bit XBM expanded into the label's own foreground and background
+ * rather than an image carrying its own colors, so the logo follows the
+ * style file the way the rest of the window does -- on a dark scheme it
+ * comes out light, and it never sits in a white box of its own.
+ *
+ * Returns None if the pixmap could not be made, which the caller takes as
+ * "use the name in words instead".
+ */
+static Pixmap MakeWinfoLogo(WmScreenData *pSD, Widget parent)
+{
+    #include "xbm/mwizard_logo.xbm"
+
+    Arg args[2];
+    int n;
+    Pixel fg = BlackPixel (DISPLAY1, pSD->screen);
+    Pixel bg = WhitePixel (DISPLAY1, pSD->screen);
+
+    n = 0;
+    XtSetArg (args[n], XmNforeground, &fg);	n++;
+    XtSetArg (args[n], XmNbackground, &bg);	n++;
+    XtGetValues (parent, args, n);
+
+    return (XCreatePixmapFromBitmapData (DISPLAY1,
+		RootWindow (DISPLAY1, pSD->screen),
+		(char *) mwizard_logo_bits,
+		mwizard_logo_width, mwizard_logo_height,
+		fg, bg, DefaultDepth (DISPLAY1, pSD->screen)));
+}
+
+/*
  * Centres the window, on the user's preferred Xinerama head when there is
  * one. Same rule ConfirmAction() and the Execute dialog use.
  */
@@ -427,6 +476,12 @@ void PostWinfoDialog(void)
 	winfoShellW = NULL;
 	winfoFormW = NULL;
 	winfoOnScreen = False;
+
+	if (winfoLogo != None)
+	{
+	    XFreePixmap (DISPLAY1, winfoLogo);
+	    winfoLogo = None;
+	}
     }
 
     if (!winfoShellW)

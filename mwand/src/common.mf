@@ -7,9 +7,9 @@ CFLAGS += -DPREFIX='"$(PREFIX)"' -DRCDIR='"$(RCDIR)"' $(INCDIRS)
 mwand_libs = -lXm -lXt -lX11
 
 mwand_objs = main.o launcher.o switcher.o clock.o session.o \
-	dialogs.o config.o rcparse.o wswitch.o common.o
+	dialogs.o config.o style.o rcparse.o wswitch.o common.o
 
-mwand_hdrs = common.h mwand.h rcparse.h wswitch.h wswitchp.h
+mwand_hdrs = common.h mwand.h rcparse.h style.h wswitch.h wswitchp.h
 
 mwand: $(mwand_objs)
 	$(CC) -o $@ $(LDFLAGS) $(LIBDIRS) $(mwand_objs) $(mwand_libs)
@@ -27,13 +27,13 @@ common_install:
 	install -m 644 mwand.1 $(MANDIR)/man1/mwand.1
 	install -m 755 -d $(RCDIR)
 	install -m 644 system.mwandrc $(RCDIR)/system.mwandrc
-	install -m 755 -d $(APPLRESDIR)
-	install -m 644 MWand.ad $(APPLRESDIR)/MWand
 
 uninstall:
 	rm -f $(PREFIX)/bin/mwand
 	rm -f $(MANDIR)/man1/mwand.1
 	rm -f $(RCDIR)/system.mwandrc
+	# Left over from before appearance moved into the style file; removed
+	# here so an upgrade-then-uninstall does not strand it.
 	rm -f $(APPLRESDIR)/MWand
 
 clean:

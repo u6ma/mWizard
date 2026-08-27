@@ -55,6 +55,7 @@
 #include "common.h"
 #include "wswitch.h"
 #include "mwand.h"
+#include "style.h"
 
 static void menu_command_cb(Widget, XtPointer, XtPointer);
 static void mwinfo_item_cb(Widget, XtPointer, XtPointer);
@@ -74,6 +75,7 @@ Boolean ConstructMenu(void)
 	unsigned int nlevels=1;
 	struct tb_entry *entries, *cur;
 	int err;
+	XmRenderTable menu_font, menu_title_font;
 
 	if((err=tb_parse_config(rc_file_path, &entries))){
 		ReportRcFileError(rc_file_path,
@@ -114,6 +116,19 @@ Boolean ConstructMenu(void)
 
 	wmenu = XmCreateRowColumn(wmain, "menu", args, n);
 
+	/*
+	 * Set on every entry rather than left to the database.
+	 *
+	 * A menu entry is an XmPushButtonGadget or XmCascadeButtonGadget, and
+	 * Motif resolves the font of one of those from its ancestor menu
+	 * shell when nothing more specific applies -- which is how menus end
+	 * up drawn in Motif's default font while everything else follows the
+	 * style file. Naming the render table here removes the question. The
+	 * window manager does the same in src/WmMenu.c.
+	 */
+	menu_font = StyleFont(wmenu, StyleFontMenu);
+	menu_title_font = StyleFont(wmenu, StyleFontMenuTitle);
+
 	#ifdef DEBUG_MENU
 	printf("Max %d cascade levels\n",nlevels);
 	#endif
@@ -150,6 +165,10 @@ Boolean ConstructMenu(void)
 			XtSetArg(args[n], XmNlabelString, title); n++;
 			XtSetArg(args[n], XmNmnemonic, (KeySym)cur->mnemonic); n++;
 			XtSetArg(args[n], XmNsubMenuId, new_pulldown); n++;
+			if(menu_title_font) {
+				XtSetArg(args[n], XmNrenderTable,
+					menu_title_font); n++;
+			}
 			new_cascade = XmCreateCascadeButtonGadget(
 				wlevel[cur->level],"cascadeButton",args,n);
 			
@@ -177,6 +196,10 @@ Boolean ConstructMenu(void)
 				n++;
 			}
 			XtSetArg(args[n], XmNactivateCallback, push_callback); n++;
+			if(menu_font) {
+				XtSetArg(args[n], XmNrenderTable, menu_font);
+				n++;
+			}
 			w = XmCreatePushButtonGadget(
 				wlevel[cur->level], "menuButton",args,n);
 
@@ -197,6 +220,10 @@ Boolean ConstructMenu(void)
 			XtSetArg(args[n], XmNmnemonic,
 				(KeySym)MWINFO_ITEM_MNEMONIC); n++;
 			XtSetArg(args[n], XmNactivateCallback, mwinfo_callback); n++;
+			if(menu_font) {
+				XtSetArg(args[n], XmNrenderTable, menu_font);
+				n++;
+			}
 			w = XmCreatePushButtonGadget(
 				wlevel[cur->level], "menuButton", args, n);
 

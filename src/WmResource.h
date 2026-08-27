@@ -55,6 +55,13 @@ extern XtResource wmScreenResources[];
 extern XtResource wmWorkspaceResources[];
 extern XtResource wmClientResources[];
 
+/*
+ * The component appearance table, exported for the same reason: WmStyle.c
+ * validates the names in the style file's Colors block against it.
+ */
+extern XtResource wmAppearanceResources[];
+extern Cardinal wmNumAppearanceResources;
+
 extern Cardinal wmNumGlobalResources;
 extern Cardinal wmNumGlobalScreenResources;
 extern Cardinal wmNumScreenResources;

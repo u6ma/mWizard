@@ -10,8 +10,10 @@ decoration, workspaces — lived in the X resource database, as
 how the window manager behaved meant editing two files in two syntaxes.
 
 In mWizard the rc file holds behaviour as well, in `Settings`, `Client` and
-`Workspace` blocks. The X resource database is left holding the one thing it
-is genuinely good at: **appearance** — colors, shadows, pixmaps and fonts.
+`Workspace` blocks. **Appearance** — colors, shadows, pixmaps and fonts — has
+a file of its own, `~/.mstylesrc`, shared with mWand and written in this same
+syntax; see [STYLE.md](STYLE.md). Neither one is the X resource database, and
+neither one is a second syntax to learn.
 
 ---
 
@@ -30,8 +32,9 @@ To start from the shipped defaults:
 cp /etc/X11/system.mwizardrc ~/.mwizardrc
 ```
 
-Appearance still comes from the X resource database, whose app-defaults file is
-installed as `/etc/X11/app-defaults/MWizard`.
+Appearance comes from the style file, `~/.mstylesrc`, which mWand reads too;
+see [STYLE.md](STYLE.md). The app-defaults file mWizard used to install as
+`/etc/X11/app-defaults/MWizard` is gone as of 1.2.
 
 > **`configFile` is the one setting that cannot live in the rc file.** It names
 > the rc file, so it has to be read before the rc file can be opened. Set it as
@@ -557,15 +560,12 @@ it is given and scrolls, so nothing is cut off however small the window is
 made. **Project Page** hands the address to `xdg-open`, and **Close** puts the
 window away.
 
-The product name at the top is a widget called `productName`, so its size is
-set in the app-defaults file rather than in code:
-
-```
-MWizard*renderTable.winfoTitle.fontSize: 24
-```
-
-It is deliberately not named `title` — that name already carries the window
-frame's title font, and any widget called `title` picks it up.
+At the top is the **motifWizard wordmark**, drawn from a one-bit bitmap
+(`src/xbm/mwizard_logo.xbm`) in the label's own foreground and background —
+so it follows whatever colors the style file gives the window rather than
+carrying its own, and comes out light on a dark scheme. If the pixmap cannot
+be made the name is written out in words instead, which is what was there
+before 1.2.
 
 ---
 
@@ -790,47 +790,37 @@ to a script that changes the wallpaper and then switches:
 
 ---
 
-## 10. What stays in the X resource database
+## 10. Where appearance lives
 
-Appearance only. These are Motif Component Appearance resources; the rc file has
-no business owning fonts and shadow pixmaps.
-
-The shipped `/etc/X11/app-defaults/MWizard`:
+Not here, and no longer in the X resource database either. Colors, shadows,
+pixmaps and fonts are in the **style file**, `~/.mstylesrc`, which mWand reads
+as well:
 
 ```
-!! Window decoration colors
-MWizard*client*background: #8C8C8C
-MWizard*client*activeBackground: #7399BA
-MWizard*icon*activeBackground: #7399BA
+Fonts
+{
+    font  fixed
+}
 
-!! The Workspace Presence dialog
-MWizard*feedback*XmPushButton.marginWidth: 5
-MWizard*feedback*XmPushButton.marginHeight: 5
-
-!! Default font (menus and dialogs)
-MWizard*renderTable: variable
-MWizard*renderTable.variable.fontType: FONT_IS_XFT
-MWizard*renderTable.variable.fontName: Liberation Sans
-MWizard*renderTable.variable.fontSize: 10
-
-!! Title bar font
-MWizard*title.renderTable: title
-MWizard*renderTable.title.fontType: FONT_IS_XFT
-MWizard*renderTable.title.fontName: Liberation Sans
-MWizard*renderTable.title.fontSize: 10
-MWizard*renderTable.title.fontStyle: Bold
-
-!! Icon label font
-MWizard*icon.renderTable: icon
-MWizard*renderTable.icon.fontType: FONT_IS_XFT
-MWizard*renderTable.icon.fontName: Liberation Sans
-MWizard*renderTable.icon.fontSize: 10
-MWizard*renderTable.icon.fontStyle: Italic
+Colors
+{
+    client.background        #8C8C8C
+    client.activeBackground  #7399BA
+    icon.activeBackground    #7399BA
+}
 ```
 
-The component parts you can address are `client`, `icon`, `menu`, `feedback`
-and `title`, each optionally qualified `active`. `mwizard(1)` lists every
-appearance resource under "Component Appearance Resources".
+The components you can address are `client`, `title`, `icon`, `feedback` and
+`menu`, and every color name may be qualified `active` for the window that has
+the focus. `mwizard(1)` lists the underlying resources under "Component
+Appearance Resources"; [STYLE.md](STYLE.md) documents the file itself,
+including the font roles and how a font is written.
+
+**Names are validated** in the style file the same way they are in the rc
+file, so a misspelled color is reported rather than ignored.
+
+What is left in the X resource database is `configFile`, which names the rc
+file and therefore cannot come from it — and nothing else.
 
 ---
 
@@ -852,22 +842,22 @@ was removed along with its four duplicate resource tables.
 For each `Emwm*something: value` line in your `.Xdefaults` or app-defaults
 file, decide which it is:
 
-- **appearance** (a color, shadow, pixmap or font) — change the prefix to
-  `MWizard*` and leave it where it is.
-- **behaviour** (everything else) — move it into a `Settings` block, dropping
+- **behaviour** — move it into a `Settings` block in `~/.mwizardrc`, dropping
   the prefix and the colon.
+- **appearance** (a color, shadow, pixmap or font) — move it into
+  `~/.mstylesrc`; see [STYLE.md](STYLE.md).
 
 ```
 Emwm*moveOpaque:            True         →   Settings { moveOpaque True }
 Emwm*keyboardFocusPolicy:   pointer      →   Settings { keyboardFocusPolicy pointer }
 Emwm*XTerm*clientDecoration: -resizeh    →   Client XTerm { clientDecoration -resizeh }
 Emwm*ws0*title:             Web          →   Workspace ws0 { title Web }
-Emwm*client*background:     #8C8C8C      →   MWizard*client*background: #8C8C8C
+Emwm*client*background:     #8C8C8C      →   Colors { client.background #8C8C8C }
 ```
 
-If you are not sure which a resource is, put it in `Settings`: an appearance
-name is rejected with a message naming the line, which tells you it belongs in
-the X database.
+Neither file will take the other's names: both validate what they are given
+and report a name that does not belong, which is how you find out which of
+the two a resource was.
 
 ### What was removed, and what replaced it
 
@@ -881,6 +871,7 @@ the X database.
 | `cppCommand` | Removed (it drove code that was already compiled out) |
 | `ignoreWMSaveHints`, `_MWM_WMSAVE_HINT` | Removed with session management |
 | Behaviour X resources | `Settings` / `Client` / `Workspace` blocks |
+| Appearance X resources, `app-defaults/Emwm` | `~/.mstylesrc`, shared with mWand |
 
 ### `_MWM_WM_REQUEST` replacements
 
@@ -920,5 +911,6 @@ fields that no longer exist, and now carries the workspace title only.
 
 - `mwizard(1)` — command line options and appearance resources
 - `mwizardrc(4)` — full rc file syntax, every function, every binding context
+- `doc/STYLE.md` — the style file: fonts and colors, for mWizard and mWand
 - `doc/MWAND.md` — configuring mWand, the optional launcher
 - `NOTICE` — fork lineage and licensing

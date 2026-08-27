@@ -1,4 +1,5 @@
 ! Default menu and keybinding configuration for mWizard.
+! Appearance is in the style file, ~/.mstylesrc -- see doc/STYLE.md.
 ! Copy this file to ~/.mwizardrc for customization.
 
 ! Command variables.
@@ -228,6 +229,10 @@ Buttons PointerButtonBindings
 ! Everything in this block used to live in the X resource database
 ! (Emwm*name in app-defaults or .Xdefaults). It is read from here now, and
 ! what is set here overrides any leftover X resource of the same name.
+!
+! Behaviour only. Fonts and colors are in the style file, ~/.mstylesrc,
+! which mWand reads too -- see doc/STYLE.md. A color named here is reported
+! as an unknown setting.
 ! See doc/CONFIGURATION.md for every available setting.
 
 Settings

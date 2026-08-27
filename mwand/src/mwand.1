@@ -42,10 +42,16 @@ That file holds both the launcher menus and, in a \fBSettings\fP block, every
 behavior setting\&. See \fBdoc/MWAND\&.md\fP for the full reference\&.
 .PP
 Unlike \fBxmtoolbox\fP, from which \fBmwand\fP derives, behavior is not read
-from the X resource database\&. The database carries appearance only -- fonts
-and render tables, as installed in \fBapp-defaults/MWand\fP\&. A behavior
-setting left in \fB\&.Xdefaults\fP has no effect, because the rc file is merged
-over it\&.
+from the X resource database\&. Neither is appearance: fonts and colors come
+from the style file, \fB$HOME/\&.mstylesrc\fP, which \fBmwizard\fP(1) reads as
+well so that the panel and the window manager look like one thing\&. See
+\fBdoc/STYLE\&.md\fP\&. A setting left in \fB\&.Xdefaults\fP has no effect,
+because both files are merged over it\&.
+.PP
+Versions before 1\&.2 read appearance from an app-defaults file installed as
+\fBapp-defaults/MWand\fP\&. It is gone\&. Three shell resources are still read
+from the X database, because Xt fetches them before any file is opened:
+\fIMWand\&.x\fP, \fIMWand\&.y\fP and \fIMWand\&.mwmDecorations\fP\&.
 .PP
 The one exception is \fIrcFile\fP, which names the file the settings live in
 and so must come from the X database or from \fI-rcfile\fP\&.
@@ -136,8 +142,17 @@ these windows, the item says so\&.
 .nf
 $HOME/\&.mwandrc
 $RCDIR/system\&.mwandrc
-$APPLRESDIR/MWand
+$HOME/\&.mstylesrc
+$RCDIR/system\&.mstylesrc
 .fi
+.SH "ENVIRONMENT"
+.PP
+\fBMSTYLESRC\fP, if set, names the style file to read instead of
+\fB$HOME/\&.mstylesrc\fP\&. \fBmwizard\fP(1) honours it too, so one setting
+restyles both\&.
 .SH "SEE ALSO"
 .PP
 \fBmwizard\fP(1), \fBmwizardrc\fP(4), \fBstrftime\fP(3)
+.PP
+\fBdoc/MWAND\&.md\fP and \fBdoc/STYLE\&.md\fP describe the rc file and the
+style file in full\&.

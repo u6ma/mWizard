@@ -70,10 +70,16 @@ copy it to $HOME/.mwizardrc to customize. It holds key and mouse bindings,
 menus, and window manager behaviour in its Settings, Client and Workspace
 blocks.
 
-The app-defaults file installed as PREFIX/X11/app-defaults/MWizard carries
-appearance only: colors, shadows and fonts.
+Appearance -- fonts, colors, shadows -- is in a second file, installed as
+PREFIX/X11/system.mstylesrc and copied to $HOME/.mstylesrc. mWizard and mWand
+both read it, so the panel and the window manager look like one thing. It is
+written in the same syntax as the rc file:
+
+    Fonts  { font fixed }
+    Colors { client.activeBackground #7399BA }
 
     doc/CONFIGURATION.md    the full guide, including migration from EMWM
+    doc/STYLE.md            fonts and colors, for both programs
     doc/MWAND.md            configuring mWand
     mwizardrc(4)            rc file syntax
     mwizard(1)              options and appearance resources
