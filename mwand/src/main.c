@@ -60,6 +60,7 @@
 static void set_icon(Widget);
 static Boolean setup_hotkeys(void);
 static int xgrabkey_err_handler(Display*, XErrorEvent*);
+static int x_err_handler(Display*, XErrorEvent*);
 static void handle_root_event(XEvent*);
 static void set_ws_presence(Widget);
 static void create_utility_widgets(Widget);
@@ -126,6 +127,12 @@ int main(int argc, char **argv)
 	
 	dpy = XtDisplay(wshell);
 	root_window = RootWindowOfScreen(XtScreen(wshell));
+
+	/*
+	 * Before anything is drawn, and before the style file is read: from
+	 * here on a protocol error is reported rather than fatal.
+	 */
+	XSetErrorHandler(x_err_handler);
 
 	if(argc > 1) {
 		int i;
@@ -357,6 +364,50 @@ static Boolean setup_hotkeys(void)
 	XSetErrorHandler(def_x_err_handler);
 	
 	return True;		
+}
+
+/*
+ * X protocol errors.
+ *
+ * Without a handler of its own a program gets Xlib's, which prints the error
+ * and calls exit(). For a panel that is the wrong trade. Nearly every
+ * protocol error mWand can provoke costs one piece of drawing, not the
+ * session -- and a launcher that vanishes on one bad request takes the
+ * user's way of starting anything with it.
+ *
+ * The error that prompted this was a BadFont on X_ChangeGC: a rendition
+ * whose font failed to load keeps XmNfont at XmAS_IS, which is the integer
+ * 255, and Motif hands that straight to the GC. Nothing about the X error
+ * names a font, which is why the report below prints the request and serial
+ * in full -- with those, and the warnings the style file reader prints,
+ * there is enough to say which font it was. See style.c.
+ *
+ * Reported but not fatal, and rate limited: an error raised from a redraw
+ * comes back on every expose, and a panel that fills a log faster than it
+ * draws is not obviously better than one that exited.
+ */
+static int x_err_handler(Display *dpy, XErrorEvent *evt)
+{
+	static unsigned int count = 0;
+	char msg[128];
+
+	count++;
+
+	if(count > X_ERROR_REPORT_LIMIT) return 0;
+
+	XGetErrorText(dpy, evt->error_code, msg, sizeof(msg));
+
+	fprintf(stderr, "%s: X error: %s\n"
+		"  request %u.%u, serial %lu, resource id 0x%lx\n",
+		APP_NAME, msg, (unsigned int)evt->request_code,
+		(unsigned int)evt->minor_code, evt->serial,
+		(unsigned long)evt->resourceid);
+
+	if(count == X_ERROR_REPORT_LIMIT)
+		fprintf(stderr, "%s: further X errors will not be reported.\n",
+			APP_NAME);
+
+	return 0;
 }
 
 static int xgrabkey_err_handler(Display *dpy, XErrorEvent *evt)

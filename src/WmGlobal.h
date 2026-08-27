@@ -1161,6 +1161,8 @@ typedef struct _WmScreenData
     int		transientFunctions;		/* resource */
     int		utilityDecoration;	    /* resource */
     int		utilityFunctions;       /* resource */
+    int		dockDecoration;		/* resource */
+    int		dockFunctions;		/* resource */
     Boolean	useIconBox;			/* resource */
     Boolean moveOpaque;    /* move window not outlines */
     Boolean titleLeft;

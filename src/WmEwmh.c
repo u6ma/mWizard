@@ -354,11 +354,14 @@ void ProcessEwmhWindowType(ClientData *pCD)
 			pCD->clientDecoration = WM_DECOR_MINIMIZE | WM_DECOR_BORDER;
 			pCD->clientFunctions = MWM_FUNC_MINIMIZE | MWM_FUNC_MOVE;
 		} else if(atoms[0] == ewmh_atoms[_NET_WM_WINDOW_TYPE_DOCK]) {
-			/* A dock (system tray, panel) gets no frame and may only be
-			 * moved. It is also made sticky, which happens in ProcessEwmh
-			 * because workspaces are not assigned until after this runs. */
-			pCD->clientDecoration = WM_DECOR_NONE;
-			pCD->clientFunctions = MWM_FUNC_MOVE;
+			/* A dock (system tray, panel). Undecorated and movable by
+			 * default, which is what EWMH implies, but settable: see
+			 * dockDecoration/dockFunctions in WmResource.c for why a
+			 * tray in particular usually wants more than that. It is
+			 * also made sticky, which happens in ProcessEwmh because
+			 * workspaces are not assigned until after this runs. */
+			pCD->clientDecoration = pCD->pSD->dockDecoration;
+			pCD->clientFunctions = pCD->pSD->dockFunctions;
 		}
 		XtFree((char*)atoms);
 	}

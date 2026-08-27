@@ -135,6 +135,11 @@ does in detail; this is the index.
 | `transientFunctions` | function list | all but maximize/minimize |
 | `utilityDecoration` | decoration list | `system title resizeh` |
 | `utilityFunctions` | function list | all but maximize |
+| `dockDecoration` | decoration list | `none` (shipped rc: `minimize border`) |
+| `dockFunctions` | function list | `move` (shipped rc: `move minimize`) |
+
+`dockDecoration` and `dockFunctions` are new in 1.2 and are the only way to
+reach a `_NET_WM_WINDOW_TYPE_DOCK` window — see section 8.
 
 ### Icons and the icon box
 
@@ -680,13 +685,18 @@ It configures the tray as an **ordinary framed window**: `decorations all` and
 `window_type normal`, so it carries the same Motif borders as anything else and
 can be moved and resized by them, while `sticky true` keeps it on every
 workspace. To trade that for dock behaviour, set `window_type dock` and
-`window_strut auto` — see the two sections below for what each implies.
+`window_strut auto` — see the sections below for what each implies.
+
+Note that stalonetray's *own* default is `window_type dock`, so a tray started
+without `-c` pointing at this file takes the dock path regardless of what the
+rc file's `Client` block says.
 
 ### What mWizard does for a tray
 
 A window that sets `_NET_WM_WINDOW_TYPE_DOCK` gets:
 
-- **no frame**, and move as its only window-manager function;
+- the frame and functions named by **`dockDecoration`** and **`dockFunctions`**
+  — see below;
 - **presence on every workspace** — internally this is the same
   occupy-all-workspaces state `f.occupy_all` sets, so the Occupy Workspace
   dialog shows it as such;
@@ -695,20 +705,56 @@ A window that sets `_NET_WM_WINDOW_TYPE_DOCK` gets:
   of passing underneath, and `_NET_WORKAREA` reports the reduced area to any
   other EWMH client that asks.
 
-The window type is applied before the client's own `_MOTIF_WM_HINTS`, and the
-frame is then intersected with what that property asks for. Since a dock starts
-from no decoration at all, **an explicit decoration request cannot add anything
-back** — a tray configured with both `window_type dock` and `decorations all`
-still comes up bare. Dock windows are also move-only, so no decoration setting
-makes one resizable. If you want a frame you can drag and resize, the tray must
-not call itself a dock.
-
 `_NET_WM_STATE_STICKY` works on any window, not just docks, and maps onto the
 same occupy-all-workspaces state.
 
 Struts that would leave no usable space are ignored rather than honoured — a
 client asking to reserve the whole screen is broken, and obeying it would make
 everything unmaximizable.
+
+### Giving a dock a minimize button — new in 1.2
+
+EWMH treats a dock as furniture, so mWizard's built-in default is no frame and
+move as the only function. That is wrong for a tray specifically: it **grows
+every time something docks an icon in it**, and with no button to press and
+only the window itself to grab, a tray that has spread across the screen can
+only be dealt with by restarting it.
+
+So the shipped rc file gives docks a title bar with a minimize button:
+
+```
+Settings
+{
+    dockDecoration   minimize border
+    dockFunctions    move minimize
+}
+```
+
+Minimize it and it becomes an icon like anything else; the icons docked in it
+are still there when it comes back. `minimize` implies `title` — the buttons
+live in the title bar — and the matching *function* has to be granted too,
+since a button whose function is not permitted is removed again. Add `resizeh`
+and `resize` to drag its edges as well; the tray sizes itself to its icons
+either way.
+
+Close is deliberately absent: closing a tray strands every icon in it.
+
+For the bare EWMH behaviour instead:
+
+```
+Settings
+{
+    dockDecoration   none
+    dockFunctions    move
+}
+```
+
+**This is the only place either can be set.** The window type is applied
+*after* `Client` blocks and overwrites what they set, so `clientDecoration` in
+a `Client` block cannot reach a dock — and it is applied *before* the client's
+own `_MOTIF_WM_HINTS`, with the frame then intersected against that property,
+so a tray asking for `decorations all` cannot add back anything
+`dockDecoration` did not grant.
 
 ### Taking Close away from the tray
 

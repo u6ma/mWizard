@@ -948,6 +948,41 @@ XtResource wmScreenResources[] =
 	(XtPointer)(WM_FUNC_ALL & ~(MWM_FUNC_MAXIMIZE))
     },
 
+    /*
+     * Docks: system trays and panels.
+     *
+     * EWMH says a dock is furniture, so the defaults are what that implies --
+     * no frame, and move as the only function. They are resources rather
+     * than the constants they used to be because "no frame" and "a tray that
+     * grows as icons are docked in it" do not go together: with nothing to
+     * grab and no button to press, a tray that has outgrown its corner can
+     * only be dealt with by restarting it. The shipped rc file gives docks a
+     * title bar with a minimize button for exactly that reason.
+     *
+     * This is the only way to change them. ProcessEwmhWindowType() runs
+     * before Client blocks are applied and overwrites what they set, so
+     * clientDecoration in a Client block cannot reach a dock.
+     */
+    {
+	WmNdockDecoration,
+	WmCDockDecoration,
+	WmRClientDecor,
+	sizeof (int),
+	XtOffsetOf (WmScreenData, dockDecoration),
+	XtRImmediate,
+	(XtPointer)(WM_DECOR_NONE)
+    },
+
+    {
+	WmNdockFunctions,
+	WmCDockFunctions,
+	WmRClientFunction,
+	sizeof (int),
+	XtOffsetOf (WmScreenData, dockFunctions),
+	XtRImmediate,
+	(XtPointer)(MWM_FUNC_MOVE)
+    },
+
     {
 	WmNuseIconBox,
 	WmCUseIconBox,

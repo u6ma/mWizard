@@ -898,6 +898,8 @@ lw(1.768627i) lw(1.790196i) lw(0.927451i) lw(1.013725i).
 NameClassValue TypeDefault
 buttonBindingsButtonBindingsstringDefaultButtonBindings
 cleanTextCleanTextTrue/FalseTrue
+dockDecorationDockDecorationstringnone
+dockFunctionsDockFunctionsstringmove
 fadeNormalIconFadeNormalIconTrue/FalseFalse
 feedbackGeometryFeedbackGeometrystringcenter on screen
 frameBorderWidthFrameBorderWidthpixelsvaries
@@ -1076,6 +1078,32 @@ only those functions indicated by both the application and the \fItransientFunct
 applies the functions indicated by the \fItransientFunctions\fP
 resource\&. For more information see the description of \fBXmNmwizardFunctions\fP on the \fBVendorShell\fP(3) reference
 page\&.
+.IP "\fIdockDecoration\fP\ (class\  \fIDockDecoration\fP)" 10
+This controls the amount of decoration that \fBmwizard\fP puts on dock
+windows -- system trays and panels, identified by the
+\fI_NET_WM_WINDOW_TYPE_DOCK\fP value in the \fI_NET_WM_WINDOW_TYPE\fP
+property\&. The decoration specification is exactly the same as for the
+\fIclientDecoration\fP (client specific) resource\&.
+.PP
+The default value is \fInone\fP, which is what EWMH implies for a dock, but
+the shipped rc file sets \fIminimize border\fP: a system tray grows as icons
+are docked in it, and one with no frame has neither a button to press nor an
+edge to grab\&. Close is deliberately not offered -- closing a tray strands
+every icon docked in it\&.
+.PP
+This resource and \fIdockFunctions\fP are the only way to reach a dock
+window\&. The window type is applied after \fBClient\fP blocks, so
+\fIclientDecoration\fP in one cannot affect a dock; and before the client's
+own \fI_MOTIF_WM_HINTS\fP, whose request is then intersected with what is
+granted here, so a tray asking for full decorations cannot add back what this
+resource withheld\&.
+.IP "\fIdockFunctions\fP\ (class\  \fIDockFunctions\fP)" 10
+This resource is used to indicate which window management functions are
+applicable (or not applicable) to dock windows\&. The function specification
+is exactly the same as for the \fIclientFunctions\fP (client specific)
+resource\&. The default value is \fImove\fP; the shipped rc file sets
+\fImove minimize\fP\&. A decoration whose matching function is not granted
+here is removed again, so a minimize button needs \fIminimize\fP in both\&.
 .IP "\fIuseIconBox\fP\ (class\  \fIUseIconBox\fP)" 10
 If this resource is given a value of True, icons are placed in an icon
 box\&. When an icon box is not used, the icons are placed on the root window

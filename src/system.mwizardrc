@@ -280,6 +280,32 @@ Settings
 	! profile does each time.
 	execShell		""
 
+	! Docks: system trays and panels, i.e. anything that calls itself
+	! _NET_WM_WINDOW_TYPE_DOCK.
+	!
+	! EWMH treats a dock as furniture, so mWizard's built-in default is no
+	! frame and move as the only function. That is wrong for a tray, which
+	! grows every time something docks an icon in it: with no button to
+	! press and only the window itself to grab, a tray that has spread
+	! across the screen can only be dealt with by restarting it.
+	!
+	! So docks get a title bar with a minimize button here. Minimize it and
+	! it becomes an icon like anything else; the icons docked in it are
+	! still there when it comes back. "minimize" implies "title", and the
+	! matching function has to be granted too -- a button whose function
+	! is not permitted is removed again.
+	!
+	! Close is deliberately not among them: closing a tray strands every
+	! icon docked in it, and nothing short of f.restart brings it back.
+	!
+	! Add "resizeh" and "resize" if you want to drag its edges as well; the
+	! tray sizes itself to its icons either way. For the EWMH default
+	! instead: dockDecoration none, dockFunctions move. This is the only
+	! place either can be set -- a Client block cannot reach a dock,
+	! because the window type is applied after it.
+	dockDecoration		minimize border
+	dockFunctions		move minimize
+
 	! System tray. mWizard has none of its own; this runs whichever one you
 	! prefer, at startup, and skips it if a tray is already running. Empty
 	! by default. A stalonetray config tuned for mWizard is installed

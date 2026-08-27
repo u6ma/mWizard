@@ -72,6 +72,12 @@
 #define _XA_MWM_WORKSPACE_PRESENCE "_MWM_WORKSPACE_PRESENCE"
 #define _XA_MWM_WORKSPACE_ALL "all"
 
+/*
+ * How many X protocol errors are reported before the handler goes quiet. An
+ * error raised from a redraw returns on every expose; see x_err_handler().
+ */
+#define X_ERROR_REPORT_LIMIT 20
+
 /* Microseconds to wait for the window manager's atoms at startup */
 #define UWAIT_FOR_ATOMS 250000
 #define ATOM_WAIT_RETRIES 12
