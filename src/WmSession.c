@@ -22,6 +22,7 @@
 #include "WmFeedback.h"
 #include "WmFunction.h"
 #include "WmSignal.h"
+#include "WmWinInfo.h"
 
 /*
  * Terminates the window manager.
@@ -485,3 +486,205 @@ void InitIdleLock(void)
 }
 
 #endif /* IDLE_LOCK */
+
+/*
+ * ---------------------------------------------------------------------------
+ * Restart state.
+ *
+ * f.restart execs the window manager again -- execvp() on the saved argv, so
+ * an mWizard that has been rebuilt and installed underneath the running one
+ * is picked up on the spot. What has to survive that is the desktop: the
+ * clients are handed back to the root window rather than killed, and the next
+ * instance adopts them in AdoptInitialClients().
+ *
+ * Most of what it needs to know is already on the windows themselves.
+ * WM_STATE says whether a client was iconified, _MWM_WORKSPACE_PRESENCE says
+ * which workspaces it lived in, and X itself remembers where each window is
+ * and how big. Two things are not written down anywhere, and were lost every
+ * restart until they were:
+ *
+ *   - whether a window was maximized. WM_STATE has no such state; ICCCM does
+ *     not model one. A maximized window came back at its maximized size but
+ *     with the window manager believing that was its ordinary size, so its
+ *     real one was gone and Restore did nothing.
+ *
+ *   - which workspace was in front. The next instance started on the first
+ *     one, or on whatever initialWorkspace named, and a session spread over
+ *     several workspaces came back looking rearranged.
+ *
+ * Both are recorded here as properties, which is the same way everything else
+ * that survives a restart does it: the state lives on the window it describes,
+ * the window outlives the process, and no file is involved. The properties are
+ * read with delete set, so nothing is left behind to confuse a later cold
+ * start.
+ * ---------------------------------------------------------------------------
+ */
+
+#define _XA_MWIZARD_RESTART		"_MWIZARD_RESTART"
+#define _XA_MWIZARD_RESTART_WORKSPACE	"_MWIZARD_RESTART_WORKSPACE"
+
+/* Property layout: flags, then the client's normal geometry. */
+#define RESTART_PROP_LEN	5
+#define RESTART_MAXIMIZED	(1L << 0)
+
+static Atom RestartAtom(void)
+{
+    static Atom atom = None;
+
+    if (atom == None)
+	atom = XInternAtom (DISPLAY, _XA_MWIZARD_RESTART, False);
+
+    return (atom);
+}
+
+static Atom RestartWorkspaceAtom(void)
+{
+    static Atom atom = None;
+
+    if (atom == None)
+	atom = XInternAtom (DISPLAY, _XA_MWIZARD_RESTART_WORKSPACE, False);
+
+    return (atom);
+}
+
+/*
+ * Records what the next instance cannot work out for itself.
+ *
+ * The geometry written is the client's own, before the window gravity
+ * offset -- which is what DeFrameClient() hands back to the root window for
+ * an ordinary client, and what InitClientPlacement() adds the offset back
+ * onto. Storing it any other way would move maximized windows a title bar's
+ * worth every restart.
+ *
+ * Only maximized clients need the geometry at all: for everything else the
+ * window on the server still is the truth, and reading it back is both
+ * simpler and correct if the client resized itself on the way out.
+ */
+void SaveRestartState(void)
+{
+    int scr;
+
+    for (scr = 0; scr < wmGD.numScreens; scr++)
+    {
+	WmScreenData *pSD = &(wmGD.Screens[scr]);
+	ClientListEntry *pEntry;
+
+	if (!pSD->managed) continue;
+
+	if (pSD->pActiveWS && pSD->pActiveWS->name)
+	{
+	    XChangeProperty (DISPLAY, pSD->rootWindow,
+		RestartWorkspaceAtom(), XA_STRING, 8, PropModeReplace,
+		(unsigned char *) pSD->pActiveWS->name,
+		(int) strlen (pSD->pActiveWS->name));
+	}
+
+	for (pEntry = pSD->lastClient; pEntry; pEntry = pEntry->prevSibling)
+	{
+	    ClientData *pCD = pEntry->pCD;
+	    long data[RESTART_PROP_LEN];
+	    int xoff, yoff;
+
+	    if (pEntry->type != NORMAL_STATE || !pCD || !pCD->client) continue;
+
+	    CalculateGravityOffset (pCD, &xoff, &yoff);
+
+	    data[0] = pCD->maxConfig ? RESTART_MAXIMIZED : 0;
+	    data[1] = pCD->clientX - xoff;
+	    data[2] = pCD->clientY - yoff;
+	    data[3] = pCD->clientWidth;
+	    data[4] = pCD->clientHeight;
+
+	    XChangeProperty (DISPLAY, pCD->client, RestartAtom(),
+		RestartAtom(), 32, PropModeReplace,
+		(unsigned char *) data, RESTART_PROP_LEN);
+	}
+    }
+}
+
+/*
+ * Puts a maximized client back the way it was.
+ *
+ * Called from ManageWindow() while the client is still being set up, in the
+ * same place the restart's iconic clients get theirs. Nothing is maximized
+ * here: the state is only asked for, and the SetClientState() at the end of
+ * ManageWindow() carries it out through the path a user's Maximize would
+ * take. That is the whole reason it is done this way rather than by filling
+ * in maxConfig and the maximized geometry by hand.
+ */
+void RestoreClientRestartState(ClientData *pCD)
+{
+    Atom actualType;
+    int actualFormat;
+    unsigned long nitems, leftover;
+    long *data = NULL;
+
+    if (!pCD || !pCD->client) return;
+
+    if (XGetWindowProperty (DISPLAY, pCD->client, RestartAtom(), 0L,
+	    (long) RESTART_PROP_LEN, True, RestartAtom(),
+	    &actualType, &actualFormat, &nitems, &leftover,
+	    (unsigned char **) &data) != Success)
+    {
+	return;
+    }
+
+    if (!data) return;
+
+    if ((actualType == RestartAtom()) && (actualFormat == 32) &&
+	(nitems == RESTART_PROP_LEN) && (data[0] & RESTART_MAXIMIZED))
+    {
+	pCD->clientX      = (int) data[1];
+	pCD->clientY      = (int) data[2];
+	pCD->clientWidth  = (int) data[3];
+	pCD->clientHeight = (int) data[4];
+
+	pCD->clientState = MAXIMIZED_STATE;
+    }
+
+    XFree ((char *) data);
+}
+
+/*
+ * The workspace that was in front, or NULL if this is not a restart or
+ * nothing was recorded. The caller owns the string.
+ *
+ * Handed to pSD->initialWorkspace, which already exists for exactly this and
+ * has since the days when a session manager filled it in. An initialWorkspace
+ * set in the rc file wins: that one is a deliberate choice about how every
+ * session starts, and a restart is not a new session.
+ */
+char *GetRestartWorkspace(WmScreenData *pSD)
+{
+    Atom actualType;
+    int actualFormat;
+    unsigned long nitems, leftover;
+    unsigned char *data = NULL;
+    char *name;
+
+    if (!wmGD.wmRestarted) return (NULL);
+
+    if (XGetWindowProperty (DISPLAY, pSD->rootWindow,
+	    RestartWorkspaceAtom(), 0L, (long) MAXWMPATH, True, XA_STRING,
+	    &actualType, &actualFormat, &nitems, &leftover,
+	    &data) != Success)
+    {
+	return (NULL);
+    }
+
+    if (!data) return (NULL);
+
+    if ((actualType != XA_STRING) || (actualFormat != 8) || (nitems == 0))
+    {
+	XFree ((char *) data);
+	return (NULL);
+    }
+
+    name = XtMalloc (nitems + 1);
+    memcpy (name, data, nitems);
+    name[nitems] = '\0';
+
+    XFree ((char *) data);
+
+    return (name);
+}

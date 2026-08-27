@@ -40,8 +40,13 @@
 Fonts
 {
     !! Motif's own font, and what mWizard has always drawn its menus in.
-    !! Pixelated on purpose: it is a bitmap font, it is on every X server
-    !! there is, and it needs no fontconfig.
+    !! Pixelated on purpose: it is a bitmap font and it needs no fontconfig.
+    !!
+    !! An Xorg install without the legacy bitmap font packages has no core
+    !! fonts at all, "fixed" included. Both programs check and say so on
+    !! stderr; if yours is one of them, name an Xft font here instead:
+    !!
+    !!     font    "Liberation Sans:10"
     font            fixed
 
     !! Uncomment any of these to let one place differ from the base.

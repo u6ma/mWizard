@@ -64,4 +64,15 @@ void InitIdleLock(void);
  */
 void InitSystemTray(void);
 
+/*
+ * Window state that has to outlive an f.restart.
+ *
+ * SaveRestartState() runs just before the exec; the other two put back what
+ * it recorded, as the next instance adopts what it finds. See the notes in
+ * WmSession.c.
+ */
+void SaveRestartState(void);
+void RestoreClientRestartState(ClientData *pCD);
+char *GetRestartWorkspace(WmScreenData *pSD);
+
 #endif /* _WmSession_h */

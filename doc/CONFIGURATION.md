@@ -499,6 +499,39 @@ Menu SessionMenu
 }
 ```
 
+### What `f.restart` keeps
+
+`f.restart` execs the window manager again — `execvp()` on the arguments it
+started with — so an mWizard that has been rebuilt and installed underneath
+the running one is **picked up on the spot**. There is no need to end the X
+session to try a new build.
+
+The desktop survives it. Clients are handed back to the root window rather
+than killed, and the next instance adopts them:
+
+| Kept | How |
+|---|---|
+| every managed window | reparented to the root, re-adopted from `WM_STATE` |
+| which were iconified | `WM_STATE` |
+| which workspaces each lived in | `_MWM_WORKSPACE_PRESENCE` on the client |
+| where each window is, and its size | the server never forgot |
+| which were maximized | `_MWIZARD_RESTART`, written just before the exec |
+| which workspace was in front | `_MWIZARD_RESTART_WORKSPACE` on the root |
+
+The last two are new in 1.2. Neither is expressible in ICCCM — `WM_STATE`
+knows about iconic and normal and nothing else — so before then a maximized
+window came back at its maximized size with the window manager believing that
+was its ordinary size, and Restore did nothing; and a session spread over
+several workspaces came back on the first one.
+
+An `initialWorkspace` set in the rc file still wins over the remembered one:
+that setting says how every *session* should start, and a restart is not a new
+session.
+
+What does not survive is anything the window manager did not start and does
+not manage — see the `Startup` block (section 3b), which is re-run on restart
+precisely so that it does.
+
 ---
 
 ## 6a. The Execute dialog

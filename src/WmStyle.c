@@ -70,6 +70,16 @@
 #define STYLE_HOME	"/.mstylesrc"
 #define STYLE_SYSTEM	"/system.mstylesrc"
 
+/*
+ * What to fall back to when a core font named in the style file is not on
+ * the server. The first is a fully wildcarded XLFD, which matches whatever
+ * core font the server does have; the second is for a server that has none
+ * at all, which is no longer unusual -- a modern Xorg install without the
+ * legacy bitmap font packages has exactly zero, "fixed" included.
+ */
+#define STYLE_ANY_CORE_FONT	"-*-*-*-*-*-*-*-*-*-*-*-*-*-*"
+#define STYLE_LAST_RESORT_FONT	"Sans:10"
+
 /* Block names. */
 #define FONTS_KEYWORD		"fonts"
 #define COLORS_KEYWORD		"colors"
@@ -315,6 +325,52 @@ static void SplitXftSpec(char *buf, char **family, int *size, char **style)
 }
 
 /*
+ * Answers with a font spec that will actually load.
+ *
+ * Motif does not check. Name a core font the server does not have and it
+ * carries the failure all the way to the first XSetFont, where it surfaces
+ * as a BadFont from the server and not as anything mentioning a font name --
+ * so the one mistake a style file makes most easily is also the one that
+ * says least about itself.
+ *
+ * That matters more than it used to for the default: "fixed" is Motif's own
+ * font and was on every X server for twenty years, but an Xorg install
+ * without the legacy bitmap font packages has no core fonts at all, and
+ * fontconfig will not answer for it either.
+ *
+ * Xft specs are left alone. fontconfig always answers with something, so
+ * there is nothing here that could be checked and nothing that would fail.
+ */
+static const char *UsableFontSpec(const char *spec)
+{
+    XFontStruct *fs;
+
+    if (strchr (spec, ':') != NULL) return (spec);
+
+    if ((fs = XLoadQueryFont (DISPLAY, spec)) != NULL)
+    {
+	XFreeFont (DISPLAY, fs);
+	return (spec);
+    }
+
+    if ((fs = XLoadQueryFont (DISPLAY, STYLE_ANY_CORE_FONT)) != NULL)
+    {
+	XFreeFont (DISPLAY, fs);
+	StyleWarning ("no core font matches \"%s\"; using another the server "
+		      "does have. Try an Xft font instead, written "
+		      "family:size.", spec);
+	return (STYLE_ANY_CORE_FONT);
+    }
+
+    StyleWarning ("no core font matches \"%s\", and this server has no core "
+		  "fonts at all; using \"%s\". Name Xft fonts in the style "
+		  "file, written family:size.",
+		  spec, STYLE_LAST_RESORT_FONT);
+
+    return (STYLE_LAST_RESORT_FONT);
+}
+
+/*
  * Writes the rendition resources for one font spec under the given tag, so
  * that Motif's own string-to-render-table converter builds it. This is the
  * path every widget that takes its font from the database goes through.
@@ -349,51 +405,41 @@ static void PutFontRendition(const char *tag, const char *spec)
 }
 
 /*
- * Builds a render table for one spec.
+ * The render table Motif itself would build for one rendition tag.
  *
- * Only the widgets whose font the database cannot be trusted to reach need
- * this -- see StyleFont(). Everything else is served by PutFontRendition()
- * and never gets here.
+ * Not built here by hand. An earlier version of this did assemble the
+ * rendition with XmRenditionCreate(), copying the fallback in
+ * MakeAppearanceResources(), and that fallback passes XmNfont as XmAS_IS --
+ * which is the integer 255. Motif kept it, and 255 is a perfectly
+ * well-formed Font id that names no font, so the first string drawn with it
+ * died on a BadFont from the server rather than on anything that pointed at
+ * a font at all.
  *
- * The rendition is tagged XmFONTLIST_DEFAULT_TAG rather than with the role's
- * name, because a string made by XmStringCreateLocalized() carries that tag
- * and would otherwise have to be matched by Motif's fallback rather than
- * outright.
+ * Going through the string-to-render-table converter instead means the
+ * widgets that need a render table in hand and the widgets that get theirs
+ * from the resource database are served by one code path -- the one that was
+ * already working for every app-defaults file that ever set a Motif font.
+ * The rendition resources are in the database either way; this only asks
+ * Motif to read them. Xt caches the conversion, so this is also why nothing
+ * here has a cache of its own.
  */
-static XmRenderTable MakeRenderTable(const char *spec)
+static XmRenderTable RenderTableForTag(const char *tag)
 {
-    Arg args[6];
-    Cardinal n = 0;
-    XmRendition rendition;
-    char buf[STYLE_LINE_MAX];
-    char *family, *style;
-    int size;
+    XrmValue from, to;
+    XmRenderTable rt = NULL;
 
     if (!wmGD.topLevelW) return (NULL);
 
-    XtSetArg (args[n], XmNfont, XmAS_IS); n++;
+    from.addr = (XPointer) tag;
+    from.size = strlen (tag) + 1;
+    to.addr   = (XPointer) &rt;
+    to.size   = sizeof (rt);
 
-    if (strchr (spec, ':') == NULL)
-    {
-	XtSetArg (args[n], XmNfontType, XmFONT_IS_FONT); n++;
-	XtSetArg (args[n], XmNfontName, spec); n++;
-    }
-    else
-    {
-	snprintf (buf, sizeof(buf), "%s", spec);
-	SplitXftSpec (buf, &family, &size, &style);
+    if (!XtConvertAndStore (wmGD.topLevelW, XmRString, &from,
+			    XmRRenderTable, &to))
+	return (NULL);
 
-	XtSetArg (args[n], XmNfontType, XmFONT_IS_XFT); n++;
-	XtSetArg (args[n], XmNfontName, family); n++;
-	XtSetArg (args[n], XmNfontSize, size > 0 ? size : 10); n++;
-	if (style) { XtSetArg (args[n], XmNfontStyle, style); n++; }
-    }
-
-    rendition = XmRenditionCreate (wmGD.topLevelW,
-				   XmFONTLIST_DEFAULT_TAG, args, n);
-    if (!rendition) return (NULL);
-
-    return (XmRenderTableAddRenditions (NULL, &rendition, 1, XmMERGE_NEW));
+    return (rt);
 }
 
 XmRenderTable StyleFont(const char *role)
@@ -414,7 +460,7 @@ XmRenderTable StyleFont(const char *role)
     if (!fontTablesTried[i])
     {
 	fontTablesTried[i] = True;
-	fontTables[i] = MakeRenderTable (fontSpecs[i]);
+	fontTables[i] = RenderTableForTag (fontRoles[i].role);
 
 	if (!fontTables[i])
 	    StyleWarning ("style file: could not make the font \"%s\".",
@@ -743,9 +789,17 @@ void LoadStyleFile(void)
      */
     for (i = 0; i < NUM_FONT_ROLES; i++)
     {
+	const char *usable;
 	int b;
 
 	if (!fontSpecs[i] || !fontRoles[i].bindings[0]) continue;
+
+	usable = UsableFontSpec (fontSpecs[i]);
+	if (usable != fontSpecs[i])
+	{
+	    XtFree (fontSpecs[i]);
+	    fontSpecs[i] = XtNewString (usable);
+	}
 
 	PutFontRendition (fontRoles[i].role, fontSpecs[i]);
 

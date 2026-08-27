@@ -291,6 +291,16 @@ ManageWindow (WmScreenData *pSD, Window clientWindow, long manageFlags)
 	else
 	{
 	    pCD->clientState = NORMAL_STATE;
+
+	    /*
+	     * WM_STATE knows about iconic and normal and nothing else, so a
+	     * window that was maximized before the restart is indistinguishable
+	     * from one that merely happened to be that size. RestartWm() wrote
+	     * down the difference; this asks for it back. The maximizing itself
+	     * happens in the SetClientState() at the end of this function, off
+	     * the state set here.
+	     */
+	    RestoreClientRestartState (pCD);
 	}
     }
 

@@ -1143,6 +1143,17 @@ void InitWmScreen (WmScreenData *pSD, int sNum)
 
     }
 
+    /*
+     * On a restart, come back to the workspace that was in front. An
+     * initialWorkspace set in the rc file wins: that one says how every
+     * session should start, and a restart is not a new session. See
+     * SaveRestartState() in WmSession.c.
+     */
+    if (!pSD->initialWorkspace)
+    {
+	pSD->initialWorkspace = GetRestartWorkspace (pSD);
+    }
+
     if (pSD->initialWorkspace)
     {
 	/* 

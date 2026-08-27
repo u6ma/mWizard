@@ -128,6 +128,32 @@ one.
 `xlsfonts(1)` lists the core fonts the server has; `fc-list(1)` lists the Xft
 ones. A size given for a core font is ignored — the size is part of the XLFD.
 
+### If the core font is not there
+
+Both programs check that a core font actually loads before handing it to
+Motif, and say so if it does not:
+
+```
+mwizard: no core font matches "fixed"; using another the server does have.
+```
+
+The check exists because Motif does not do it. Name a core font the server
+lacks and the failure is carried all the way to the first `XSetFont`, where it
+comes back as a `BadFont` from the server and takes the program down without
+mentioning a font name — the least informative outcome for the mistake that is
+easiest to make.
+
+It matters most for the default. `fixed` is Motif's own font and was on every
+X server for twenty years, but an Xorg install without the legacy bitmap font
+packages (`xorg-fonts-misc`, `xfonts-base`) has **no core fonts at all**, and
+fontconfig will not answer for them either. On such a system, name an Xft font:
+
+```
+Fonts { font "Liberation Sans:10" }
+```
+
+Xft specs are not checked — fontconfig always answers with something.
+
 ### The roles
 
 Every role is optional, and every one falls back to `font`.

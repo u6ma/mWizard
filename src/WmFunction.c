@@ -2594,6 +2594,13 @@ void RestartWm (long startupFlags)
     ClientListEntry *pNextEntry;
     int scr;
 
+    /*
+     * Write down what the next instance cannot work out from the windows
+     * themselves -- which of them were maximized, and which workspace was in
+     * front. Before anything below is unmapped or reparented, while that is
+     * still true. See WmSession.c.
+     */
+    SaveRestartState ();
 
     for (scr=0; scr<wmGD.numScreens; scr++)
     {
