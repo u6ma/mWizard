@@ -106,7 +106,7 @@
  */
 typedef struct {
     const char *role;
-    const char *bindings[3];	/* NULL-terminated; empty: not drawn here */
+    const char *bindings[4];	/* NULL-terminated; empty: not drawn here */
 } FontRole;
 
 static const FontRole fontRoles[] = {
@@ -117,7 +117,8 @@ static const FontRole fontRoles[] = {
     { WmStyleMenuFont,		{ "*menu*renderTable", NULL } },
     { WmStyleMenuTitleFont,	{ "*menu*menuTitle*renderTable", NULL } },
     { WmStyleDialogFont,	{ "*execDialog*renderTable",
-				  "*mwinfo*renderTable", NULL } },
+				  "*mwinfo*renderTable",
+				  "*mwmonitor*renderTable", NULL } },
     { WmStylePanelFont,		{ NULL } }
 };
 

@@ -26,6 +26,7 @@
  * Included Files:
  */
 #include "WmGlobal.h"
+#include "WmMonitor.h"
 #include <X11/XKBlib.h>
 
 /* absolute value macro */
@@ -295,7 +296,9 @@ void HandlePlacementKeyEvent (ClientData *pcd, XKeyEvent *pev)
     /* convert event data to useful key data */
     keysym = XkbKeycodeToKeysym (DISPLAY, pev->keycode, 0, 0);
     control = (pev->state & ControlMask) != 0;
-    big_inc = DisplayWidth(DISPLAY, ACTIVE_PSD->screen) / 20;
+    /* A twentieth of the monitor in use, not of the whole desk; see
+     * HandleClientFrameMove() in WmWinConf.c. */
+    big_inc = ACTIVE_PSD->pMonitors[ActiveMonitor (ACTIVE_PSD)].width / 20;
 
     /* interpret key data */
     valid = FALSE;

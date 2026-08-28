@@ -96,6 +96,7 @@ uses. **The rc file always wins**; a behaviour resource left over from an
 | `dateTimeFormat` | `strftime(3)` format | `"%m/%d %l:%M %p"` |
 | `userHostDisplay` | boolean | `True` |
 | `occupyAllWorkspaces` | boolean | `True` |
+| `occupyAllMonitors` | boolean | `False` |
 | `hotkey` | keysym | *(unset)* |
 | `sessionMenu` | boolean | `True` |
 | `lockCommand` | command | *(empty)* |
@@ -168,27 +169,25 @@ A top-level menu is a title followed by a brace block. `&` marks the keyboard
 mnemonic, a colon separates an item's title from its command, and `SEPARATOR`
 places a separator. Menus nest.
 
-`MWINFO` is the one item that is not a command: it posts **mWinfo**, the
-window manager's About window, and is written bare like `SEPARATOR` because
-there is nothing to give it — mWand supplies the label, and asks the window
-manager for the window over the same path the Commands menu uses (see
-`doc/CONFIGURATION.md` §6b). It works in any menu, at any depth, and needs no
-window manager configuration.
+`MWINFO` and `MONITORS` are the items that are not commands: they post
+**mWinfo**, the window manager's About window, and **mWmonitor**, its monitor
+arranger. Both are written bare like `SEPARATOR` because there is nothing to
+give them — mWand supplies the labels and asks the window manager for the
+windows (see `doc/CONFIGURATION.md` §6b and §6c). They work in any menu, at any
+depth, and need no window manager configuration. `MONITORS` needs mWizard 1.3.
 
-Both it and `Execute...` reach mWizard by signalling the pid it publishes in
-`_NET_WM_PID`, and both first check `_MWIZARD_SIGNALS` on the
-`_NET_SUPPORTING_WM_CHECK` window, which mWizard sets from the same code that
-installs each handler. Under any other window manager — or a mWizard too old
-to have the handler — the bit is absent and the item reports that the window
-manager does not provide the window. **This check is not cosmetic:** SIGUSR1
-and SIGUSR2 terminate a process that has no handler for them, so signalling
-without it would kill the window manager and end the X session.
+How mWand asks is described in `doc/CONFIGURATION.md` §6d: a `_MWIZARD_COMMAND`
+ClientMessage to the root window, gated on the `_MWIZARD_COMMANDS` bitmask that
+says which windows this mWizard understands. Against a mWizard older than 1.3
+it falls back to the signals that mechanism replaced. Under any other window
+manager the item reports that the window manager does not provide the window.
 
 ```
 &Utilities
 {
     &XTerm: xterm
     SEPARATOR
+    MONITORS
     MWINFO
     SEPARATOR
     X11 &Utilities
@@ -218,22 +217,23 @@ stays active and the error is reported.
 
 ## 5. The session menu
 
-> **"Execute..." and "About mWizard..." are the window manager's windows.**
-> mWand used to carry its own command prompt; it now asks mWizard to post one,
-> since a run prompt is wanted with or without a panel, and mWinfo works the
-> same way. mWand finds the window manager through `_NET_SUPPORTING_WM_CHECK`
-> and signals the pid in `_NET_WM_PID` — `SIGUSR1` for the prompt, `SIGUSR2`
-> for mWinfo — so it needs no helper program. Under a window manager that
-> publishes neither property, the item reports that there is nothing to ask.
-> Bind `f.run` and `f.about` in `~/.mwizardrc` to reach the same windows from
-> the keyboard; `f.about` is already on `Alt Shift Ctrl<Key>i`.
+> **"Execute...", "Monitors..." and "About mWizard..." are the window
+> manager's windows.** mWand used to carry its own command prompt; it now asks
+> mWizard to post one, since a run prompt is wanted with or without a panel,
+> and mWinfo and mWmonitor work the same way. mWand finds the window manager
+> through `_NET_SUPPORTING_WM_CHECK` and sends it a `_MWIZARD_COMMAND`
+> ClientMessage, so it needs no helper program. Under a window manager that
+> does not answer, the item reports that there is nothing to ask.
+> Bind `f.run`, `f.monitors` and `f.about` in `~/.mwizardrc` to reach the same
+> windows from the keyboard; two of the three already are.
 
 
-The command menu always holds two window manager utilities: **Execute...**,
-which prompts for a command to run, and **About mWizard...**, which posts
-mWinfo — the name, version, licenses and project page. With `sessionMenu True`
-it also holds the session actions and is labelled *Session*; with
-`sessionMenu False` it holds only those two and is labelled *Commands*.
+The command menu always holds three window manager utilities: **Execute...**,
+which prompts for a command to run, **Monitors...**, which posts mWmonitor for
+arranging the monitors, and **About mWizard...**, which posts mWinfo — the
+name, version, licenses and project page. With `sessionMenu True` it also holds
+the session actions and is labelled *Session*; with `sessionMenu False` it
+holds only those three and is labelled *Commands*.
 
 | Item | Runs | Confirms first |
 |---|---|---|

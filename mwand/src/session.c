@@ -33,6 +33,7 @@
 
 static void exec_item_cb(Widget, XtPointer, XtPointer);
 static void about_item_cb(Widget, XtPointer, XtPointer);
+static void monitors_item_cb(Widget, XtPointer, XtPointer);
 static void command_item_cb(Widget, XtPointer, XtPointer);
 static Widget AddItem(Widget wpulldown, const char *name, const char *label,
 	KeySym mnemonic, XtCallbackProc cb, XtPointer data);
@@ -45,6 +46,12 @@ static void exec_item_cb(Widget w, XtPointer client_data, XtPointer call_data)
 static void about_item_cb(Widget w, XtPointer client_data, XtPointer call_data)
 {
 	AboutWindowManagerDialog();
+}
+
+/* mWmonitor, the monitor arranger; also the window manager's own window. */
+static void monitors_item_cb(Widget w, XtPointer client_data, XtPointer call_data)
+{
+	MonitorDialog();
 }
 
 /*
@@ -176,6 +183,16 @@ Widget CreateCommandMenu(Widget wparent)
 	AddItem(wpulldown, "about", MWINFO_ITEM_LABEL,
 		(KeySym)MWINFO_ITEM_MNEMONIC,
 		(XtCallbackProc)about_item_cb, NULL);
+
+	/*
+	 * mWmonitor. Also the window manager's own window and also always
+	 * offered -- if the window manager is not one that provides it, saying
+	 * so when the item is picked is more use than leaving the user to
+	 * wonder where the arranger went.
+	 */
+	AddItem(wpulldown, "monitors", MONITORS_ITEM_LABEL,
+		(KeySym)MONITORS_ITEM_MNEMONIC,
+		(XtCallbackProc)monitors_item_cb, NULL);
 
 	if(any_session) {
 		w = XmCreateSeparatorGadget(wpulldown, "separator", NULL, 0);

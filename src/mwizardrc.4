@@ -137,6 +137,14 @@ This function is treated as \fBf\&.nop\fP if \fIkeyboardFocusPolicy\fP is not ex
 .IP "\fBf.goto_workspace\fP \fIname\fP
 This function activates the workspace specified. If no such workspace exists,
 no action takes place.
+.IP "\fBf\&.goto_monitor\fP\ [ \fInext\fP | \fIprev\fP | \fIprimary\fP | \fIoutput_name\fP]" 10
+This function moves the pointer to another monitor\&. \fInext\fP and
+\fIprev\fP step through the monitors in the order they sit on the desk, left
+to right and then top to bottom; \fIprimary\fP is the monitor named by the
+\fIprimaryMonitor\fP resource; anything else is taken as a RandR output name
+such as \fIDP\-1\fP\&. The pointer is what decides which monitor is active
+under the default \fIxineramaScreenFocus\fP, so this also decides which
+monitor a following \fBf\&.goto_workspace\fP acts on\&.
 .IP "\fBf\&.kill\fP" 10
 This function is used to close application windows\&. The actual processing
 that occurs depends on the protocols that the application observes\&. The application
@@ -175,8 +183,25 @@ If an icon box is used, then the client\&'s icon changes to its iconified form
 inside the icon box\&. Secondary windows (that is, transient windows) are minimized
 with their associated primary window\&. There is only one icon for a primary
 window and all its secondary windows\&.
+.IP "\fBf\&.monitors\fP" 10
+This function posts \fBmWmonitor\fP, the monitor arranger: where the monitors
+sit, what mode each is running, which is primary and which are enabled\&.
+Changes are applied through the RandR extension, and can be saved to
+\fI$HOME/\&.mmonitors\fP to be restored at the next startup or when the same
+set of monitors is next attached\&. The window is an ordinary one and is
+closed, moved and resized like any other\&. Requires the RandR extension\&.
 .IP "\fBf\&.move\fP" 10
 This function initiates an interactive move of a client window\&.
+.IP "\fBf\&.move_to_monitor\fP\ [ \fInext\fP | \fIprev\fP | \fIprimary\fP | \fIoutput_name\fP]" 10
+This function moves a client window to another monitor\&. The arguments are
+the same as for \fBf\&.goto_monitor\fP\&. The window keeps its position within
+the monitor in proportion, so a window three quarters of the way across a wide
+monitor is three quarters of the way across the narrow one it arrives on\&.
+When \fIperMonitorWorkspaces\fP is True the window is also moved into whatever
+workspace the destination monitor is showing, so that it does not disappear on
+arrival; a window that occupies all workspaces, or whose \fImonitor\fP
+resource is \fIall\fP, is left as it is\&. Dragging a window across the
+boundary with the pointer does the same thing\&.
 .IP "\fBf\&.mwinfo\fP" 10
 An alias for \fBf\&.about\fP\&.
 .IP "\fBf\&.next_cmap\fP" 10
@@ -316,6 +341,11 @@ and by the \fIStartup\fP block -- are ended first and started again by the new
 instance from the file as it now reads, so a restart refreshes the session
 rather than the window manager alone\&. Ordinary clients, including anything
 run from \fBf\&.exec\fP, are unaffected and keep running across the restart\&.
+.IP "\fBf\&.run\fP" 10
+This function posts \fBmWrun\fP, a prompt for a command to run\&. The command
+is run through the same shell as \fBf\&.exec\fP, so variables from the
+\fIVariables\fP block, pipelines and \fB&\fP all work\&. The prompt keeps
+the last command, so posting it again and pressing Return repeats it\&.
 .IP "\fBf\&.screen\fP\ [ \fInext\fP | \fIprev\fP | \fIback\fP | \fIscreen_number\fP]" 10
 This function causes the pointer to be warp to a specific screen number
 or to the \fInext\fP, \fIprevious\fP, or last visited (\fIback\fP)
@@ -384,13 +414,16 @@ _
 \fBf\&.exec\fProot,icon,windowbutton,key,menu
 \fBf\&.focus_color\fProot,icon,windowbutton,key,menu
 \fBf\&.focus_key\fProot,icon,windowbutton,key,menu
+\fBf\&.goto_monitor\fProot,icon,windowbutton,key,menu
 \fBf\&.goto_workspace\fProot,icon,windowbutton,key,menu
 \fBf\&.kill\fPicon,windowbutton,key,menu
 \fBf\&.lower\fProot,icon,windowbutton,key,menu
 \fBf\&.maximize\fPicon,window(normal)button,key,menu
 \fBf\&.menu\fProot,icon,windowbutton,key,menu
 \fBf\&.minimize\fPwindowbutton,key,menu
+\fBf\&.monitors\fProot,icon,windowbutton,key,menu
 \fBf\&.move\fPicon,windowbutton,key,menu
+\fBf\&.move_to_monitor\fPicon,windowbutton,key,menu
 \fBf\&.mwinfo\fProot,icon,windowbutton,key,menu
 \fBf\&.next_cmap\fProot,icon,windowbutton,key,menu
 \fBf\&.next_key\fProot,icon,windowbutton,key,menu
@@ -418,6 +451,7 @@ _
 \fBf\&.restore\fPicon,windowbutton,key,menu
 \fBf\&.restore_and_raise\fPicon,windowbutton,key,menu
 \fBf\&.remove\fPicon,windowbutton,key,menu
+\fBf\&.run\fProot,icon,windowbutton,key,menu
 \fBf\&.screen\fProot,icon,windowbutton,key,menu
 \fBf\&.send_msg\fPicon,windowbutton,key,menu
 \fBf\&.separator\fProot,icon,windowmenu

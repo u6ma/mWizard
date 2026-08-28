@@ -66,6 +66,8 @@
 #include "WmSession.h"
 #include "WmExecDlg.h"
 #include "WmWinfo.h"
+#include "WmMonitorDlg.h"
+#include "WmMonitor.h"
 #include "WmEwmh.h"
 #include "WmXmP.h"
 
@@ -2537,6 +2539,72 @@ Boolean F_Run (String args, ClientData *pCD, XEvent *event)
 Boolean F_About (String args, ClientData *pCD, XEvent *event)
 {
     PostWinfoDialog ();
+    return (False);
+}
+
+/*
+ * f.monitors -- posts mWmonitor, the monitor arranger.
+ *
+ * The window itself lives in WmMonitorDlg.c; this is only the rc binding.
+ */
+Boolean F_Monitors (String args, ClientData *pCD, XEvent *event)
+{
+    PostMonitorDialog ();
+    return (False);
+}
+
+/*
+ * f.move_to_monitor <next|prev|primary|name> -- moves the window to another
+ * head, keeping its position within that head proportional and re-homing it
+ * into whatever workspace the destination is showing.
+ *
+ * The keyboard equivalent of dragging it across the boundary; both end up in
+ * ProcessNewConfiguration(), which is where the re-homing actually happens.
+ */
+Boolean F_Move_To_Monitor (String args, ClientData *pCD, XEvent *event)
+{
+    WmScreenData *pSD;
+    int toMon;
+
+    if (!pCD || !pCD->pSD) return (False);
+    pSD = pCD->pSD;
+
+    toMon = MonitorFromSpec (pSD, args, MonitorOfClient (pCD));
+    if (toMon < 0) return (False);
+
+    MoveClientToMonitor (pCD, toMon);
+
+    return (False);
+}
+
+/*
+ * f.goto_monitor <next|prev|primary|name> -- moves the pointer to another
+ * head.
+ *
+ * The pointer rather than the keyboard focus, because that is what decides
+ * which head is "active" under the default xineramaScreenFocus, and moving it
+ * is therefore the thing that makes the next f.goto_workspace act on the head
+ * the user meant. Under keyboard focus the warp still lands the pointer there
+ * and an explicit focus follows on the next click, which is the same bargain
+ * f.screen has always made.
+ */
+Boolean F_Goto_Monitor (String args, ClientData *pCD, XEvent *event)
+{
+    WmScreenData *pSD = ACTIVE_PSD;
+    int fromMon, toMon;
+    int x, y, actualX, actualY;
+
+    if (!pSD) return (False);
+
+    fromMon = ActiveMonitor (pSD);
+    toMon = MonitorFromSpec (pSD, args, fromMon);
+    if (toMon < 0 || toMon == fromMon) return (False);
+
+    MonitorWorkArea (pSD, toMon, &x, &y, &actualX, &actualY);
+
+    SetPointerPosition (x + actualX / 2, y + actualY / 2,
+	&actualX, &actualY);
+
     return (False);
 }
 

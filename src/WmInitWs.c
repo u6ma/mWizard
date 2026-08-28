@@ -74,6 +74,9 @@
 #include "WmStyle.h"
 #include "WmXmP.h"
 #include "WmXinerama.h"
+#include "WmMonitor.h"
+#include "WmMonitorDlg.h"
+#include "WmWrkspace.h"
 #include "WmEwmh.h"
 #include <stdlib.h>
 
@@ -475,6 +478,22 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
     _XmColorObjCreate ( wmGD.topLevelW, NULL, NULL);
 #endif
 
+	/*
+	 * Probe for RandR before any screen is initialized.
+	 *
+	 * InitWmScreen() builds that screen's monitor list, and SetupMonitors()
+	 * asks wmGD.xrandr_present which source to use -- so the flag has to be
+	 * set by now or every screen falls back to Xinerama and the heads come
+	 * out unnamed. Only XRRSelectInput() needs a realized window, and that
+	 * stays further down where the shells exist.
+	 */
+	if(XRRQueryExtension(wmGD.display,
+		&wmGD.xrandr_base_evt, &wmGD.xrandr_base_err)){
+		wmGD.xrandr_present = True;
+	} else {
+		wmGD.xrandr_present = False;
+	}
+
 	/* Check for Xinerama support and initialize session data */
 	SetupXinerama();
 
@@ -729,11 +748,13 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
     {
       enum { XA_MWM_WORKSPACE_HINTS, XA_MWM_WORKSPACE_PRESENCE,
 	     XA_MWM_WORKSPACE_INFO, XA_WmNall,
-	     XA_MWM_WORKSPACE_LIST, XA_MWM_WORKSPACE_CURRENT, NUM_ATOMS };
+	     XA_MWM_WORKSPACE_LIST, XA_MWM_WORKSPACE_CURRENT,
+	     XA_MWM_MONITOR_PRESENCE, NUM_ATOMS };
       static char *atom_names[] = {
 	     _XA_MWM_WORKSPACE_HINTS, _XA_MWM_WORKSPACE_PRESENCE,
 	     _XA_MWM_WORKSPACE_INFO, WmNall,
-	     _XA_MWM_WORKSPACE_LIST, _XA_MWM_WORKSPACE_CURRENT };
+	     _XA_MWM_WORKSPACE_LIST, _XA_MWM_WORKSPACE_CURRENT,
+	     _XA_MWM_MONITOR_PRESENCE };
 
       Atom atoms[XtNumber(atom_names)];
       XInternAtoms(DISPLAY, atom_names, XtNumber(atom_names), False, atoms);
@@ -744,6 +765,7 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
       wmGD.xa_ALL_WORKSPACES = atoms[XA_WmNall];
       wmGD.xa_MWM_WORKSPACE_LIST = atoms[XA_MWM_WORKSPACE_LIST];
       wmGD.xa_MWM_WORKSPACE_CURRENT = atoms[XA_MWM_WORKSPACE_CURRENT];
+      wmGD.xa_MWM_MONITOR_PRESENCE = atoms[XA_MWM_MONITOR_PRESENCE];
     }
 
     /*
@@ -838,14 +860,38 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
     XChangeWindowAttributes (DISPLAY, XtWindow (wmGD.topLevelW),
 		CWOverrideRedirect, &sAttributes);
 
-	/* Initialize Xrandr and set up for screen change notifications */
-	if(XRRQueryExtension(wmGD.display,
-		&wmGD.xrandr_base_evt, &wmGD.xrandr_base_err)){
-		wmGD.xrandr_present = True;
-		XRRSelectInput(wmGD.display, XtWindow(wmGD.topLevelW),
-			RRScreenChangeNotifyMask);
-	} else {
-		wmGD.xrandr_present = False;
+	/*
+	 * Initialize Xrandr and set up for screen change notifications.
+	 *
+	 * Selected on each managed screen's own shell rather than once on
+	 * wmGD.topLevelW. Two reasons: on a genuinely multi-X-screen display
+	 * one selection on the first screen's shell hears about that screen
+	 * only, and GetScreenForWindow() can then resolve the event to the
+	 * right WmScreenData instead of always resolving to the same one.
+	 *
+	 * It has to stay a non-root window. Selecting on the root would send
+	 * these to WmDispatchWsEvent() -- main()'s dispatch splits on
+	 * ManagedRoot() -- and the RandR branch lives in
+	 * HandleEventsOnSpecialWindows(), on the other side of that split.
+	 *
+	 * RROutputChangeNotifyMask is new in 1.3 and is what makes hotplug
+	 * detection possible: a monitor plugged in but not yet enabled changes
+	 * no screen geometry, so RRScreenChangeNotify alone never fires for it.
+	 */
+	if(wmGD.xrandr_present){
+		int scr;
+
+		for(scr = 0; scr < wmGD.numScreens; scr++){
+			WmScreenData *pSD = &wmGD.Screens[scr];
+
+			if(!pSD->managed || !pSD->screenTopLevelW) continue;
+			if(!XtWindow(pSD->screenTopLevelW)) continue;
+
+			XRRSelectInput(wmGD.display,
+				XtWindow(pSD->screenTopLevelW),
+				RRScreenChangeNotifyMask |
+				RROutputChangeNotifyMask);
+		}
 	}
 	
     /* setup window manager inter-client communications conventions handling */
@@ -923,6 +969,7 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
 	InitIdleLock();
 	InitExecDialog();
 	InitWinfoDialog();
+	InitMonitorDialog();
 	InitSystemTray();
 	RunStartupCommands();
 	
@@ -1028,6 +1075,17 @@ void InitWmScreen (WmScreenData *pSD, int sNum)
     pSD->strutRight = 0;
     pSD->strutTop = 0;
     pSD->strutBottom = 0;
+
+    /*
+     * The monitor list for this screen. Built here rather than from
+     * SetupXinerama() -- which used to own it -- because it is per screen and
+     * this is the first point at which there is a WmScreenData and a root
+     * window to build it from. Always leaves at least one monitor; see
+     * WmMonitor.h.
+     */
+    pSD->pMonitors = NULL;
+    pSD->numMonitors = 0;
+    SetupMonitors (pSD);
 
     pSD->bMarqueeSelectionInitialized = False;
     pSD->woN = (Window) 0L;
@@ -1188,6 +1246,14 @@ void InitWmScreen (WmScreenData *pSD, int sNum)
 	/* make first workspace in list the active one to start with */
 	pSD->pActiveWS = pSD->pWS;
     }
+
+    /*
+     * Every monitor starts on the same workspace, which is what makes
+     * perMonitorWorkspaces invisible until the user switches one of them.
+     * Done here rather than in SetupMonitors() because the workspace list does
+     * not exist that early.
+     */
+    InitMonitorWorkspaces (pSD);
 
     pDisplayName = DisplayString (DISPLAY);
 

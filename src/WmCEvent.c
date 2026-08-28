@@ -55,11 +55,14 @@
 #include "WmWrkspace.h"
 #include "WmEwmh.h"
 #include "WmXinerama.h"
+#include "WmMonitor.h"
+#include "WmMonitorDlg.h"
 #include "WmIPlace.h"
 #include "WmError.h"
 
 
 static void HandleRRScreenChangeNotify(XEvent*);
+static void HandleRROutputChangeNotify(XEvent*);
 
 /*
  * Global Variables:
@@ -492,6 +495,18 @@ Boolean HandleEventsOnSpecialWindows (XEvent *pEvent)
 	if(wmGD.xrandr_present && pEvent->type == 
 		(wmGD.xrandr_base_evt + RRScreenChangeNotify) ) {
 		HandleRRScreenChangeNotify(pEvent);
+	}
+
+	/*
+	 * RRNotify carries several kinds of event in one type, distinguished
+	 * by a subtype in the event body; only the output one is wanted here.
+	 * Crtc and Output notifications also arrive as RRNotify, so the
+	 * subtype check is not optional.
+	 */
+	if(wmGD.xrandr_present && pEvent->type ==
+		(wmGD.xrandr_base_evt + RRNotify) &&
+		((XRRNotifyEvent*)pEvent)->subtype == RRNotify_OutputChange) {
+		HandleRROutputChangeNotify(pEvent);
 	}
 
 	/*
@@ -2816,18 +2831,43 @@ static void HandleRRScreenChangeNotify(XEvent *evt)
 	if(!pSD) return;
 		
 	XRRUpdateConfiguration(evt);
-	UpdateXineramaInfo();
-	
+
+	/*
+	 * The monitor list first: everything below asks it which head a window
+	 * is on, and the struts and the workspace properties are derived from
+	 * it in turn.
+	 */
+	if(!UpdateMonitors(pSD)) return;
+
+	/*
+	 * A head that has gone away took its active workspace pointer with it,
+	 * and a head that has just appeared has none yet.
+	 */
+	InitMonitorWorkspaces(pSD);
+
+	/*
+	 * Struts are stored per monitor, so a geometry change invalidates them
+	 * even when no dock moved. UpdateEwmhWorkspaceProperties() republishes
+	 * _NET_DESKTOP_GEOMETRY, which before 1.3 was written once at startup
+	 * and then left to go stale on every resolution change.
+	 */
+	RecomputeStruts(pSD);
+	UpdateEwmhWorkspaceProperties(pSD);
+
+	/*
+	 * Was &pSD->pWS[iws]. Passing pSD->pWS rebuilt workspace zero's icon
+	 * grid numWorkspaces times over and left every other workspace holding
+	 * placement data sized for the old screen.
+	 */
 	for(iws = 0; iws < pSD->numWorkspaces; iws++)
-		InitIconPlacement(pSD->pWS);
+		InitIconPlacement(&pSD->pWS[iws]);
 
 	e = pSD->clientList;
 	
 	while(e) {
 		ClientData *cd = e->pCD;
-		XineramaScreenInfo xsi;
-		int swidth;
-		int sheight;
+		int waX, waY, swidth, sheight;
+		int mon;
 		
 		/* Skip icon entries */
 		if(e->type == MINIMIZED_STATE) {
@@ -2835,14 +2875,16 @@ static void HandleRRScreenChangeNotify(XEvent *evt)
 			continue;
 		}
 
-		/* Reconfigure client position and size if necessary */
-		if(GetXineramaScreenFromLocation(cd->clientX, cd->clientY, &xsi)){
-			swidth = xsi.width;
-			sheight = xsi.height;
-		} else {
-			swidth = XDisplayWidth(DISPLAY, cd->pSD->screen);
-			sheight = XDisplayHeight(DISPLAY, cd->pSD->screen);
-		}
+		/*
+		 * Reconfigure client position and size if necessary.
+		 *
+		 * A window that was on a head which has just been unplugged is
+		 * now sitting in dead space; MonitorFromLocation() answers with
+		 * the nearest surviving head, so it is re-homed onto that one
+		 * rather than left stranded off screen.
+		 */
+		mon = MonitorFromLocation(pSD, cd->clientX, cd->clientY);
+		MonitorWorkArea(pSD, mon, &waX, &waY, &swidth, &sheight);
 
 		if(cd->fullScreen) ConfigureEwmhFullScreen(cd, False);
 
@@ -2855,8 +2897,17 @@ static void HandleRRScreenChangeNotify(XEvent *evt)
 		if(cd->maxHeight > cd->maxHeightLimit)
 			cd->maxHeight = cd->maxHeightLimit;
 
-		cd->maxWidth -=	((cd->maxWidth - cd->baseWidth) % cd->widthInc);
-		cd->maxHeight -= ((cd->maxHeight - cd->baseHeight) % cd->heightInc);
+		/*
+		 * Guarded: a client with a zero resize increment would divide
+		 * by zero here and take the window manager down with it on the
+		 * next screen change. RecomputeMaxConfig() has the same guard.
+		 */
+		if(cd->widthInc > 0)
+			cd->maxWidth -=
+				((cd->maxWidth - cd->baseWidth) % cd->widthInc);
+		if(cd->heightInc > 0)
+			cd->maxHeight -=
+				((cd->maxHeight - cd->baseHeight) % cd->heightInc);
 
 		PlaceFrameOnScreen(cd, &cd->maxX, &cd->maxY,
 			cd->maxWidth, cd->maxHeight);
@@ -2867,4 +2918,37 @@ static void HandleRRScreenChangeNotify(XEvent *evt)
 		/* Next client */
 		e = e->nextSibling;
 	}
+}
+
+/*
+ * Hotplug: an output was connected or disconnected.
+ *
+ * RRScreenChangeNotify is not enough on its own. Plugging in a monitor that
+ * the server does not immediately enable changes no screen geometry, so that
+ * event never fires and the user is left with a dark panel and no idea that
+ * mWizard noticed. RROutputChangeNotify does fire, which is why 1.3 selects
+ * for it.
+ *
+ * The event says which output changed but not whether this is news, so the set
+ * of connected output names is kept and compared. Anything else would post the
+ * dialog again on every mode change and every DPMS blank.
+ */
+static void HandleRROutputChangeNotify(XEvent *evt)
+{
+	WmScreenData *pSD = GetScreenForWindow(evt->xany.window);
+
+	if(!pSD) return;
+
+	XRRUpdateConfiguration(evt);
+
+	if(!NoteConnectedOutputs(pSD)) return;
+
+	/*
+	 * A saved layout for exactly this set of outputs is the answer if
+	 * there is one -- docking a laptop should restore the arrangement the
+	 * user set up the last time, not ask about it again.
+	 */
+	if(ApplySavedMonitorLayout(pSD)) return;
+
+	if(wmGD.monitorDialogOnHotplug) PostMonitorDialog();
 }

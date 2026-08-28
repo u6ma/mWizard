@@ -65,6 +65,7 @@ Menu DefaultRootMenu
 	"Workspaces"	_k	f.menu	WorkspacesMenu
 	 no-label		f.separator
 	"Execute..."	_E	f.run
+	"Monitors..."	_M	f.monitors
 	! mWinfo, the About window. Off here by default because it is already
 	! on Alt Shift Ctrl<Key>i and in mWand's Commands menu; uncomment to
 	! have it in the root menu as well.
@@ -181,6 +182,16 @@ Keys DefaultKeyBindings
 	! mWinfo: the name, the version, the licenses and the project page.
 	Alt Shift Ctrl<Key>i root|icon|window	f.about
 
+	! mWmonitor: arrange the monitors, set modes, pick the primary.
+	Alt Shift Ctrl<Key>m root|icon|window	f.monitors
+
+	! Move the focused window to the next monitor, and move yourself to
+	! it. Both also take "prev", "primary", or an output name.
+	Alt Shift<Key>Right window		f.move_to_monitor "next"
+	Alt Shift<Key>Left window		f.move_to_monitor "prev"
+	Alt Ctrl<Key>Right root|icon|window	f.goto_monitor "next"
+	Alt Ctrl<Key>Left root|icon|window	f.goto_monitor "prev"
+
 	! Media and other XF86 keys.
 	!
 	! Any name XStringToKeysym(3) knows works here, which covers all of
@@ -256,8 +267,45 @@ Settings
 	! Whether windows are always iconified to the primary Xinerama screen
 	xineramaIconifyToPrimary	False
 
-	! Primary Xinerama screen index
+	! Primary Xinerama screen index. Superseded by primaryMonitor below,
+	! which names an output instead of numbering one -- an index changes
+	! meaning when a monitor is plugged in, a name does not. Kept because
+	! it still works and an old rc file should not break.
 	primaryXineramaScreen	0
+
+	! Which monitor is primary, by RandR output name -- "eDP-1", "DP-2",
+	! whatever "xrandr -q" lists. Unset means: whichever RandR itself
+	! marks primary. This is where dialogs are centred and where mWand and
+	! the tray sit by default.
+!	primaryMonitor		DP-1
+
+	! One workspace per monitor rather than one per screen. With this on,
+	! switching workspaces changes only the monitor you are working on and
+	! leaves the others as they were; a window dragged across the boundary
+	! moves into whatever workspace the destination is showing. There is
+	! no difference at all on a single monitor.
+	perMonitorWorkspaces	True
+
+	! Post mWmonitor, the monitor arranger, when a monitor is plugged in
+	! that was not there before. A saved layout in ~/.mmonitors for the
+	! monitors now attached is applied first, and if one is found the
+	! dialog is not posted -- so docking a laptop restores the arrangement
+	! rather than asking about it again.
+	monitorDialogOnHotplug	False
+
+	! Where the saved layouts live. Defaults to ~/.mmonitors.
+!	monitorLayoutFile	~/.mmonitors
+
+	! Announce the new workspace when it changes: "none", "box" for a
+	! small popup on the monitor that switched, or "command" to run
+	! workspaceNotifyCommand instead.
+	workspaceFeedback	none
+	workspaceFeedbackTimeout 1000
+
+	! Run for "command" above. $WORKSPACE is the number, $WORKSPACE_NAME
+	! the title. Needs a notification daemon; the dunstrc installed
+	! alongside this file is configured to match.
+!	workspaceNotifyCommand	"notify-send -t 1000 \"Workspace $WORKSPACE\""
 
 	! Commands run by f.shutdown, f.reboot and f.suspend. Point these at
 	! whatever your system uses; leave one empty to disable its function.
@@ -345,6 +393,14 @@ Client stalonetray
 {
 	clientFunctions		-close
 	clientTitle		Tray
+
+	! Which monitor the tray lives on: an output name, "primary",
+	! "current" (follow the window, the default for everything else), or
+	! "all" to keep it on the screen whatever any monitor is showing.
+	! "primary" is the sensible default for a tray on a multi-head desk;
+	! with perMonitorWorkspaces on, "all" is how you keep it visible from
+	! every one of them.
+	monitor			primary
 }
 
 ! A tray that announces itself as a dock instead gets no frame and move as

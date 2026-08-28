@@ -80,6 +80,18 @@ XtResource xrdb_resources[]={
 	{ "occupyAllWorkspaces","OccupyAllWorkspaces",XmRBoolean,sizeof(Boolean),
 		RES_FIELD(occupy_all),XmRImmediate,(XtPointer)True
 	},
+	/*
+	 * Which monitors the panel appears on, new with mWizard 1.3.
+	 *
+	 * False by default: with per-monitor workspaces a panel that claims
+	 * every head is on the screen whatever any of them is showing, which
+	 * is rarely what is wanted from a launcher. The primary monitor alone
+	 * is the ordinary case, so that is the default, and this is here for
+	 * the desk where the panel should be reachable from every head.
+	 */
+	{ "occupyAllMonitors","OccupyAllMonitors",XmRBoolean,sizeof(Boolean),
+		RES_FIELD(occupy_all_monitors),XmRImmediate,(XtPointer)False
+	},
 	{ "sessionMenu","SessionMenu",XmRBoolean,sizeof(Boolean),
 		RES_FIELD(session_menu),XmRImmediate,(XtPointer)True
 	},

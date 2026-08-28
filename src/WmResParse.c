@@ -304,6 +304,11 @@ FunctionTableEntry functionTable[] = {
 			0,
 			F_Focus_Key,
 			(FunctionTableParseProcT)ParseWmFuncNoArg},
+    {"f.goto_monitor",	0,
+			CRS_ANY,
+			0,
+			F_Goto_Monitor,
+			(FunctionTableParseProcT)ParseWmFuncStrArg},
     {"f.goto_workspace", 0,
 			CRS_ANY,
 			0,
@@ -346,11 +351,21 @@ FunctionTableEntry functionTable[] = {
 			MWM_FUNC_MINIMIZE,
 			F_Minimize,
 			(FunctionTableParseProcT)ParseWmFuncNoArg},
+    {"f.monitors",	0,
+			CRS_ANY,
+			0,
+			F_Monitors,
+			(FunctionTableParseProcT)ParseWmFuncNoArg},
     {"f.move",		F_CONTEXT_ROOT,
 			CRS_ANY,
 			MWM_FUNC_MOVE,
 			F_Move,
 			(FunctionTableParseProcT)ParseWmFuncNoArg},
+    {"f.move_to_monitor", F_CONTEXT_ROOT,
+			CRS_ANY,
+			MWM_FUNC_MOVE,
+			F_Move_To_Monitor,
+			(FunctionTableParseProcT)ParseWmFuncStrArg},
     {"f.mwinfo",	0,
 			CRS_ANY,
 			0,
@@ -2295,6 +2310,8 @@ void FreeMenuItem (MenuItem *menuItem)
          (menuItem->wmFunction == F_Lower) || 
          (menuItem->wmFunction == F_Raise) || 
 	 (menuItem->wmFunction == F_Raise_Lower) ||
+	 (menuItem->wmFunction == F_Goto_Monitor) ||
+	 (menuItem->wmFunction == F_Move_To_Monitor) ||
 	 (menuItem->wmFunction == F_Screen)))
     {
 	XtFree ((char *)menuItem->wmFuncArgs);

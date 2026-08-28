@@ -107,6 +107,12 @@ static void parse_line(char *line, struct tb_entry *e)
 		e->type=TBE_MWINFO;
 		return;
 	}
+
+	/* Likewise MONITORS, which posts mWmonitor, the monitor arranger. */
+	if(!strcmp(line,"MONITORS")){
+		e->type=TBE_MONITORS;
+		return;
+	}
 	
 	e->title = line;
 	

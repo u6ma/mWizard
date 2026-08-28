@@ -41,6 +41,10 @@
 #include "WmProtocol.h"
 #include "WmWrkspace.h"
 #include "WmEwmh.h"
+#include "WmMonitor.h"
+#include "WmMonitorDlg.h"
+#include "WmExecDlg.h"
+#include "WmWinfo.h"
 
 static void* FetchWindowProperty(Window wnd, Atom prop,
 	Atom req_type, unsigned long *size);
@@ -829,8 +833,73 @@ void UpdateEwmhActiveWorkspace(WmScreenData *pSD, WorkspaceID id)
 /*
  * Handle EWMH client messages sent to the root window.
  */
+/*
+ * Publishes _MWIZARD_COMMANDS; see the note in WmEwmh.h.
+ *
+ * Same accumulate-and-replace shape as AdvertiseWmSignal(), so the callers may
+ * run in any order.
+ */
+void AdvertiseWmCommand(unsigned long command)
+{
+	static unsigned long cmds = 0;
+	Atom prop;
+	long value;
+	int i;
+
+	cmds |= (1L << command);
+	value = (long) cmds;
+
+	prop = XInternAtom(DISPLAY, MWIZARD_COMMANDS_PROPERTY, False);
+
+	for(i = 0; i < wmGD.numScreens; i++){
+		Window check_wnd = XtWindow(wmGD.Screens[i].screenTopLevelW);
+
+		if(check_wnd == None) continue;
+
+		XChangeProperty(DISPLAY, check_wnd, prop, XA_CARDINAL, 32,
+			PropModeReplace, (unsigned char*)&value, 1);
+	}
+}
+
+Boolean HandleWmCommandMessage(XClientMessageEvent *evt)
+{
+	static Atom xa_command = None;
+
+	if(xa_command == None)
+		xa_command = XInternAtom(DISPLAY,
+			MWIZARD_COMMAND_PROPERTY, False);
+
+	if(evt->message_type != xa_command) return False;
+
+	switch(evt->data.l[0]) {
+		case MWIZARD_CMD_RUN:
+			PostExecDialog();
+		break;
+
+		case MWIZARD_CMD_ABOUT:
+			PostWinfoDialog();
+		break;
+
+		case MWIZARD_CMD_MONITOR:
+			PostMonitorDialog();
+		break;
+
+		default:
+			/*
+			 * Ignored rather than warned about. A verb this build
+			 * does not know is a newer mWand talking to an older
+			 * mWizard, which is a situation to survive quietly.
+			 */
+		break;
+	}
+
+	return True;
+}
+
 Boolean HandleEwmhRootClientMessage(WmScreenData *pSD, XClientMessageEvent *evt)
 {
+	if(HandleWmCommandMessage(evt)) return True;
+
 	if(evt->message_type == ewmh_atoms[_NET_CURRENT_DESKTOP]) {
 		int wsi = (int)evt->data.l[0];
 
@@ -880,10 +949,21 @@ static void UpdateFrameExtents(ClientData *pCD)
  * and publishes the result as _NET_WORKAREA.
  *
  * Struts are read from _NET_WM_STRUT_PARTIAL, falling back to the older
- * four-element _NET_WM_STRUT. Only the first four values of either matter
- * here: mWizard reserves whole edges rather than the partial spans
- * _NET_WM_STRUT_PARTIAL can describe, which is what a tray docked to one
- * edge needs and is far simpler to reason about.
+ * four-element _NET_WM_STRUT.
+ *
+ * Both the screen-wide totals and a per-monitor breakdown are kept, new in
+ * 1.3. The screen-wide pair is what _NET_WORKAREA has to carry -- the spec
+ * knows nothing about monitors -- but it is the wrong answer for maximize on
+ * a multi-head desk: a panel along the bottom of the left-hand monitor would
+ * otherwise shorten every window on the right-hand one too. So each strut is
+ * attributed to the monitor it actually sits on, and RecomputeMaxConfig()
+ * asks for that monitor's work area.
+ *
+ * The eight span values of _NET_WM_STRUT_PARTIAL are what make the
+ * attribution possible, and they were being discarded before 1.3. A strut is
+ * given to a monitor when its span overlaps that monitor's extent along the
+ * relevant axis; a plain _NET_WM_STRUT, which has no spans, is attributed
+ * from the strut window's own position instead.
  */
 void RecomputeStruts(WmScreenData *pSD)
 {
@@ -892,18 +972,28 @@ void RecomputeStruts(WmScreenData *pSD)
 	long workarea[4];
 	int screenWidth = DisplayWidth(DISPLAY, pSD->screen);
 	int screenHeight = DisplayHeight(DISPLAY, pSD->screen);
+	int i;
+
+	for(i = 0; i < pSD->numMonitors; i++) {
+		pSD->pMonitors[i].strutLeft = 0;
+		pSD->pMonitors[i].strutRight = 0;
+		pSD->pMonitors[i].strutTop = 0;
+		pSD->pMonitors[i].strutBottom = 0;
+	}
 
 	for(e = pSD->clientList; e; e = e->nextSibling) {
 		unsigned long *v;
 		unsigned long count = 0;
+		Boolean partial = True;
 
 		if(e->type == MINIMIZED_STATE || !e->pCD) continue;
 
 		v = FetchWindowProperty(e->pCD->client,
 			ewmh_atoms[_NET_WM_STRUT_PARTIAL], XA_CARDINAL, &count);
-		if(!v || count < 4) {
+		if(!v || count < 12) {
 			if(v) XFree(v);
 			count = 0;
+			partial = False;
 			v = FetchWindowProperty(e->pCD->client,
 				ewmh_atoms[_NET_WM_STRUT], XA_CARDINAL, &count);
 		}
@@ -914,8 +1004,94 @@ void RecomputeStruts(WmScreenData *pSD)
 			if(v[1] > right) right = v[1];
 			if(v[2] > top) top = v[2];
 			if(v[3] > bottom) bottom = v[3];
+
+			for(i = 0; i < pSD->numMonitors; i++) {
+				WmMonitorData *m = &pSD->pMonitors[i];
+				Boolean onThis;
+
+				/*
+				 * Without spans there is nothing to compare
+				 * against, so the strut goes to the monitor
+				 * the window itself is on -- which is what a
+				 * tray without partial struts means anyway.
+				 */
+				if(!partial) {
+					onThis = (MonitorOfClient(e->pCD) == i);
+
+					if(onThis) {
+						if(v[0] > m->strutLeft)
+							m->strutLeft = v[0];
+						if(v[1] > m->strutRight)
+							m->strutRight = v[1];
+						if(v[2] > m->strutTop)
+							m->strutTop = v[2];
+						if(v[3] > m->strutBottom)
+							m->strutBottom = v[3];
+					}
+					continue;
+				}
+
+				/* left: spans v[4]..v[5] vertically */
+				if(v[0] && (long)v[5] >= m->y &&
+					(long)v[4] < (m->y + m->height) &&
+					v[0] > m->strutLeft)
+					m->strutLeft = v[0];
+
+				/* right: spans v[6]..v[7] vertically */
+				if(v[1] && (long)v[7] >= m->y &&
+					(long)v[6] < (m->y + m->height) &&
+					v[1] > m->strutRight)
+					m->strutRight = v[1];
+
+				/* top: spans v[8]..v[9] horizontally */
+				if(v[2] && (long)v[9] >= m->x &&
+					(long)v[8] < (m->x + m->width) &&
+					v[2] > m->strutTop)
+					m->strutTop = v[2];
+
+				/* bottom: spans v[10]..v[11] horizontally */
+				if(v[3] && (long)v[11] >= m->x &&
+					(long)v[10] < (m->x + m->width) &&
+					v[3] > m->strutBottom)
+					m->strutBottom = v[3];
+			}
 		}
 		XFree(v);
+	}
+
+	/*
+	 * A strut is measured from the edge of the *screen*, not of the
+	 * monitor it lands on, so a panel on the right-hand head reserves a
+	 * width that reaches back across the left-hand one. Subtract the gap
+	 * between the screen edge and this monitor's edge to get what is
+	 * actually taken out of this monitor.
+	 */
+	for(i = 0; i < pSD->numMonitors; i++) {
+		WmMonitorData *m = &pSD->pMonitors[i];
+		long v;
+
+		v = (long)m->strutLeft - m->x;
+		m->strutLeft = (v > 0) ? (unsigned long)v : 0;
+
+		v = (long)m->strutRight - (screenWidth - (m->x + m->width));
+		m->strutRight = (v > 0) ? (unsigned long)v : 0;
+
+		v = (long)m->strutTop - m->y;
+		m->strutTop = (v > 0) ? (unsigned long)v : 0;
+
+		v = (long)m->strutBottom - (screenHeight - (m->y + m->height));
+		m->strutBottom = (v > 0) ? (unsigned long)v : 0;
+
+		/*
+		 * Same rule as the screen-wide one below, applied per head: a
+		 * strut that swallows the whole monitor is refused rather than
+		 * honoured. MonitorWorkArea() checks this again because the
+		 * struts can also be carried across a rebuild.
+		 */
+		if((long)(m->strutLeft + m->strutRight) >= m->width)
+			m->strutLeft = m->strutRight = 0;
+		if((long)(m->strutTop + m->strutBottom) >= m->height)
+			m->strutTop = m->strutBottom = 0;
 	}
 
 	/*
@@ -942,6 +1118,10 @@ void RecomputeStruts(WmScreenData *pSD)
 
 /*
  * Returns the screen area not reserved by panels or trays.
+ *
+ * Screen wide, and kept that way: this is what fills _NET_WORKAREA and what a
+ * client asking "how big is the desktop" means. Anything laying out a window
+ * wants MonitorWorkArea() in WmMonitor.h instead.
  */
 void GetEwmhWorkArea(WmScreenData *pSD, int *x, int *y, int *width, int *height)
 {

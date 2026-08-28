@@ -29,6 +29,29 @@
 
 void ChangeToWorkspace(WmWorkspaceData *pNewWS);
 
+/*
+ * Per-monitor workspaces. The model, and why pSD->pActiveWS keeps its old
+ * meaning alongside these, is written out above ChangeToWorkspace().
+ */
+WmWorkspaceData *MonitorActiveWorkspace(WmScreenData *pSD, int monitor);
+void InitMonitorWorkspaces(WmScreenData *pSD);
+Boolean ClientShouldBeVisible(ClientData *pCD);
+
+/*
+ * Moves one client onto another monitor, mapping its position proportionally
+ * and re-homing it into whatever workspace that monitor is showing. Returns
+ * True if anything moved. Shared by f.move_to_monitor and by the re-homing
+ * that follows a drag across the boundary.
+ */
+Boolean MoveClientToMonitor(ClientData *pCD, int toMon);
+Boolean RehomeClientToMonitor(ClientData *pCD, int fromMon, int toMon);
+
+/*
+ * Resolves the "monitor" client resource and the _MWM_MONITOR_PRESENCE
+ * property into ClientData.monitorPresence. Called as a client is managed.
+ */
+void GetClientMonitorInfo(ClientData *pCD);
+
 void ChangeWorkspaceTitle( WmWorkspaceData *pWS, char * pchTitle);
 Boolean DuplicateWorkspaceName (
 			WmScreenData *pSD, 

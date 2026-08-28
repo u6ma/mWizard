@@ -46,6 +46,7 @@
 #include <Xm/List.h>
 #include <Xm/SeparatoG.h>
 #include <Xm/ToggleB.h>
+#include <Xm/RowColumn.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <signal.h>
@@ -73,6 +74,9 @@ static Widget wspCreateToggleButton(Widget mgrW, unsigned char *pch);
 static Widget wspCreatePushButton(Widget mgrW, char *name, XmString label);
 static void wspSetPosition(PtrWsPresenceData pPres);
 static void wspLayout(PtrWsPresenceData pPres);
+static Boolean wspCreateMonitorMenu(Widget mgrW, PtrWsPresenceData pPres);
+static void wspUpdateMonitorMenu(PtrWsPresenceData pPres);
+static void wspMonitorCB(Widget w, XtPointer client_data, XtPointer call_data);
 static void wspOkCB( Widget buttonW, WmScreenData *pSD, XtPointer call_data);
 static void wspAllWsCB(Widget buttonW,
 	WmScreenData *pSD, XmToggleButtonCallbackStruct *xmTbcs);
@@ -97,6 +101,8 @@ static XmString ShortenXmString(XmString, size_t max_chrs, Boolean ltor);
 #include "WmResource.h"
 #include "WmWinInfo.h"
 #include "WmWrkspace.h"
+#include "WmStyle.h"
+#include "WmMonitor.h"
 
 /* Contemporary applications tend to set window titles to enormously long
  * strings, which blow up dialogs that show them in labels, hence we'll
@@ -244,6 +250,12 @@ ShowPresenceBox(
 
     /* update workspace list  */
     wspUpdateWorkspaceList (pPres);
+
+    /*
+     * And the monitor menu, which is rebuilt rather than merely re-selected:
+     * a head may have been plugged in or taken away since the box was last up.
+     */
+    wspUpdateMonitorMenu (pPres);
 
     /*  set position of dialog relative to client window  */
     wspSetPosition (pPres);
@@ -442,6 +454,11 @@ static Boolean wspCreateWidgets(WmScreenData *pSD)
 		!= NULL);
 	XtAddCallback (pPres->allWsW, XmNvalueChangedCallback, 
 			(XtCallbackProc)wspAllWsCB, (XtPointer)pSD); 
+    }
+
+    if (rval)
+    {
+	rval = wspCreateMonitorMenu (pPres->formW, pPres);
     }
 
     if (rval)
@@ -1177,6 +1194,27 @@ wspLayout(
     n = 0;
     XtSetArg (args[n], XmNtopAttachment, XmATTACH_WIDGET);	n++;
     XtSetArg (args[n], XmNtopWidget, pPres->allWsW);		n++;
+    XtSetArg (args[n], XmNtopOffset, IW_OFFSET_1);		n++;
+    XtSetArg (args[n], XmNleftAttachment, XmATTACH_FORM);	n++;
+    XtSetArg (args[n], XmNleftOffset, 5);			n++;
+    XtSetArg (args[n], XmNrightAttachment, XmATTACH_NONE);	n++;
+    XtSetArg (args[n], XmNbottomAttachment, XmATTACH_NONE);	n++;
+    XtSetValues (pPres->monitorLabelW, args, n);
+
+    n = 0;
+    XtSetArg (args[n], XmNtopAttachment, XmATTACH_WIDGET);	n++;
+    XtSetArg (args[n], XmNtopWidget, pPres->allWsW);		n++;
+    XtSetArg (args[n], XmNtopOffset, IW_OFFSET_0);		n++;
+    XtSetArg (args[n], XmNleftAttachment, XmATTACH_WIDGET);	n++;
+    XtSetArg (args[n], XmNleftWidget, pPres->monitorLabelW);	n++;
+    XtSetArg (args[n], XmNleftOffset, 5);			n++;
+    XtSetArg (args[n], XmNrightAttachment, XmATTACH_NONE);	n++;
+    XtSetArg (args[n], XmNbottomAttachment, XmATTACH_NONE);	n++;
+    XtSetValues (pPres->monitorMenuW, args, n);
+
+    n = 0;
+    XtSetArg (args[n], XmNtopAttachment, XmATTACH_WIDGET);	n++;
+    XtSetArg (args[n], XmNtopWidget, pPres->monitorMenuW);	n++;
     XtSetArg (args[n], XmNtopOffset, SEP_OFFSET);		n++;
     XtSetArg (args[n], XmNleftAttachment, XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNleftOffset, 0);			n++;
@@ -1208,6 +1246,140 @@ wspLayout(
 
 } /* END OF FUNCTION   */
 
+
+/*************************************<->*************************************
+ *
+ *  wspCreateMonitorMenu (mgrW, pPres)
+ *  wspUpdateMonitorMenu (pPres)
+ *  wspMonitorCB (w, client_data, call_data)
+ *
+ *  Description:
+ *  -----------
+ *  The monitor selector, new in 1.3.
+ *
+ *  "Occupy Workspace" answered one half of where a window lives. On a
+ *  multi-head desk with perMonitorWorkspaces on there is a second half, and
+ *  without it the dialog can put a window in a workspace that the head it sits
+ *  on is not showing -- which reads as the window vanishing.
+ *
+ *  The entries are "Follow window" (the default: whichever head it is on),
+ *  "All monitors" (a panel or a tray, visible whatever any head is showing),
+ *  and one per named monitor.
+ *
+ *  The pane is rebuilt on every post rather than kept, because the monitor
+ *  list is not fixed for the life of the session -- which is the whole point
+ *  of 1.3.
+ *
+ *************************************<->***********************************/
+
+/* Stored on each button; MONITOR_FOLLOW and MONITOR_ALL are negative. */
+static int wspSelectedMonitor = MONITOR_FOLLOW;
+
+static Boolean wspCreateMonitorMenu(Widget mgrW, PtrWsPresenceData pPres)
+{
+    Arg args[8];
+    int n;
+    XmString xms;
+
+    xms = XmStringCreateLocalized ("Monitor: ");
+    n = 0;
+    XtSetArg (args[n], XmNlabelString, (XtArgVal) xms);			n++;
+    XtSetArg (args[n], XmNalignment, (XtArgVal) XmALIGNMENT_BEGINNING);	n++;
+    pPres->monitorLabelW = XtCreateManagedWidget ("monitors",
+	    xmLabelGadgetClass, mgrW, args, n);
+    XmStringFree (xms);
+
+    n = 0;
+    pPres->monitorPaneW = XmCreatePulldownMenu (mgrW, "monitorPane", args, n);
+
+    n = 0;
+    XtSetArg (args[n], XmNsubMenuId, (XtArgVal) pPres->monitorPaneW);	n++;
+    pPres->monitorMenuW = XmCreateOptionMenu (mgrW, "monitorMenu", args, n);
+    XtManageChild (pPres->monitorMenuW);
+
+    /*
+     * The option menu's own label is unmanaged: the "Monitor: " label above
+     * already says what this is, and Motif would otherwise put the word twice
+     * on the same line.
+     */
+    {
+	Widget lblW = XmOptionLabelGadget (pPres->monitorMenuW);
+
+	if (lblW) XtUnmanageChild (lblW);
+    }
+
+    return (pPres->monitorMenuW != NULL);
+}
+
+static void wspMonitorCB(Widget w, XtPointer client_data, XtPointer call_data)
+{
+    wspSelectedMonitor = (int)(long) client_data;
+}
+
+static void wspUpdateMonitorMenu(PtrWsPresenceData pPres)
+{
+    WmScreenData *pSD;
+    XmRenderTable menuFont;
+    Arg args[8];
+    WidgetList kids = NULL;
+    Cardinal numKids = 0;
+    Widget selectedW = NULL;
+    int n, i;
+
+    if (!pPres->monitorPaneW || !pPres->pCDforClient) return;
+
+    pSD = pPres->pCDforClient->pSD;
+
+    n = 0;
+    XtSetArg (args[n], XmNchildren, &kids);		n++;
+    XtSetArg (args[n], XmNnumChildren, &numKids);	n++;
+    XtGetValues (pPres->monitorPaneW, args, n);
+
+    while (numKids--) XtDestroyWidget (kids[numKids]);
+
+    /*
+     * Motif resolves a menu gadget's font from the ancestor menu shell rather
+     * than from a loose *renderTable binding, so it is set on each button as
+     * it is built or this menu alone stays in Motif's default font.
+     */
+    menuFont = StyleFont (WmStyleMenuFont);
+
+    wspSelectedMonitor = pPres->pCDforClient->monitorPresence;
+
+#define WSP_MON_ITEM(label,value)					\
+    {									\
+	XmString xms = XmStringCreateLocalized (label);			\
+	Widget btnW;							\
+									\
+	n = 0;								\
+	XtSetArg (args[n], XmNlabelString, (XtArgVal) xms);	n++;	\
+	if (menuFont) {							\
+	    XtSetArg (args[n], XmNrenderTable,				\
+		(XtArgVal) menuFont);				n++;	\
+	}								\
+	btnW = XtCreateManagedWidget ("monitorItem",			\
+		xmPushButtonGadgetClass, pPres->monitorPaneW, args, n);	\
+	XmStringFree (xms);						\
+	XtAddCallback (btnW, XmNactivateCallback,			\
+	    (XtCallbackProc) wspMonitorCB, (XtPointer)(long)(value));	\
+	if ((value) == wspSelectedMonitor) selectedW = btnW;		\
+    }
+
+    WSP_MON_ITEM ("Follow window", MONITOR_FOLLOW)
+    WSP_MON_ITEM ("All monitors", MONITOR_ALL)
+
+    for (i = 0; i < pSD->numMonitors; i++)
+	WSP_MON_ITEM (pSD->pMonitors[i].name, i)
+
+#undef WSP_MON_ITEM
+
+    if (selectedW)
+    {
+	n = 0;
+	XtSetArg (args[n], XmNmenuHistory, (XtArgVal) selectedW);	n++;
+	XtSetValues (pPres->monitorMenuW, args, n);
+    }
+}
 
 /*************************************<->*************************************
  *
@@ -1293,6 +1465,19 @@ wspOkCB(
 			&pSD->pWS[n].id, 1);
 	    }
 	}
+    }
+
+    /*
+     * The monitor half. Applied after the workspaces, because moving the
+     * window is what may re-home it, and re-homing has to land on top of
+     * whatever occupancy was just chosen rather than under it.
+     */
+    if (pPres->pCDforClient->monitorPresence != wspSelectedMonitor)
+    {
+	pPres->pCDforClient->monitorPresence = wspSelectedMonitor;
+
+	if (wspSelectedMonitor >= 0)
+	    MoveClientToMonitor (pPres->pCDforClient, wspSelectedMonitor);
     }
 
     /* withdraw the dialog */

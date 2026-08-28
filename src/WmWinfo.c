@@ -612,4 +612,7 @@ void InitWinfoDialog(void)
      * tells mWand this signal is safe to send. See WmEwmh.h.
      */
     AdvertiseWmSignal (MWIZARD_SIGNAL_ABOUT);
+
+    /* And the ClientMessage that replaced the signals; see WmEwmh.h. */
+    AdvertiseWmCommand (MWIZARD_CMD_ABOUT);
 }

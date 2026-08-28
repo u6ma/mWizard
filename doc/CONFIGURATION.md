@@ -36,6 +36,9 @@ Appearance comes from the style file, `~/.mstylesrc`, which mWand reads too;
 see [STYLE.md](STYLE.md). The app-defaults file mWizard used to install as
 `/etc/X11/app-defaults/MWizard` is gone as of 1.2.
 
+Monitor layouts saved from mWmonitor live in `~/.mmonitors`, which is written
+by mWizard rather than by hand; see section 6c. `monitorLayoutFile` moves it.
+
 > **`configFile` is the one setting that cannot live in the rc file.** It names
 > the rc file, so it has to be read before the rc file can be opened. Set it as
 > an X resource (`MWizard*configFile: /path/to/rc`) or on the command line
@@ -188,13 +191,112 @@ reach a `_NET_WM_WINDOW_TYPE_DOCK` window — see section 8.
 
 ### Multi-monitor and multi-screen
 
+Two different things share this section, and it is worth being clear which is
+which. A **monitor** is one physical head — an XRandR output such as `eDP-1` or
+`DP-2`. An **X screen** is a separate root window with its own workspaces, which
+almost nothing uses any more; `multiScreen` and `screens` are about those.
+
 | Setting | Type | Default |
 |---|---|---|
+| `primaryMonitor` | output name | RandR's own primary |
+| `perMonitorWorkspaces` | boolean | `True` |
+| `monitorDialogOnHotplug` | boolean | `False` |
+| `monitorLayoutFile` | path | `~/.mmonitors` |
 | `primaryXineramaScreen` | index | `0` |
-| `xineramaScreenFocus` | `pointer` \| `keyboard` | `pointer` |
+| `xineramaScreenFocus` | `pointer` \| `keyboard` \| `primary` | `pointer` |
 | `xineramaIconifyToPrimary` | boolean | `False` |
 | `multiScreen` | boolean | `True` |
 | `screens` | screen names | none |
+
+`primaryMonitor` names an output; `primaryXineramaScreen` numbers one. Prefer
+the name. An index is a position in a list the X server orders, and plugging a
+monitor in can reorder it — so the index that meant your laptop panel this
+morning can mean the projector this afternoon. The old setting still works and
+is still honoured when `primaryMonitor` is unset.
+
+The primary monitor is where mWizard's own windows are centred, where mWand and
+the tray sit by default, and what `f.goto_monitor "primary"` means.
+
+### Workspaces per monitor — new in 1.3
+
+With `perMonitorWorkspaces` on, each monitor shows its own workspace out of the
+one shared list. Switching workspaces changes the monitor you are working on and
+leaves the others alone:
+
+```
+workspaceList   Web Mail Code Term
+
+  eDP-1   [Web]  Mail   Code   Term
+  DP-1     Web   Mail  [Code]  Term
+```
+
+Which monitor "the one you are working on" means follows `xineramaScreenFocus`,
+the same resource that already decided this for window placement — the pointer
+by default, the focused window under `keyboard`, or always the primary under
+`primary`.
+
+**On a single monitor there is no difference whatsoever**, which is why this is
+on by default. Turn it off to get the pre-1.3 behaviour, where every monitor
+switches together.
+
+A window dragged from one monitor to another moves into whatever workspace the
+destination is showing, so it does not disappear on arrival. A window that
+occupies all workspaces is unaffected, as is one pinned to all monitors.
+
+`_NET_CURRENT_DESKTOP` carries one number for the whole screen — the EWMH spec
+has no notion of monitors — so it reports the workspace most recently switched
+to. A client that *sets* it, mWand's workspace switcher included, switches the
+monitor you are working on, which is the useful half and the one that keeps the
+switcher doing what it looks like it does.
+
+### Which monitor a window belongs to
+
+A `Client` block can say where a window lives:
+
+```
+Client stalonetray
+{
+    monitor         primary
+}
+```
+
+| Value | Meaning |
+|---|---|
+| `current` | whichever monitor the window is on (the default) |
+| `primary` | pinned to the primary monitor |
+| `all` | stays on screen whatever any monitor is showing |
+| an output name | pinned to that monitor, e.g. `DP-1` |
+
+`all` is the one to reach for with a panel or a tray: it is the monitor
+equivalent of occupying all workspaces, and without it a tray on the primary
+monitor disappears when that monitor switches to a workspace the tray is not in.
+
+The same thing can be set by the client itself through the
+`_MWM_MONITOR_PRESENCE` property — a `STRING` holding one of the four values
+above — which is how mWand places itself. The property wins over the `Client`
+block, the same way `_MWM_WORKSPACE_PRESENCE` does.
+
+It is also the third control in the **Occupy Workspace** dialog
+(`f.workspace_presence`), next to the workspace list and the *All Workspaces*
+toggle.
+
+### Moving between monitors
+
+| Function | Argument | Does |
+|---|---|---|
+| `f.monitors` | none | posts mWmonitor, the arranger |
+| `f.move_to_monitor` | `next` \| `prev` \| `primary` \| output name | moves the window there |
+| `f.goto_monitor` | same | moves you there |
+
+`f.move_to_monitor` keeps the window's position within the monitor
+proportional, so a window three quarters of the way across a wide screen stays
+three quarters of the way across a narrow one instead of landing off it.
+
+Monitors are ordered left to right, then top to bottom — the order they sit on
+the desk — so `next` and `prev` mean what they look like they mean.
+
+The shipped bindings are `Alt Shift` plus an arrow to move the window, and
+`Alt Ctrl` plus an arrow to move yourself.
 
 ### Miscellaneous
 
@@ -539,9 +641,11 @@ precisely so that it does.
 
 ---
 
-## 6a. The Execute dialog
+## 6a. mWrun, the Execute dialog
 
-`f.run` posts a prompt for a command to run:
+`f.run` posts a prompt for a command to run. The window is titled **mWrun** as
+of 1.3, alongside mWinfo and mWmonitor; nothing else about it changed — the
+function is still `f.run` and the shipped menu entry is still "Execute...".
 
 ```
 Alt<Key>F1 root|icon|window  f.run
@@ -557,12 +661,9 @@ the dialog belongs to the window manager itself, and a window manager that
 closes its own window closes the X connection it is running on.
 
 mWand's "Execute..." item posts this same dialog rather than one of its own —
-see `doc/MWAND.md`. It reaches it by sending `SIGUSR1` to the pid in
-`_NET_WM_PID`, and only after finding the matching bit in `_MWIZARD_SIGNALS`
-on the `_NET_SUPPORTING_WM_CHECK` window. mWizard sets that bit in the same
-function that installs the handler, so it cannot advertise a signal nothing is
-listening for — which matters, because an unhandled `SIGUSR1` terminates the
-process, and a terminated window manager ends the X session.
+see `doc/MWAND.md`. How it asks is described under
+[Asking mWizard for its own windows](#6c-asking-mwizard-for-its-own-windows)
+below.
 
 ---
 
@@ -583,8 +684,7 @@ Alt Shift Ctrl<Key>i root|icon|window  f.about
 
 mWand's Commands menu carries it as "About mWizard...", also out of the box,
 and the `MWINFO` rc keyword puts it in any of mWand's own menus — see
-`doc/MWAND.md`. Both use `SIGUSR2` and the same `_MWIZARD_SIGNALS` check as
-the Execute dialog above. The shipped root menu has an entry for it commented out,
+`doc/MWAND.md`. The shipped root menu has an entry for it commented out,
 since two ways in are usually enough; uncomment it in `DefaultRootMenu` to get
 a third:
 
@@ -607,9 +707,129 @@ before 1.2.
 
 ---
 
+## 6c. mWmonitor, the monitor arranger
+
+`f.monitors` posts **mWmonitor**: where the monitors are, what mode each is
+running, which one is primary, and which are on at all. It does with a mouse
+what would otherwise be an `xrandr` command line.
+
+```
+Alt Shift Ctrl<Key>m root|icon|window  f.monitors
+"Monitors..."                          f.monitors
+```
+
+The canvas shows each connected output as a box, drawn to scale. Drag one to
+move it; edges snap to their neighbours when they come close, and the whole
+arrangement is shifted back to the origin afterwards, so you never have to
+think about the fact that RandR coordinates start at 0,0. A disabled output is
+outlined but not filled, so it is visibly there to be turned on rather than
+simply missing. The primary is marked with an asterisk.
+
+Click a box to select it, then use the controls below:
+
+| Control | Does |
+|---|---|
+| **Mode** | resolution and refresh, from the modes that output reports |
+| **Primary** | makes this the primary monitor |
+| **Enabled** | turns the output on or off |
+
+| Button | Does |
+|---|---|
+| **Apply** | applies the layout now |
+| **Save** | applies it *and* writes it to `~/.mmonitors` |
+| **Revert** | throws the edits away and re-reads the server |
+| **Close** | puts the window away |
+
+Apply re-reads the configuration afterwards rather than assuming it worked, so
+what the canvas shows is what the server actually did — a mode can be refused
+and an output can fail to light.
+
+At least one monitor has to stay enabled. Turning the last one off is refused,
+both by the toggle and by the code underneath it: applying a layout with no
+screen in it is a way to lose the session to a black display with nothing on it
+to fix the problem with.
+
+Like mWinfo, mWmonitor is an ordinary window — move it, resize it, close it from
+its frame.
+
+### Saved layouts: `~/.mmonitors`
+
+RandR keeps nothing across an X restart, so **Save** writes the layout to a file
+and mWizard applies it again at startup and on hotplug.
+
+Entries are keyed on the sorted, comma-separated set of *connected* output
+names, so a docked laptop and the same laptop on its own are separate entries
+and neither is applied in the other's situation:
+
+```
+eDP-1,HDMI-1 {
+	eDP-1	2560x1600	0x0	60	primary
+	HDMI-1	1920x1080	2560x0	60
+	DP-2	off
+}
+```
+
+Each line is an output name, then `WIDTHxHEIGHT`, then `XxY`, then the refresh
+in whole Hz, then `primary` if it is the primary. An output that should be off
+is written `off` and nothing else. Refresh is matched to the nearest mode the
+output offers rather than exactly, so a layout still applies when a driver
+update moves a mode by a hertz.
+
+The file is written whole through a temporary file rather than edited in place,
+and entries for other monitor sets — and any comments you added — are copied
+through untouched. Point `monitorLayoutFile` elsewhere if you want it somewhere
+other than `~/.mmonitors`.
+
+### On hotplug
+
+When an output is connected or disconnected, mWizard:
+
+1. applies the saved layout for the set of monitors now attached, if there is
+   one;
+2. otherwise posts mWmonitor, if `monitorDialogOnHotplug` is `True`;
+3. otherwise does nothing but re-read the layout the server gave it.
+
+Windows are re-homed either way: a window left sitting on a monitor that has
+just been unplugged is moved onto the nearest one that is left, rather than
+stranded in a part of the root window nothing is displaying.
+
+This needs the RandR extension. Without it `f.monitors` reports as much and
+mWizard falls back to Xinerama, which can describe the monitors but not change
+them.
+
+---
+
+## 6d. Asking mWizard for its own windows
+
+mWrun, mWinfo and mWmonitor belong to the window manager, and mWand asks for
+them rather than carrying copies. It asks by sending a `ClientMessage` to the
+root window:
+
+| Field | Value |
+|---|---|
+| `message_type` | `_MWIZARD_COMMAND` |
+| `format` | 32 |
+| `data.l[0]` | 1 = mWrun, 2 = mWinfo, 3 = mWmonitor |
+
+`_MWIZARD_COMMANDS`, a `CARDINAL` bitmask on the `_NET_SUPPORTING_WM_CHECK`
+window, says which of those this mWizard understands. A verb it does not know
+is ignored.
+
+Before 1.3 this was done with signals — `SIGUSR1` for the run prompt and
+`SIGUSR2` for mWinfo, gated by a matching bit in `_MWIZARD_SIGNALS` for safety,
+since an unhandled `SIGUSR1` terminates a process and a terminated window
+manager ends the X session. Those still work and mWand still falls back to them
+against an older mWizard. They did not survive as the primary mechanism for a
+simple reason: a process has exactly two signals it may define for itself, both
+were spoken for, and mWmonitor is a third window. A ClientMessage carries a verb
+rather than being one, so it does not run out — and it cannot kill anything by
+being misaddressed.
+
+---
+
 ### Which shell runs commands
 
-`execShell` names the shell used for `f.exec`, the Execute dialog, the
+`execShell` names the shell used for `f.exec`, the mWrun prompt, the
 `Startup` block, and the session and tray commands. Left empty it falls back
 to `$WMSHELL`, then `$SHELL`, then `/bin/sh`.
 
@@ -839,6 +1059,35 @@ configuration file with no build-time dependency on dunst.
 
 dunst sets `_NET_WM_WINDOW_TYPE_DOCK`, so mWizard gives notifications no frame
 without any `Client` block — see section 8 for what dock type implies.
+
+### The workspace switch notice — new in 1.3
+
+`workspaceFeedback` announces the new workspace when it changes:
+
+| Value | Does |
+|---|---|
+| `none` | nothing (the default) |
+| `box` | a small popup centred on the monitor that switched |
+| `command` | runs `workspaceNotifyCommand` |
+
+`box` needs no daemon and nothing installed. It reuses the same override-redirect
+box that shows coordinates during a move, so it follows the `feedback` colors and
+font from `~/.mstylesrc` and costs no extra window. It shows "Workspace 2", with
+the workspace's title after it when one has been set.
+`workspaceFeedbackTimeout` is how long it stays, in milliseconds, default 1000.
+
+`command` is for anyone who would rather it went through their notification
+daemon. `$WORKSPACE` holds the number and `$WORKSPACE_NAME` the title; both are
+exported rather than substituted, so quoting is the shell's problem the same way
+it is for `f.exec`:
+
+```
+workspaceFeedback       command
+workspaceNotifyCommand  "notify-send -t 1000 \"Workspace $WORKSPACE\""
+```
+
+With `perMonitorWorkspaces` on the box appears on the monitor that switched,
+which is also the one you are looking at.
 
 ---
 

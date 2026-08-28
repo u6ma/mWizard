@@ -294,6 +294,12 @@ GetClientInfo (WmScreenData *pSD, Window clientWindow, long manageFlags)
     }
 
     /*
+     * And which monitor it belongs to. After the workspace call rather than
+     * before it, because that is what may set the geometry this reads.
+     */
+    GetClientMonitorInfo (pCD);
+
+    /*
      * Retrieve and process M_CLIENT_DECOR client window property info:
      */
 

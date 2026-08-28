@@ -33,6 +33,10 @@
 #define MWINFO_ITEM_LABEL "About mWizard..."
 #define MWINFO_ITEM_MNEMONIC 'A'
 
+/* Likewise for mWmonitor, the arranger; the MONITORS rc keyword. */
+#define MONITORS_ITEM_LABEL "Monitors..."
+#define MONITORS_ITEM_MNEMONIC 'M'
+
 /*
  * The name spelled out. APP_TITLE is the short form and is what goes in the
  * title bar, which on a panel this narrow has no room for anything longer;
@@ -69,8 +73,37 @@
 #define MWIZARD_SIGNAL_EXEC  (1L << 0)	/* SIGUSR1: the Execute dialog */
 #define MWIZARD_SIGNAL_ABOUT (1L << 1)	/* SIGUSR2: mWinfo */
 
+/*
+ * Asking for one of those windows without a signal, new in mWizard 1.3.
+ *
+ * The signals ran out: SIGUSR1 and SIGUSR2 are the only two a process may
+ * define for itself, both were taken, and mWmonitor is a third window. A
+ * ClientMessage carries a verb rather than being one, so it does not run out,
+ * and it needs none of the apparatus above -- there is no pid to find and
+ * nothing to kill by getting it wrong.
+ *
+ * Sent to the root window, format 32, data.l[0] naming the command.
+ * _MWIZARD_COMMANDS on the check window says which verbs are understood; when
+ * it is absent the window manager predates 1.3 and the signals are used
+ * instead. mWizard's copy of these definitions is in src/WmEwmh.h and the two
+ * must agree.
+ */
+#define _XA_MWIZARD_COMMAND  "_MWIZARD_COMMAND"
+#define _XA_MWIZARD_COMMANDS "_MWIZARD_COMMANDS"
+
+#define MWIZARD_CMD_RUN     1	/* mWrun, the Execute prompt */
+#define MWIZARD_CMD_ABOUT   2	/* mWinfo */
+#define MWIZARD_CMD_MONITOR 3	/* mWmonitor */
+
 #define _XA_MWM_WORKSPACE_PRESENCE "_MWM_WORKSPACE_PRESENCE"
 #define _XA_MWM_WORKSPACE_ALL "all"
+
+/*
+ * Which monitor a window belongs to; mWizard 1.3 and later. A STRING naming
+ * an output, or "all", "primary" or "current". mWizard's copy of this is in
+ * src/WmGlobal.h.
+ */
+#define _XA_MWM_MONITOR_PRESENCE "_MWM_MONITOR_PRESENCE"
 
 /*
  * How many X protocol errors are reported before the handler goes quiet. An
@@ -97,6 +130,7 @@ struct tb_resources {
 	Boolean switcher;
 	Boolean show_user_host;
 	Boolean occupy_all;
+	Boolean occupy_all_monitors;
 	Boolean session_menu;
 	char *lock_command;
 	char *logout_command;
@@ -128,6 +162,7 @@ char* FindRcFile(void);
 Boolean ConstructMenu(void);
 void ExecuteCommandDialog(void);
 void AboutWindowManagerDialog(void);
+void MonitorDialog(void);
 int RunCommand(const char *cmd_spec);
 
 /* switcher.c */

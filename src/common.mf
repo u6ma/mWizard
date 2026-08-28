@@ -17,7 +17,8 @@ mwm_objs = \
 	WmIconBox.o WmKeyFocus.o WmMain.o WmManage.o WmProperty.o WmResCvt.o\
 	WmResParse.o WmResource.o WmSignal.o WmWinConf.o WmWinInfo.o WmWinList.o \
 	WmWinState.o WmSession.o WmSettings.o WmImage.o WmInitWs.o WmMenu.o	WmProtocol.o \
-	WmPresence.o WmWrkspace.o WmXinerama.o WmEwmh.o WmExecDlg.o \
+	WmPresence.o WmWrkspace.o WmXinerama.o WmMonitor.o WmMonitorDlg.o \
+	WmEwmh.o WmExecDlg.o \
 	WmWinfo.o WmStyle.o
 
 mwm_hdrs = \
@@ -25,7 +26,8 @@ mwm_hdrs = \
 	WmCPlace.h WmDebug.h WmError.h WmEvent.h WmEwmh.h WmExecDlg.h \
 	WmFeedback.h WmFunction.h WmGlobal.h WmGraphics.h WmIBitmap.h \
 	WmICCC.h WmIconBox.h WmIDecor.h WmImage.h WmInitWs.h WmIPlace.h \
-	WmKeyFocus.h WmManage.h WmMenu.h WmPresence.h WmProperty.h \
+	WmKeyFocus.h WmManage.h WmMenu.h WmMonitor.h WmMonitorDlg.h \
+	WmPresence.h WmProperty.h \
 	WmProtocol.h WmResCvt.h WmResNames.h WmResource.h WmResParse.h \
 	WmSession.h WmSettings.h WmSignal.h WmStyle.h WmWinConf.h WmWinfo.h \
 	WmWinInfo.h WmWinList.h WmWinState.h WmWrkspace.h WmXinerama.h \

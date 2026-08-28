@@ -80,6 +80,12 @@ left out\&.
 .IP "\fIoccupyAllWorkspaces\fP" 10
 Ask the window manager to show \fBmwand\fP on every workspace\&. Default
 \fBTrue\fP\&.
+.IP "\fIoccupyAllMonitors\fP" 10
+Ask the window manager to show \fBmwand\fP on every monitor\&. Default
+\fBFalse\fP, which keeps it on the primary monitor \(em with mWizard\'s
+\fIperMonitorWorkspaces\fP on, \fBTrue\fP is what keeps the panel on the
+screen whatever workspace any monitor happens to be showing\&. Requires
+mWizard 1\&.3\&.
 .IP "\fIhotkey\fP" 10
 Key that raises and focuses \fBmwand\fP\&. Unset by default\&.
 .IP "\fIsessionMenu\fP" 10
@@ -97,17 +103,19 @@ A top level menu is a title followed by a brace block\&. \fB&\fP marks the
 keyboard mnemonic, a colon separates an item's title from its command, and
 \fBSEPARATOR\fP places a separator\&. Menus may nest\&.
 .PP
-\fBMWINFO\fP is the one item that is not a command\&. It posts \fBmWinfo\fP,
-the window manager's About window, and is written bare like \fBSEPARATOR\fP:
-\fBmwand\fP supplies the label and asks the window manager for the window over
-the same path its own command menu uses\&. It may appear in any menu at any
-depth\&.
+\fBMWINFO\fP and \fBMONITORS\fP are the items that are not commands\&. They
+post \fBmWinfo\fP, the window manager's About window, and \fBmWmonitor\fP,
+its monitor arranger, and are written bare like \fBSEPARATOR\fP:
+\fBmwand\fP supplies the labels and asks the window manager for the windows
+over the same path its own command menu uses\&. Either may appear in any menu
+at any depth\&. \fBMONITORS\fP requires mWizard 1\&.3\&.
 .PP
 .nf
 &Programs
 {
     &Terminal: xterm
     SEPARATOR
+    MONITORS
     MWINFO
     SEPARATOR
     &More

@@ -4,15 +4,21 @@
  */
 
 /*
- * The Execute dialog: a prompt for a command to run.
+ * mWrun, the Execute dialog: a prompt for a command to run.
+ *
+ * Titled mWrun since 1.3, alongside mWinfo and mWmonitor. Only the title
+ * changed -- the rc function is still f.run, the shell is still named
+ * execDialog for the style file's sake, and the menu item shipped in
+ * system.mwizardrc is still "Execute...".
  *
  * This lives in the window manager rather than in the panel. mWand had it
  * first, but a run prompt is not a panel feature -- it is wanted with or
  * without one, and the window manager is the process that is always there.
  * mWand now asks for this dialog instead of carrying its own.
  *
- * Reachable two ways: the f.run rc function (bound to a key or a menu
- * item), and SIGUSR1, which is what mWand sends.
+ * Reachable three ways: the f.run rc function (bound to a key or a menu
+ * item), SIGUSR1, and the _MWIZARD_COMMAND ClientMessage that replaced it --
+ * both of which are what mWand sends. See WmEwmh.h.
  *
  * ---------------------------------------------------------------------------
  *
@@ -137,7 +143,12 @@ static Boolean MakeExecDialog(WmScreenData *pSD)
      */
     XtSetArg (args[n], XtNwaitForWm, (XtArgVal) False);			n++;
     XtSetArg (args[n], XtNallowShellResize, (XtArgVal) True);		n++;
-    XtSetArg (args[n], XtNtitle, (XtArgVal) MWM_NAME);			n++;
+    /*
+     * mWrun. Named the way mWinfo and mWmonitor are, rather than carrying the
+     * window manager's own name on a window that is not the window manager.
+     */
+    XtSetArg (args[n], XtNtitle, (XtArgVal) "mWrun");			n++;
+    XtSetArg (args[n], XtNiconName, (XtArgVal) "mWrun");		n++;
     XtSetArg (args[n], XtNdepth,
 	(XtArgVal) DefaultDepth (DISPLAY1, pSD->screen));		n++;
     XtSetArg (args[n], XtNscreen,
@@ -410,4 +421,11 @@ void InitExecDialog(void)
      * tells mWand this signal is safe to send. See WmEwmh.h.
      */
     AdvertiseWmSignal (MWIZARD_SIGNAL_EXEC);
+
+    /*
+     * Both are advertised. The signal stays for an mWand built before 1.3;
+     * the command is what a current one uses, and is the only way a fourth
+     * such window could ever be asked for. See WmEwmh.h.
+     */
+    AdvertiseWmCommand (MWIZARD_CMD_RUN);
 }

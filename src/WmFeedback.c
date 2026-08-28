@@ -58,6 +58,10 @@
 #include "stdio.h"
 #include "WmError.h"
 #include "WmXinerama.h"
+#include "WmMonitor.h"
+#include "WmSession.h"
+#include <stdlib.h>
+#include <string.h>
 
 /*
  * Global Variables:
@@ -149,6 +153,27 @@ void ShowFeedbackWindow (WmScreenData *pSD, int x, int y, unsigned int width, un
     
     pSD->fbWinWidth = swidth + 4*FEEDBACK_BEVEL;
 
+    /*
+     * FB_TEXT sizes itself from the string it was given rather than from the
+     * cached extent of DEFAULT_POSITION_STRING, which exists only so that the
+     * move and resize readouts do not resize the box on every pointer motion.
+     * A workspace name has no fixed width, so there is nothing to cache.
+     */
+    if (pSD->fbStyle == FB_TEXT)
+    {
+	Dimension twidth = 0, theight = 0;
+
+	if (pSD->fbText)
+	{
+	    XmStringExtent (pSD->feedbackAppearance.renderTable,
+		pSD->fbText, &twidth, &theight);
+	}
+
+	pSD->fbWinWidth = twidth + 4*FEEDBACK_BEVEL;
+	pSD->fbWinHeight = theight + 4*FEEDBACK_BEVEL;
+	pSD->fbLocY = 2*FEEDBACK_BEVEL;
+    }
+    else
     switch (pSD->fbStyle) 
     {
 	case FB_SIZE:
@@ -200,7 +225,8 @@ void ShowFeedbackWindow (WmScreenData *pSD, int x, int y, unsigned int width, un
     /* 
      * Put new text into the feedback strings
      */
-    UpdateFeedbackText (pSD, x, y, width, height);
+    if (pSD->fbStyle != FB_TEXT)
+	UpdateFeedbackText (pSD, x, y, width, height);
 
     /*
      * bevel the window border for a 3-D look
@@ -294,6 +320,132 @@ void ShowFeedbackWindow (WmScreenData *pSD, int x, int y, unsigned int width, un
 
 /*************************************<->*************************************
  *
+ *  ShowTextFeedback (pSD, monitor, text)
+ *  AnnounceWorkspace (pSD, pWS, monitor)
+ *
+ *  Description:
+ *  -----------
+ *  The optional notice shown when a workspace is switched.
+ *
+ *  This reuses the move/resize feedback box rather than putting up a window of
+ *  its own. That box is already override-redirect, already positioned per
+ *  monitor, already beveled, and already follows the feedback colors and font
+ *  from ~/.mstylesrc -- so the whole feature costs one XmString and one timer
+ *  rather than a second window, a second set of GCs and a second appearance
+ *  block.
+ *
+ *  It is off by default. workspaceFeedback picks between nothing, this box and
+ *  a command; a user running a notification daemon will want the command, and
+ *  the shipped dunstrc is configured for exactly that.
+ *
+ *************************************<->***********************************/
+
+static void TextFeedbackTimeout(XtPointer client_data, XtIntervalId *id)
+{
+    WmScreenData *pSD = (WmScreenData *) client_data;
+
+    pSD->fbTextTimer = (XtIntervalId) 0;
+
+    /*
+     * Only take the box away if it is still ours. A move or resize started
+     * while the notice was up owns the window now, and hiding it here would
+     * pull the coordinate readout out from under the user's pointer.
+     */
+    if (pSD->fbStyle == FB_TEXT) HideFeedbackWindow (pSD);
+}
+
+void ShowTextFeedback (WmScreenData *pSD, int monitor, const char *text,
+	int timeout)
+{
+    int x, y, w, h;
+
+    if (!pSD || !text || !*text) return;
+
+    if (pSD->fbTextTimer)
+    {
+	XtRemoveTimeOut (pSD->fbTextTimer);
+	pSD->fbTextTimer = (XtIntervalId) 0;
+    }
+
+    if (pSD->fbText) XmStringFree (pSD->fbText);
+    pSD->fbText = XmStringCreateLocalized ((char *) text);
+
+    /*
+     * Centre of the monitor being announced, which is what
+     * ShowFeedbackWindow() turns into a centred box: it looks the point up in
+     * the monitor list and centres on whichever head contains it.
+     */
+    MonitorWorkArea (pSD, monitor, &x, &y, &w, &h);
+
+    ShowFeedbackWindow (pSD, x + w/2, y + h/2, 0, 0, FB_TEXT);
+
+    if (timeout > 0)
+    {
+	pSD->fbTextTimer = XtAppAddTimeOut (wmGD.mwmAppContext,
+	    (unsigned long) timeout, TextFeedbackTimeout, (XtPointer) pSD);
+    }
+}
+
+void AnnounceWorkspace (WmScreenData *pSD, WmWorkspaceData *pWS, int monitor)
+{
+    char buf[256];
+    char *title = NULL;
+    int number = 0;
+    int i;
+
+    if (!pSD || !pWS) return;
+    if (wmGD.workspaceFeedback == WS_FEEDBACK_NONE) return;
+
+    /* One-based, because "Workspace 0" is not what anyone counts from. */
+    for (i = 0; i < pSD->numWorkspaces; i++)
+    {
+	if (&pSD->pWS[i] == pWS) { number = i + 1; break; }
+    }
+
+    if (pWS->title)
+    {
+	title = (char *) XmStringUnparse (pWS->title, NULL,
+	    XmCHARSET_TEXT, XmCHARSET_TEXT, NULL, 0, XmOUTPUT_ALL);
+    }
+
+    if (wmGD.workspaceFeedback == WS_FEEDBACK_BOX)
+    {
+	/*
+	 * The name is worth more than the number to anyone who named their
+	 * workspaces, and the number is all there is to say to anyone who did
+	 * not -- so show both only when they differ.
+	 */
+	if (title && *title && strcmp (title, (char *) pWS->name))
+	    snprintf (buf, sizeof(buf), "Workspace %d  --  %s", number, title);
+	else
+	    snprintf (buf, sizeof(buf), "Workspace %d", number);
+
+	ShowTextFeedback (pSD, monitor, buf, wmGD.workspaceFeedbackTimeout);
+    }
+    else if (wmGD.workspaceFeedback == WS_FEEDBACK_COMMAND &&
+	     wmGD.workspaceNotifyCommand)
+    {
+	char num[16];
+
+	/*
+	 * Exported rather than substituted into the string, so that the
+	 * command is an ordinary shell command and quoting is the shell's
+	 * problem -- the same arrangement the Variables block uses to make
+	 * "$TERMINAL" work in an f.exec.
+	 */
+	snprintf (num, sizeof(num), "%d", number);
+	setenv ("WORKSPACE", num, 1);
+	setenv ("WORKSPACE_NAME", (title && *title) ? title :
+		(char *) pWS->name, 1);
+
+	SpawnCommand (wmGD.workspaceNotifyCommand);
+    }
+
+    if (title) XtFree (title);
+}
+
+/*************************************<->*************************************
+ *
  *  PaintFeedbackWindow(pSD)
  *
  *
@@ -346,6 +498,17 @@ void PaintFeedbackWindow (WmScreenData *pSD)
 	/*
 	 * put up new text
 	 */
+	if ((pSD->fbStyle & FB_TEXT) && pSD->fbText)
+	{
+	    XmStringDraw (DISPLAY, pSD->feedbackWin,
+	    	 pSD->feedbackAppearance.renderTable,
+	    	 pSD->fbText,
+			 pSD->feedbackAppearance.inactiveGC,
+			 FEEDBACK_BEVEL, pSD->fbLocY,
+			 pSD->fbWinWidth - 2*FEEDBACK_BEVEL,
+			 XmALIGNMENT_CENTER,
+			 XmSTRING_DIRECTION_L_TO_R,NULL);
+	}
 	if (pSD->fbStyle & FB_POSITION) 
 	{
 	    XmStringDraw (DISPLAY, pSD->feedbackWin, 

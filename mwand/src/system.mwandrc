@@ -37,6 +37,12 @@ Settings
 	# Ask the window manager to put mWand on every workspace
 	occupyAllWorkspaces  True
 
+	# And on every monitor. False keeps mWand on the primary monitor,
+	# which is what a launcher usually wants; with mWizard's
+	# perMonitorWorkspaces on, True is how you keep it on the screen
+	# whatever any monitor happens to be showing. Needs mWizard 1.3.
+	occupyAllMonitors    False
+
 	# Key that raises and focuses mWand. Unset by default.
 	# hotkey             Super_L
 
@@ -102,16 +108,18 @@ Variables
 
 # Menus may contain menus. SEPARATOR places a separator between items.
 #
-# MWINFO is the other bare keyword: it posts mWinfo, the window manager's
-# About window, and so is written with no label and no command -- mWand
-# supplies both. The Commands menu offers the same thing; this puts it where
-# the rest of the utilities are.
+# MWINFO and MONITORS are the other bare keywords: they post mWinfo, the
+# window manager's About window, and mWmonitor, its monitor arranger. Both are
+# written with no label and no command -- mWand supplies both. The Commands
+# menu offers the same two; these put them where the rest of the utilities
+# are. MONITORS needs mWizard 1.3.
 &Utilities
 {
 	&Terminal: $TERMINAL
 	X&OSView: xosview
 	X&pdf: xpdf
 	SEPARATOR
+	MONITORS
 	MWINFO
 	SEPARATOR
 	X11 &Utilities 

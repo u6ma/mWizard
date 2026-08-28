@@ -20,6 +20,13 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+/*
+ * As of 1.3 this is a compatibility face over WmMonitor.c rather than a
+ * Xinerama client in its own right; the reasoning is at the top of
+ * WmXinerama.c. New code should use WmMonitor.h, which names its monitors and
+ * can answer questions this API has no shape for.
+ */
+
 #ifndef _WM_XINERAMA_H
 #define _WM_XINERAMA_H
 
@@ -62,7 +69,7 @@ Bool GetPrimaryXineramaScreen(XineramaScreenInfo *xsi);
 
 /* Convenience macro for ClientData */
 #define GetXineramaScreenOfClient(cd,xsi)\
-	GetXineramaScreenFromPoint(cd->clientX,cd->clientY,xsi)
+	GetXineramaScreenFromLocation((cd)->clientX,(cd)->clientY,xsi)
 
 /*
  * Retrieves xinerama screen info. Returns True on success.

@@ -36,11 +36,14 @@
 #include "WmIPlace.h"
 #include "WmInitWs.h"
 #include <X11/Xutil.h>
+#include <X11/Xatom.h>
 #include "WmICCC.h"
 #include <Xm/Xm.h>
 #include <Xm/AtomMgr.h>
 #include "WmError.h"
 #include "WmXinerama.h"
+#include "WmMonitor.h"
+#include "WmFeedback.h"
 #include "WmPresence.h"
 #include "WmFunction.h"
 #include "WmIDecor.h"
@@ -49,6 +52,7 @@
 #include "WmProperty.h"
 #include "WmResParse.h"
 #include "WmWinInfo.h"
+#include "WmWinConf.h"
 #include "WmWinList.h"
 #include "WmWinState.h"
 #include "WmSession.h"
@@ -86,6 +90,188 @@ static int numResIDs = 0;
 static WorkspaceID *pResIDs = NULL;
 
 
+/*
+ * Per-monitor workspaces, new in 1.3.
+ *
+ * Monitors share one workspace list -- pSD->pWS -- and each shows one entry
+ * from it. That is the model the user chose over giving every head its own set
+ * of N workspaces: it keeps workspaceList meaning one thing, keeps
+ * _NET_NUMBER_OF_DESKTOPS honest, and leaves mWand's switcher working.
+ *
+ * pSD->pActiveWS keeps its old meaning of "the active workspace" and is now
+ * specifically the *focused monitor's*. Everything that already read it --
+ * EWMH, the icon boxes, the presence dialog, the ACTIVE_WS macro -- is
+ * therefore unchanged. The per-head state is pMonitors[i].pActiveWS.
+ *
+ * With perMonitorWorkspaces off, every monitor is moved together and the two
+ * views collapse back into one, which is exactly the pre-1.3 behaviour.
+ */
+
+WmWorkspaceData *MonitorActiveWorkspace(WmScreenData *pSD, int monitor)
+{
+    if (!pSD) return (NULL);
+
+    if (!wmGD.perMonitorWorkspaces || !pSD->pMonitors ||
+	monitor < 0 || monitor >= pSD->numMonitors ||
+	!pSD->pMonitors[monitor].pActiveWS)
+    {
+	return (pSD->pActiveWS);
+    }
+
+    return (pSD->pMonitors[monitor].pActiveWS);
+}
+
+/*
+ * Starts every head on the workspace the screen starts on, which is what makes
+ * the feature invisible until something switches one of them.
+ */
+void InitMonitorWorkspaces(WmScreenData *pSD)
+{
+    int i;
+
+    if (!pSD || !pSD->pMonitors) return;
+
+    for (i = 0; i < pSD->numMonitors; i++)
+    {
+	if (!pSD->pMonitors[i].pActiveWS)
+	    pSD->pMonitors[i].pActiveWS = pSD->pActiveWS;
+    }
+}
+
+/*
+ * The one predicate the whole feature rests on: should this client be on the
+ * screen right now?
+ *
+ * A window that occupies all workspaces inhabits every one of them, so
+ * ClientInWorkspace() answers True for it whichever workspace is asked about
+ * and it needs no case of its own here.
+ */
+Boolean ClientShouldBeVisible(ClientData *pCD)
+{
+    WmScreenData *pSD;
+    int i;
+
+    if (!pCD || !pCD->pSD) return (False);
+    pSD = pCD->pSD;
+
+    if (!wmGD.perMonitorWorkspaces)
+	return (ClientInWorkspace (pSD->pActiveWS, pCD));
+
+    /*
+     * Pinned to all monitors -- a panel or a tray. Visible as long as any head
+     * is showing a workspace it inhabits, so that switching one head does not
+     * take the panel away from the others.
+     */
+    if (pCD->monitorPresence == MONITOR_ALL)
+    {
+	for (i = 0; i < pSD->numMonitors; i++)
+	{
+	    if (ClientInWorkspace (MonitorActiveWorkspace (pSD, i), pCD))
+		return (True);
+	}
+	return (False);
+    }
+
+    return (ClientInWorkspace (
+	MonitorActiveWorkspace (pSD, MonitorOfClient (pCD)), pCD));
+}
+
+/*
+ * Re-homes a client into whatever workspace a monitor is showing.
+ *
+ * This is what stops a window vanishing when it is dragged across the boundary
+ * onto a head displaying a different workspace: the window has arrived
+ * somewhere its own occupancy does not cover, so the occupancy follows it.
+ *
+ * It is added to the destination workspace and removed from the one the head
+ * it came from is showing. Any other workspace it occupies is left alone --
+ * a window the user deliberately put in three workspaces should not be
+ * collapsed into one by being moved across the desk.
+ *
+ * Returns True if the occupancy changed.
+ */
+Boolean RehomeClientToMonitor(ClientData *pCD, int fromMon, int toMon)
+{
+    WmScreenData *pSD;
+    WmWorkspaceData *pToWS;
+    WmWorkspaceData *pFromWS;
+
+    if (!pCD || !pCD->pSD) return (False);
+    if (!wmGD.perMonitorWorkspaces) return (False);
+    if (fromMon == toMon) return (False);
+
+    /*
+     * A window that occupies every workspace, or that is pinned to all
+     * monitors, is visible wherever it lands and has nothing to re-home.
+     */
+    if (pCD->putInAll || pCD->monitorPresence == MONITOR_ALL) return (False);
+
+    pSD = pCD->pSD;
+    pToWS = MonitorActiveWorkspace (pSD, toMon);
+    pFromWS = MonitorActiveWorkspace (pSD, fromMon);
+
+    if (!pToWS || pToWS == pFromWS) return (False);
+    if (ClientInWorkspace (pToWS, pCD)) return (False);
+
+    PutClientIntoWorkspace (pToWS, pCD);
+
+    /*
+     * Only after the put, and only if the client would still inhabit
+     * something: TakeClientOutOfWorkspace() on a client's last workspace
+     * would leave it in none at all.
+     */
+    if (pFromWS && ClientInWorkspace (pFromWS, pCD) && pCD->numInhabited > 1)
+	TakeClientOutOfWorkspace (pFromWS, pCD);
+
+    SetClientWsIndex (pCD);
+    UpdateWorkspacePresenceProperty (pCD);
+
+    return (True);
+}
+
+/*
+ * Moves a client bodily onto another monitor. f.move_to_monitor, and the
+ * keyboard half of "drag windows between monitors".
+ */
+Boolean MoveClientToMonitor(ClientData *pCD, int toMon)
+{
+    WmScreenData *pSD;
+    int fromMon;
+    int x, y;
+
+    if (!pCD || !pCD->pSD) return (False);
+    pSD = pCD->pSD;
+
+    if (toMon < 0 || toMon >= pSD->numMonitors) return (False);
+
+    fromMon = MonitorOfClient (pCD);
+    if (fromMon == toMon) return (False);
+
+    x = pCD->clientX - pCD->clientOffset.x;
+    y = pCD->clientY - pCD->clientOffset.y;
+
+    MapPointToMonitor (pSD, fromMon, toMon, &x, &y,
+	(int) (pCD->clientWidth + pCD->clientOffset.x * 2),
+	(int) (pCD->clientHeight + pCD->clientOffset.x + pCD->clientOffset.y));
+
+    /*
+     * A window pinned to a specific head follows the move rather than
+     * dragging itself back; the pin names where the user wants it, and this
+     * is the user saying so again.
+     */
+    if (pCD->monitorPresence >= 0) pCD->monitorPresence = toMon;
+
+    /*
+     * ProcessNewConfiguration() re-homes the workspace itself through the
+     * cross-monitor branch it already had for recomputing maximize limits, so
+     * there is no second call to RehomeClientToMonitor() here.
+     */
+    ProcessNewConfiguration (pCD, x, y,
+	pCD->clientWidth, pCD->clientHeight, False);
+
+    return (True);
+}
+
 /*************************************<->*************************************
  *
  *  ChangeToWorkspace (pNewWS)
@@ -110,17 +296,45 @@ void ChangeToWorkspace(WmWorkspaceData *pNewWS )
 	Boolean keepFocus = False;
 	int i;
 	WmScreenData *pSD = pNewWS->pSD;
+	WmWorkspaceData *pOldWS;
+	int monitor;
 
 	ClientData *pWsPCD;
 	Context   wsContext = F_CONTEXT_NONE;
 
-	/* already there ? */ 
-	if (pNewWS == pSD->pActiveWS) return;				
+	/*
+	 * Which head is being switched. With the feature off this is every
+	 * head at once, so the index is only used to decide what has already
+	 * happened and where to put the feedback.
+	 */
+	monitor = ActiveMonitor (pSD);
 
-	pSD->pActiveWS->keyFocus = wmGD.keyboardFocus;
-	pSD->pActiveWS->nextKeyFocus = wmGD.nextKeyboardFocus;
+	/*
+	 * Already there?
+	 *
+	 * Asked of the monitor rather than the screen: moving head B to the
+	 * workspace head A is already showing is a real change, and testing
+	 * pSD->pActiveWS would refuse it.
+	 */
+	if (pNewWS == MonitorActiveWorkspace (pSD, monitor)) return;
+
+	/*
+	 * The workspace being left, which is this monitor's and not the
+	 * screen's.
+	 *
+	 * pSD->pActiveWS holds whichever monitor was switched last, and that
+	 * is not necessarily the one being switched now -- move the pointer to
+	 * the other head and the two disagree. Taking the screen's here walked
+	 * the wrong monitor's client list and hid the wrong windows. With
+	 * perMonitorWorkspaces off the two are always the same and this is the
+	 * old value.
+	 */
+	pOldWS = MonitorActiveWorkspace (pSD, monitor);
+
+	pOldWS->keyFocus = wmGD.keyboardFocus;
+	pOldWS->nextKeyFocus = wmGD.nextKeyboardFocus;
 	wmGD.nextKeyboardFocus = NULL;
-	pSD->pLastWS = pSD->pActiveWS;
+	pSD->pLastWS = pOldWS;
 	
 	/* Keep focus if active client is in both workspaces */
 	if(wmGD.keyboardFocusPolicy == KEYBOARD_FOCUS_EXPLICIT &&
@@ -141,10 +355,35 @@ void ChangeToWorkspace(WmWorkspaceData *pNewWS )
 		HidePresenceBox (pSD, False);
 	}
 
-	for (i = 0; i < pSD->pActiveWS->numClients; i++)
+	/*
+	 * The new workspace is put on the head (or heads) first, so that the
+	 * two loops below can both ask ClientShouldBeVisible() and get the
+	 * answer for the state the screen is moving *to*. Doing it the other
+	 * way round -- assigning after hiding, as the pre-1.3 code effectively
+	 * did -- cannot express "hide this window because its own head moved
+	 * on, but leave that one because its head did not".
+	 */
+	if (wmGD.perMonitorWorkspaces && pSD->pMonitors)
 	{
-		pCD = pSD->pActiveWS->ppClients[i];
-		if (!ClientInWorkspace (pNewWS, pCD))
+		if (monitor >= 0 && monitor < pSD->numMonitors)
+			pSD->pMonitors[monitor].pActiveWS = pNewWS;
+	}
+	else if (pSD->pMonitors)
+	{
+		for (i = 0; i < pSD->numMonitors; i++)
+			pSD->pMonitors[i].pActiveWS = pNewWS;
+	}
+
+	/*
+	 * Hide what the old workspace was showing and the new state does not
+	 * want. Walking the old workspace's client list rather than the whole
+	 * screen is deliberate: no client outside it can have become hidden by
+	 * this switch, and the screen list is the longer of the two.
+	 */
+	for (i = 0; i < pOldWS->numClients; i++)
+	{
+		pCD = pOldWS->ppClients[i];
+		if (!ClientShouldBeVisible (pCD))
 		{
 		   SetClientWsIndex(pCD);
 		   SetClientState (pCD, pCD->clientState | UNSEEN_STATE, CurrentTime);
@@ -180,6 +419,17 @@ void ChangeToWorkspace(WmWorkspaceData *pNewWS )
 	for (i = 0; i < pNewWS->numClients; i++)
 	{
 		pCD = pNewWS->ppClients[i];
+
+		/*
+		 * A client in the new workspace but sitting on a head that is
+		 * still showing something else stays hidden. Without this
+		 * guard, switching one monitor would drag every window of the
+		 * target workspace onto the screen regardless of which head
+		 * they live on -- which is the whole thing the feature exists
+		 * to avoid.
+		 */
+		if (!ClientShouldBeVisible (pCD)) continue;
+
 		SetClientWsIndex(pCD);
 		if(pCD->clientState & UNSEEN_STATE)
 		{
@@ -242,6 +492,9 @@ void ChangeToWorkspace(WmWorkspaceData *pNewWS )
 
 	pNewWS->keyFocus = NULL;
 	pNewWS->nextKeyFocus = NULL;
+
+	/* Optional "Workspace 2" notice; see WmFeedback.c and WmSession.c */
+	AnnounceWorkspace (pSD, pNewWS, monitor);
 
 } /* END OF FUNCTION ChangeToWorkspace */
 
@@ -689,6 +942,84 @@ void DeleteWorkspace(WmWorkspaceData *pWS)
  *  pCD  = updated client data
  *
  *************************************<->***********************************/
+
+/*
+ * Resolves which monitor a client belongs to, from the "monitor" client
+ * resource and the _MWM_MONITOR_PRESENCE property.
+ *
+ * The property wins, because it is the client speaking for itself where the
+ * resource is the user speaking about it -- the same precedence
+ * _MWM_WORKSPACE_PRESENCE has over a Workspace block. mWand uses it to say it
+ * belongs on the primary head, and a tray configured the same way says so too.
+ *
+ * Both are held as names rather than indexes, so they survive a hotplug
+ * renumbering the list. That is the whole reason monitors have names in 1.3.
+ */
+void GetClientMonitorInfo(ClientData *pCD)
+{
+    WmScreenData *pSD = pCD->pSD;
+    Atom actualType;
+    int actualFormat;
+    unsigned long nItems, bytesAfter;
+    unsigned char *prop = NULL;
+    const char *spec = NULL;
+
+    pCD->monitorPresence = MONITOR_FOLLOW;
+
+    if (pCD->monitorSpec && *pCD->monitorSpec) spec = pCD->monitorSpec;
+
+    if (XGetWindowProperty (DISPLAY, pCD->client,
+	    wmGD.xa_MWM_MONITOR_PRESENCE, 0L, 64L, False, XA_STRING,
+	    &actualType, &actualFormat, &nItems, &bytesAfter, &prop) == Success
+	&& prop && nItems)
+    {
+	spec = (const char *) prop;
+    }
+
+    if (spec)
+    {
+	if (!strcmp (spec, "all"))
+	    pCD->monitorPresence = MONITOR_ALL;
+	else if (!strcmp (spec, "current"))
+	    pCD->monitorPresence = MONITOR_FOLLOW;
+	else if (!strcmp (spec, "primary"))
+	    pCD->monitorPresence = PrimaryMonitor (pSD);
+	else
+	{
+	    int i = MonitorByName (pSD, spec);
+
+	    /*
+	     * A name no monitor has is left as "follow" rather than warned
+	     * about. A Client block naming the docking station's screen is
+	     * correct on the desk and meaningless on the train, and the user
+	     * should not get a warning every time they undock.
+	     */
+	    if (i >= 0) pCD->monitorPresence = i;
+	}
+    }
+
+    if (prop) XFree (prop);
+
+    /*
+     * A window pinned to a monitor starts there. Without this the pin would
+     * only take effect the next time something moved the window, which for a
+     * panel placed by its own geometry is never.
+     */
+    if (pCD->monitorPresence >= 0 &&
+	MonitorFromLocation (pSD, pCD->clientX, pCD->clientY) !=
+	    pCD->monitorPresence)
+    {
+	int fromMon = MonitorFromLocation (pSD, pCD->clientX, pCD->clientY);
+	int x = pCD->clientX;
+	int y = pCD->clientY;
+
+	MapPointToMonitor (pSD, fromMon, pCD->monitorPresence, &x, &y,
+	    (int) pCD->clientWidth, (int) pCD->clientHeight);
+
+	pCD->clientX = x;
+	pCD->clientY = y;
+    }
+}
 
 Boolean GetClientWorkspaceInfo(ClientData *pCD, long manageFlags )
 {
@@ -1381,7 +1712,14 @@ SetClientWsIndex(
 
 {
     int i;
-    WmWorkspaceData *pWS = pCD->pSD->pActiveWS;
+    /*
+     * The workspace this client is actually being shown in, which under
+     * perMonitorWorkspaces is its own head's rather than the screen's. Getting
+     * this wrong points ICON_X/ICON_Y and the icon frame at another
+     * workspace's copy of the client's per-workspace data.
+     */
+    WmWorkspaceData *pWS =
+	MonitorActiveWorkspace (pCD->pSD, MonitorOfClient (pCD));
 
     for (i = 0; (i < pCD->numInhabited); i++)
     {

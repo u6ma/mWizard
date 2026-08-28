@@ -659,6 +659,83 @@ XtResource wmGlobalResources[] =
 	XtOffsetOf (WmGlobalData, xineramaIconifyToPrimary),
 	XtRImmediate,
 	(XtPointer)False
+	},
+
+	/*
+	 * Monitors, new in 1.3. See WmMonitor.h for the model these describe.
+	 *
+	 * primaryMonitor is empty by default, which leaves primaryXineramaScreen
+	 * and then RandR's own primary flag to decide -- so an existing rc file
+	 * behaves exactly as it did.
+	 */
+	{
+	WmNprimaryMonitor,
+	WmCPrimaryMonitor,
+	XtRString,
+	sizeof(String),
+	XtOffsetOf (WmGlobalData, primaryMonitor),
+	XtRString,
+	(XtPointer)NULL
+	},
+
+	{
+	WmNperMonitorWorkspaces,
+	WmCPerMonitorWorkspaces,
+	XtRBoolean,
+	sizeof(Boolean),
+	XtOffsetOf (WmGlobalData, perMonitorWorkspaces),
+	XtRImmediate,
+	(XtPointer)True
+	},
+
+	{
+	WmNmonitorDialogOnHotplug,
+	WmCMonitorDialogOnHotplug,
+	XtRBoolean,
+	sizeof(Boolean),
+	XtOffsetOf (WmGlobalData, monitorDialogOnHotplug),
+	XtRImmediate,
+	(XtPointer)False
+	},
+
+	{
+	WmNmonitorLayoutFile,
+	WmCMonitorLayoutFile,
+	XtRString,
+	sizeof(String),
+	XtOffsetOf (WmGlobalData, monitorLayoutFile),
+	XtRString,
+	(XtPointer)NULL
+	},
+
+	{
+	WmNworkspaceFeedback,
+	WmCWorkspaceFeedback,
+	WmRWorkspaceFeedback,
+	sizeof(int),
+	XtOffsetOf (WmGlobalData, workspaceFeedback),
+	XtRImmediate,
+	(XtPointer)WS_FEEDBACK_NONE
+	},
+
+	{
+	WmNworkspaceFeedbackTimeout,
+	WmCWorkspaceFeedbackTimeout,
+	XtRInt,
+	sizeof(int),
+	XtOffsetOf (WmGlobalData, workspaceFeedbackTimeout),
+	XtRImmediate,
+	(XtPointer)1000
+	},
+
+	{
+	WmNworkspaceNotifyCommand,
+	WmCWorkspaceNotifyCommand,
+	XtRString,
+	sizeof(String),
+	XtOffsetOf (WmGlobalData, workspaceNotifyCommand),
+	XtRString,
+	(XtPointer)NULL
 	}
 
 };
@@ -1176,6 +1253,23 @@ XtResource wmClientResources[] =
 	XmRString,
 	sizeof (String),
 	XtOffsetOf (ClientData, titleString),
+	XmRString,
+	(XtPointer)NULL
+    },
+
+    /*
+     * Which monitor this client belongs to: "current" (the default -- follow
+     * the window), "all", "primary", or a RandR output name. Kept as the
+     * string the user wrote and resolved to a monitor index when the client is
+     * managed, because at the time this is read the monitor list may not name
+     * what it will name after the next hotplug.
+     */
+    {
+	WmNmonitor,
+	WmCMonitor,
+	XmRString,
+	sizeof (String),
+	XtOffsetOf (ClientData, monitorSpec),
 	XmRString,
 	(XtPointer)NULL
     },

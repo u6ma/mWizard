@@ -59,6 +59,7 @@
 
 static void menu_command_cb(Widget, XtPointer, XtPointer);
 static void mwinfo_item_cb(Widget, XtPointer, XtPointer);
+static void monitors_item_cb(Widget, XtPointer, XtPointer);
 static void report_exec_error(const char*, const char*, int);
 
 /*
@@ -147,6 +148,10 @@ Boolean ConstructMenu(void)
 			{ (XtCallbackProc)mwinfo_item_cb, (XtPointer)NULL},
 			{ (XtCallbackProc)NULL, (XtPointer)NULL}
 		};
+		XtCallbackRec monitors_callback[]={
+			{ (XtCallbackProc)monitors_item_cb, (XtPointer)NULL},
+			{ (XtCallbackProc)NULL, (XtPointer)NULL}
+		};
 		Widget w;
 		XmString title;
 
@@ -220,6 +225,31 @@ Boolean ConstructMenu(void)
 			XtSetArg(args[n], XmNmnemonic,
 				(KeySym)MWINFO_ITEM_MNEMONIC); n++;
 			XtSetArg(args[n], XmNactivateCallback, mwinfo_callback); n++;
+			if(menu_font) {
+				XtSetArg(args[n], XmNrenderTable, menu_font);
+				n++;
+			}
+			w = XmCreatePushButtonGadget(
+				wlevel[cur->level], "menuButton", args, n);
+
+			XmStringFree(title);
+			XtManageChild(w);
+
+		}else if(cur->type == TBE_MONITORS){
+			/*
+			 * The MONITORS keyword. Same arrangement as MWINFO
+			 * above: the window belongs to the window manager, so
+			 * mWand asks for it and takes the label from the one
+			 * place it is written.
+			 */
+			title=XmStringCreateLocalized(MONITORS_ITEM_LABEL);
+
+			n = 0;
+			XtSetArg(args[n], XmNlabelString, title); n++;
+			XtSetArg(args[n], XmNmnemonic,
+				(KeySym)MONITORS_ITEM_MNEMONIC); n++;
+			XtSetArg(args[n], XmNactivateCallback,
+				monitors_callback); n++;
 			if(menu_font) {
 				XtSetArg(args[n], XmNrenderTable, menu_font);
 				n++;
@@ -348,23 +378,110 @@ static void AskWindowManager(int sig, long capability, const char *what)
 }
 
 /*
- * SIGUSR1 is the Execute prompt, SIGUSR2 is mWinfo. See WmExecDlg.c and
- * WmWinfo.c on the window manager side.
+ * The ClientMessage path, which is what a mWizard from 1.3 on listens for.
+ *
+ * Tried before the signals because it is the mechanism that scales: a fourth
+ * window costs another verb here, where the signal path has nothing left to
+ * give. It is also the safe one -- a message a window manager does not
+ * understand is dropped, where a signal it does not handle terminates it and
+ * ends the X session with it. All of the checking in AskWindowManager() above
+ * exists to avoid that; none of it is needed here.
+ *
+ * Returns False if the window manager does not advertise the command, which is
+ * how an older mWizard is recognised.
+ */
+static Boolean AskWindowManagerByMessage(long command)
+{
+	Display *dpy = XtDisplay(wshell);
+	Window root = RootWindowOfScreen(XtScreen(wshell));
+	Atom xa_check, xa_cmds, xa_command;
+	Atom ret_type;
+	int ret_fmt;
+	unsigned long ret_items, ret_after;
+	unsigned char *data = NULL;
+	Window wm_window;
+	long wm_cmds;
+	XClientMessageEvent evt;
+
+	xa_check = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", True);
+	xa_cmds = XInternAtom(dpy, _XA_MWIZARD_COMMANDS, True);
+	xa_command = XInternAtom(dpy, _XA_MWIZARD_COMMAND, True);
+
+	if(xa_check == None || xa_cmds == None || xa_command == None)
+		return False;
+
+	if(XGetWindowProperty(dpy, root, xa_check, 0, 1, False, XA_WINDOW,
+		&ret_type, &ret_fmt, &ret_items, &ret_after, &data) != Success
+		|| !data || !ret_items) {
+		if(data) XFree(data);
+		return False;
+	}
+	wm_window = *((Window*)data);
+	XFree(data);
+	data = NULL;
+
+	if(XGetWindowProperty(dpy, wm_window, xa_cmds, 0, 1, False,
+		XA_CARDINAL, &ret_type, &ret_fmt, &ret_items, &ret_after, &data)
+		!= Success || !data || !ret_items) {
+		if(data) XFree(data);
+		return False;
+	}
+	wm_cmds = *((long*)data);
+	XFree(data);
+
+	if(!(wm_cmds & (1L << command))) return False;
+
+	memset(&evt, 0, sizeof(evt));
+	evt.type = ClientMessage;
+	evt.window = root;
+	evt.message_type = xa_command;
+	evt.format = 32;
+	evt.data.l[0] = command;
+
+	XSendEvent(dpy, root, False, SubstructureNotifyMask|SubstructureRedirectMask,
+		(XEvent*)&evt);
+	XFlush(dpy);
+
+	return True;
+}
+
+/*
+ * The three windows the window manager owns and mWand only asks for.
+ *
+ * The ClientMessage first; the signals are the fallback for a mWizard built
+ * before 1.3. mWmonitor has no fallback because it never had a signal -- there
+ * was no third signal to give it, which is why the message exists.
  */
 void ExecuteCommandDialog(void)
 {
+	if(AskWindowManagerByMessage(MWIZARD_CMD_RUN)) return;
 	AskWindowManager(SIGUSR1, MWIZARD_SIGNAL_EXEC, "a command prompt");
 }
 
 void AboutWindowManagerDialog(void)
 {
+	if(AskWindowManagerByMessage(MWIZARD_CMD_ABOUT)) return;
 	AskWindowManager(SIGUSR2, MWIZARD_SIGNAL_ABOUT, "an About window");
+}
+
+void MonitorDialog(void)
+{
+	if(AskWindowManagerByMessage(MWIZARD_CMD_MONITOR)) return;
+
+	MessageDialog(False,
+		"The window manager does not provide a monitor arranger.");
 }
 
 /* The MWINFO menu item; the Commands menu reaches the same place. */
 static void mwinfo_item_cb(Widget w, XtPointer client, XtPointer call)
 {
 	AboutWindowManagerDialog();
+}
+
+/* The MONITORS menu item, likewise. */
+static void monitors_item_cb(Widget w, XtPointer client, XtPointer call)
+{
+	MonitorDialog();
 }
 
 /*

@@ -42,6 +42,7 @@
 
 #include "WmResParse.h"
 #include "WmResCvt.h"
+#include "WmError.h"
 
 
 /*************************************<->*************************************
@@ -99,6 +100,8 @@ void AddWmResourceConverters (void)
 	(XtConverter)WmCvtStringToUsePPosition, NULL, 0);
     XtAppAddConverter (wmGD.mwmAppContext, XtRString, WmRXineramaScreenFocus, 
 	(XtConverter)WmCvtStringToXRSFocus, NULL, 0);
+    XtAppAddConverter (wmGD.mwmAppContext, XtRString, WmRWorkspaceFeedback,
+	(XtConverter)WmCvtStringToWSFeedback, NULL, 0);
 
 } /* END OF FUNCTION AddWmResourceConverters */
 
@@ -1500,6 +1503,80 @@ void WmCvtStringToXRSFocus(XrmValue *args, Cardinal numArgs, XrmValue *fromVal, 
 
 	if (!fHit) {
 		cval =  XRS_FOCUS_KEYBOARD;
+	}
+
+	(*toVal).size = sizeof (int);
+	(*toVal).addr = (XtPointer)&cval;
+
+}
+
+
+/*************************************<->*************************************
+ *
+ *  WmCvtStringToWSFeedback (args, numArgs, fromVal, toVal)
+ *
+ *
+ *  Description:
+ *  -----------
+ *  This function converts a string to a workspace switch feedback policy:
+ *  "none", "box" or "command".
+ *
+ *  An unrecognised value converts to "none" and warns, rather than picking
+ *  one of the two that do something. A typo should not start running a
+ *  command on every workspace switch.
+ *
+ *
+ *  Inputs:
+ *  ------
+ *  args = additional XrmValue arguments to the converter - NULL here
+ *
+ *  numArgs = number of XrmValue arguments - 0 here
+ *
+ *  fromVal = resource value to convert
+ *
+ *
+ *  Outputs:
+ *  -------
+ *  toVal = descriptor to use to return converted value
+ *
+ *************************************<->***********************************/
+void WmCvtStringToWSFeedback(XrmValue *args, Cardinal numArgs,
+	XrmValue *fromVal, XrmValue *toVal)
+{
+	unsigned char *pch = (unsigned char *) (fromVal->addr);
+	unsigned char *pchNext;
+	int len;
+	static int cval;
+	Boolean fHit = False;
+	unsigned char sz_none[] = "none";
+	unsigned char sz_box[] = "box";
+	unsigned char sz_command[] = "command";
+
+	cval = WS_FEEDBACK_NONE;
+
+	if (*pch && NextToken(pch, &len, &pchNext))
+	{
+		if ((*pch == 'N') || (*pch == 'n')) {
+			if (StringsAreEqual(pch, sz_none, len)) {
+				cval = WS_FEEDBACK_NONE;
+				fHit = True;
+			}
+		} else if ((*pch == 'B') || (*pch == 'b')) {
+			if (StringsAreEqual(pch, sz_box, len)) {
+				cval = WS_FEEDBACK_BOX;
+				fHit = True;
+			}
+		} else if ((*pch == 'C') || (*pch == 'c')) {
+			if (StringsAreEqual(pch, sz_command, len)) {
+				cval = WS_FEEDBACK_COMMAND;
+				fHit = True;
+			}
+		}
+	}
+
+	if (!fHit) {
+		Warning ("Invalid workspaceFeedback value");
+		cval = WS_FEEDBACK_NONE;
 	}
 
 	(*toVal).size = sizeof (int);

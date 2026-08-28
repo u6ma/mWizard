@@ -120,6 +120,16 @@
 #define WmNxineramaScreenFocus    "xineramaScreenFocus"
 #define WmNxineramaIconifyToPrimary "xineramaIconifyToPrimary"
 
+/* monitor resources -- new in 1.3, see WmMonitor.h */
+#define WmNprimaryMonitor	"primaryMonitor"
+#define WmNperMonitorWorkspaces	"perMonitorWorkspaces"
+#define WmNmonitorDialogOnHotplug "monitorDialogOnHotplug"
+#define WmNmonitorLayoutFile	"monitorLayoutFile"
+#define WmNworkspaceFeedback	"workspaceFeedback"
+#define WmNworkspaceFeedbackTimeout "workspaceFeedbackTimeout"
+#define WmNworkspaceNotifyCommand "workspaceNotifyCommand"
+#define WmNmonitor		"monitor"
+
 /* conponent appearance resources: */
 
 #define WmNactiveBackground		"activeBackground"
@@ -289,6 +299,15 @@
 #define WmCXineramaScreenFocus    "XineramaScreenFocus"
 #define WmCXineramaIconifyToPrimary "XineramaIconifyToPrimary"
 
+#define WmCPrimaryMonitor	"PrimaryMonitor"
+#define WmCPerMonitorWorkspaces	"PerMonitorWorkspaces"
+#define WmCMonitorDialogOnHotplug "MonitorDialogOnHotplug"
+#define WmCMonitorLayoutFile	"MonitorLayoutFile"
+#define WmCWorkspaceFeedback	"WorkspaceFeedback"
+#define WmCWorkspaceFeedbackTimeout "WorkspaceFeedbackTimeout"
+#define WmCWorkspaceNotifyCommand "WorkspaceNotifyCommand"
+#define WmCMonitor		"Monitor"
+
 /* component appearance resources: */
 
 #define WmCActiveBackground		"ActiveBackground"
@@ -381,6 +400,7 @@
 #define WmRShowFeedback			"WmShowFeedback"
 #define WmRUsePPosition			"WmUsePPosition"
 #define WmRXineramaScreenFocus  "WmXineramaScreenFocus"
+#define WmRWorkspaceFeedback	"WmWorkspaceFeedback"
 
 /*************************************<->*************************************
  *

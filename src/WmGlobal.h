@@ -60,7 +60,7 @@
 #define MWM_FULL_NAME "motifWizard"
 
 #define MWM_VERSION  1
-#define MWM_REVISION 2
+#define MWM_REVISION 3
 #define MWM_PATCHLEVEL 0
 
 /*
@@ -113,6 +113,13 @@ extern Pixel		FPselectcolor;
 #define _XA_MWM_MARQUEE_SELECTION	"_MWM_MARQUEE_SELECTION"
 #define _XA_MWM_WORKSPACE_HINTS		"_MWM_WORKSPACE_HINTS"
 #define _XA_MWM_WORKSPACE_PRESENCE	"_MWM_WORKSPACE_PRESENCE"
+/*
+ * Which monitor a window belongs to, new in 1.3. The sibling of the workspace
+ * presence property above, and set the same way: a STRING naming an output, or
+ * "all", "primary" or "current". mWand sets it on itself; see WmMonitor.h for
+ * what the values mean.
+ */
+#define _XA_MWM_MONITOR_PRESENCE	"_MWM_MONITOR_PRESENCE"
 #define _XA_MWM_WORKSPACE_INFO		"_MWM_WORKSPACE_INFO"
 #define _XA_MWM_WM_HINTS			"_MWM_WM_HINTS"
 #define _XA_MWM_WORKSPACE_LIST		"_MWM_WORKSPACE_LIST"
@@ -173,6 +180,12 @@ extern Pixel		FPselectcolor;
 #define FB_OFF			(0)
 #define FB_SIZE			(1L << 0)
 #define FB_POSITION		(1L << 1)
+/*
+ * A single line of text in the same box, new in 1.3. Used for the workspace
+ * switch notice, which wanted a small styled popup on the right monitor and
+ * would otherwise have needed a second window and a second set of GCs for it.
+ */
+#define FB_TEXT			(1L << 2)
 
 /* confirmbox and waitbox indexes */
 #define RESTART_ACTION		0
@@ -627,6 +640,17 @@ typedef struct _WsPresenceData
     Widget		workspaceScrolledListW;
     Widget		workspaceListW;
     Widget		allWsW;
+
+    /*
+     * Which monitor the window belongs to, new in 1.3. An option menu rather
+     * than a second toggle list, because unlike workspaces the choices are
+     * exclusive: a window is on one head, or it follows its own position, or
+     * it is pinned to all of them. See WmMonitor.h.
+     */
+    Widget		monitorLabelW;
+    Widget		monitorMenuW;
+    Widget		monitorPaneW;
+
     Widget		sepW;
     Widget		OkW;
     Widget		CancelW;
@@ -644,7 +668,7 @@ typedef struct _WsPresenceData
 
 } WsPresenceData;
 
-#define NUM_WSP_WIDGETS 	11
+#define NUM_WSP_WIDGETS 	14
 
 typedef struct _WsPresenceData *PtrWsPresenceData;
 
@@ -1115,6 +1139,8 @@ typedef struct _WmScreenData
     unsigned int fbWinHeight;
     XmString fbLocation;
     XmString fbSize;
+    XmString fbText;		/* FB_TEXT: the line being shown */
+    XtIntervalId fbTextTimer;	/* and what takes it away again */
     int fbLocX;
     int fbLocY;
     int fbSizeX;
@@ -1212,6 +1238,26 @@ typedef struct _WmScreenData
     unsigned long		strutRight;
     unsigned long		strutTop;
     unsigned long		strutBottom;
+
+    /*
+     * The physical heads this X screen is made of. Always at least one; see
+     * WmMonitor.h. numMonitors is the length of pMonitors, not a count of
+     * anything the server reported -- a screen with no RandR and no Xinerama
+     * still gets a single monitor covering the root window, so that no caller
+     * needs an empty-list path.
+     */
+    struct _WmMonitorData	*pMonitors;
+    int				numMonitors;
+
+    /*
+     * The names of every connected output, comma separated and sorted, as of
+     * the last time it was looked at. Kept so that an RROutputChangeNotify can
+     * be told from noise -- the event fires for a mode change and a DPMS blank
+     * as readily as for a plug -- and so that a saved layout can be keyed on
+     * the set of screens actually attached. See NoteConnectedOutputs().
+     */
+    char			*connectedOutputs;
+
     Boolean	bMarqueeSelectionInitialized;
 
 } WmScreenData;
@@ -1530,6 +1576,17 @@ typedef struct _ClientData
     Boolean	putInAll;		/* persistent window flag */
     long	wsmFunctions;
 
+    /*
+     * Which monitor this window belongs to, new in 1.3. MONITOR_FOLLOW (the
+     * default) means whichever head its coordinates put it on; MONITOR_ALL
+     * means it stays visible whatever any head is showing, which is what a
+     * panel or a tray wants; anything else is a monitor index it is pinned to.
+     * Set from the "monitor" client resource, from _MWM_MONITOR_PRESENCE, or
+     * from the presence dialog. See WmMonitor.h.
+     */
+    int		monitorPresence;
+    String	monitorSpec;		/* resource, resolved to the above */
+
 #ifndef NO_SHAPE
     short       wShaped;                /* this window has a bounding shape */
 #endif /* NO_SHAPE  */
@@ -1762,6 +1819,7 @@ typedef struct _WmGlobalData
 
     Atom	xa_MWM_WORKSPACE_HINTS;
     Atom	xa_MWM_WORKSPACE_PRESENCE;
+    Atom	xa_MWM_MONITOR_PRESENCE;
     Atom	xa_MWM_WORKSPACE_INFO;
     Atom	xa_MWM_WORKSPACE_LIST;
     Atom	xa_MWM_WORKSPACE_CURRENT;
@@ -1847,7 +1905,26 @@ typedef struct _WmGlobalData
     int primaryXineramaScreen;
 	int xineramaScreenFocus;
 	Boolean xineramaIconifyToPrimary;
-	
+
+	/*
+	 * Monitors, new in 1.3.
+	 *
+	 * primaryMonitor names a RandR output and so outlives a hotplug that
+	 * renumbers the heads, which is what primaryXineramaScreen -- a bare
+	 * index into a list whose order the server chooses -- cannot do. The
+	 * old resource still works and is still honoured; this one wins when
+	 * it is set and names a monitor that is present.
+	 */
+	String primaryMonitor;
+	Boolean perMonitorWorkspaces;
+	Boolean monitorDialogOnHotplug;
+	String monitorLayoutFile;
+
+	/* Feedback on a workspace switch; see WmWrkspace.c */
+	int workspaceFeedback;
+	int workspaceFeedbackTimeout;
+	String workspaceNotifyCommand;
+
 	/* Extension info */
     Boolean xrandr_present;
     int xrandr_base_evt;
@@ -1866,6 +1943,11 @@ typedef struct _WmGlobalData
 /* According to the xkb protocol bits 13 and 14 are interpreted as a  */
 /* two-bit unsigned numeric value and report the state keyboard group */
 #define NOLOCKMOD(state)  ((state) & ~wmGD.lockingModMask & ~(3 << 13))
+
+/* workspace switch feedback (workspaceFeedback): */
+#define WS_FEEDBACK_NONE	0
+#define WS_FEEDBACK_BOX		1
+#define WS_FEEDBACK_COMMAND	2
 
 /* absent map behavior policy values (absentMapBehavior): */
 #define AMAP_BEHAVIOR_ADD       0

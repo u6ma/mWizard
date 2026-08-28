@@ -80,6 +80,8 @@
 #include "WmWinInfo.h"
 #include "WmWrkspace.h"
 #include "WmXinerama.h"
+#include "WmMonitor.h"
+#include "WmWrkspace.h"
 #include "WmEwmh.h"
 
 static void UpdateAndDrawResize(ClientData *pcd);
@@ -225,7 +227,12 @@ void HandleClientFrameMove (ClientData *pcd, XEvent *pev)
 	firstTime = False;
     }
 
-    big_inc = DisplayWidth (DISPLAY, SCREEN_FOR_CLIENT(pcd)) / 20;
+    /*
+     * A twentieth of the monitor the window is on, not of the whole root
+     * window. Across three heads the old figure made one Ctrl+arrow press
+     * throw the window most of the way across the desk.
+     */
+    big_inc = pcd->pSD->pMonitors[MonitorOfClient (pcd)].width / 20;
 
 
     /*
@@ -1712,25 +1719,55 @@ void DrawOutline (int x, int y, unsigned int width, unsigned int height)
 
 Boolean WindowIsOnScreen (ClientData *pCD, int *dx, int *dy)
 {
+  WmScreenData *pSD = pCD->pSD;
   int x1 = pCD->clientX;
   int x2 = pCD->clientX + pCD->clientWidth;
   int y1 = pCD->clientY;
   int y2 = pCD->clientY + pCD->clientHeight;
-  int screenW = DisplayWidth (DISPLAY, SCREEN_FOR_CLIENT(pCD));
-  int screenH = DisplayHeight(DISPLAY, SCREEN_FOR_CLIENT(pCD));
+  int i;
 
   *dx = *dy = 0;
-  
-  if (x2 < 0)			/* right frame border off left side of screen. */
-    *dx =  -x2;
-  else if (x1 > screenW)	/* left frame border off right side of screen. */
-    *dx = screenW - x1;
-  
-  if (y2 < 0)			/* bottom frame border off top of screen. */
-    *dy = -y2;
-  else if (y1 > screenH)	/* top frame border off bottom of screen. */
-    *dy = screenH - y1;
-  
+
+  /*
+   * "On screen" means overlapping some monitor, not lying inside the root
+   * window.
+   *
+   * Before 1.3 this compared against DisplayWidth/DisplayHeight, and on a
+   * multi-head desk that is the wrong rectangle in both directions. It is too
+   * generous, because two monitors of different heights leave corners of the
+   * root box that no monitor covers -- a window dragged into one is invisible
+   * and this said it was fine. And it is too mean in the sense that mattered
+   * less: it never noticed a window sitting in the gap at all.
+   */
+  for (i = 0; i < pSD->numMonitors; i++)
+  {
+    WmMonitorData *m = &pSD->pMonitors[i];
+
+    if (x2 > m->x && x1 < (m->x + m->width) &&
+        y2 > m->y && y1 < (m->y + m->height))
+      return (True);
+  }
+
+  /*
+   * Nowhere visible. Move it onto the nearest monitor, far enough that some
+   * of it can be grabbed -- the same "just enough to reach" rescue the old
+   * code performed against the screen edge.
+   */
+  {
+    int mon = MonitorFromLocation (pSD, x1, y1);
+    WmMonitorData *m = &pSD->pMonitors[mon];
+
+    if (x2 <= m->x)
+      *dx = m->x - x2 + 1;
+    else if (x1 >= (m->x + m->width))
+      *dx = (m->x + m->width) - x1 - 1;
+
+    if (y2 <= m->y)
+      *dy = m->y - y2 + 1;
+    else if (y1 >= (m->y + m->height))
+      *dy = (m->y + m->height) - y1 - 1;
+  }
+
   return ((*dx == 0) && (*dy == 0));
 }
 
@@ -1752,48 +1789,30 @@ Boolean WindowIsOnScreen (ClientData *pCD, int *dx, int *dy)
  *************************************<->***********************************/
 void RecomputeMaxConfig(ClientData *pCD)
 {
-	XineramaScreenInfo si;
 	int waX, waY, waWidth, waHeight;
-	int x1, y1, x2, y2;
- 
+
     int frmWidth = pCD->clientOffset.x * 2;
     int frmHeight = pCD->clientOffset.x + pCD->clientOffset.y;
-    
-   	if(!GetXineramaScreenFromLocation(pCD->clientX, pCD->clientY, &si)) {
-        si.x_org = 0;
-        si.y_org = 0;
-        si.width = DisplayWidth(DISPLAY, SCREEN_FOR_CLIENT(pCD));
-        si.height = DisplayHeight(DISPLAY, SCREEN_FOR_CLIENT(pCD));
-    }
 
     /*
-     * Clip the monitor rectangle to the area not reserved by docked clients
-     * such as a system tray, so that maximizing does not put windows under
-     * them. Struts are screen relative, hence the intersection rather than a
-     * plain subtraction: on a multi-monitor setup a strut on one edge of the
-     * screen must not shrink a monitor it does not touch.
+     * The usable rectangle of the monitor this window is on: its extent less
+     * the space docked clients reserved *on that monitor*, so that maximizing
+     * does not put windows under a tray.
+     *
+     * Before 1.3 this had to intersect the monitor rectangle with a screen-wide
+     * work area, because struts were only known screen-wide and subtracting
+     * them outright would have shrunk monitors the panel did not touch. The
+     * struts are attributed per monitor now (see RecomputeStruts()), so the
+     * intersection is gone and with it the case where a panel on one head
+     * quietly clipped the other.
      */
-    GetEwmhWorkArea(pCD->pSD, &waX, &waY, &waWidth, &waHeight);
-
-    x1 = (si.x_org > waX) ? si.x_org : waX;
-    y1 = (si.y_org > waY) ? si.y_org : waY;
-    x2 = ((si.x_org + si.width) < (waX + waWidth)) ?
-	    (si.x_org + si.width) : (waX + waWidth);
-    y2 = ((si.y_org + si.height) < (waY + waHeight)) ?
-	    (si.y_org + si.height) : (waY + waHeight);
-
-    /* Ignore the struts entirely rather than produce an unusable rectangle */
-    if((x2 - x1) > frmWidth && (y2 - y1) > frmHeight) {
-	si.x_org = x1;
-	si.y_org = y1;
-	si.width = x2 - x1;
-	si.height = y2 - y1;
-    }
+    MonitorWorkArea (pCD->pSD, MonitorOfClient (pCD),
+	&waX, &waY, &waWidth, &waHeight);
 
     pCD->oldMaxWidth = pCD->maxWidth;
-    pCD->maxWidth = si.width - frmWidth;
+    pCD->maxWidth = waWidth - frmWidth;
     pCD->oldMaxHeight = pCD->maxHeight;
-    pCD->maxHeight = si.height - frmHeight;
+    pCD->maxHeight = waHeight - frmHeight;
 
     if(pCD->maxWidth > pCD->maxWidthLimit)
 	    pCD->maxWidth = pCD->maxWidthLimit;
@@ -1826,8 +1845,8 @@ void RecomputeMaxConfig(ClientData *pCD)
      * measured from this rectangle in the first place, this is the only
      * origin at which the window is the size it was just told to be.
      */
-    pCD->maxX = si.x_org + pCD->clientOffset.x;
-    pCD->maxY = si.y_org + pCD->clientOffset.y;
+    pCD->maxX = waX + pCD->clientOffset.x;
+    pCD->maxY = waY + pCD->clientOffset.y;
 }
 
 
@@ -2024,14 +2043,26 @@ void ProcessNewConfiguration (ClientData *pCD, int x, int y, unsigned int width,
 	    pCD->clientY = y + yoff;
 	}
 	
-	/* If Xinerama is active and the client was moved to another
-	 * screen, update its maximized config dimensions */
+	/*
+	 * The client crossed onto another monitor.
+	 *
+	 * Two things follow from that. Its maximized size is the size of the
+	 * head it is on, so that has to be recomputed -- which is all this did
+	 * before 1.3. And under perMonitorWorkspaces the destination head may
+	 * be showing a workspace the window does not occupy, in which case the
+	 * window would be hidden the moment it arrived; RehomeClientToMonitor()
+	 * moves the occupancy along with it.
+	 *
+	 * Both are skipped while the window is on its way to a new maximized
+	 * state, since that is not a move the user made.
+	 */
 	if((nxs > 1) && !toNewMax && (changedValues & (CWX|CWY))){
-		XineramaScreenInfo prev_xs, cur_xs;
-		if( (GetXineramaScreenFromLocation(oldX, oldY, &prev_xs) &&
-			GetXineramaScreenFromLocation(x, y, &cur_xs) &&
-			(prev_xs.screen_number != cur_xs.screen_number)) ) {
-				RecomputeMaxConfig(pCD);
+		int prevMon = MonitorFromLocation(pCD->pSD, oldX, oldY);
+		int curMon = MonitorFromLocation(pCD->pSD, x, y);
+
+		if(prevMon != curMon) {
+			RecomputeMaxConfig(pCD);
+			RehomeClientToMonitor(pCD, prevMon, curMon);
 		}
 	}
     }
@@ -2251,7 +2282,12 @@ Boolean StartResizeConfig (ClientData *pcd, XEvent *pev)
     ClientToFrame(pcd, &junkX, &junkY, &maxWidth, &maxHeight);
 
     /* compute big increment values */
-    big_inc = DisplayWidth (DISPLAY, SCREEN_FOR_CLIENT(pcd)) / 20;
+    /*
+     * A twentieth of the monitor the window is on, not of the whole root
+     * window. Across three heads the old figure made one Ctrl+arrow press
+     * throw the window most of the way across the desk.
+     */
+    big_inc = pcd->pSD->pMonitors[MonitorOfClient (pcd)].width / 20;
 
     tmp_inc = big_inc - big_inc%pcd->widthInc;
     if (tmp_inc > 5*pcd->widthInc)
@@ -3453,6 +3489,36 @@ void FixFrameValues (ClientData *pcd, int *pfX, int *pfY, unsigned int *pfWidth,
  *************************************<->***********************************/
 void ForceOnScreen (int screen, int *pX, int *pY)
 {
+    WmScreenData *pSD = NULL;
+    WmMonitorData *m;
+    int i;
+
+    for (i = 0; i < wmGD.numScreens; i++)
+    {
+	if (wmGD.Screens[i].screen == screen) { pSD = &wmGD.Screens[i]; break; }
+    }
+
+    /*
+     * Onto a monitor, not merely inside the root window.
+     *
+     * Every caller here is about to warp the pointer, and a pointer parked in
+     * the unlit corner of an L-shaped arrangement is one the user cannot see.
+     * MonitorFromLocation() answers with the nearest head for a point in that
+     * dead space, so the clamp below lands somewhere real.
+     */
+    if (pSD && pSD->numMonitors > 0)
+    {
+	m = &pSD->pMonitors[MonitorFromLocation (pSD, *pX, *pY)];
+
+	if (*pX >= (m->x + m->width)) *pX = m->x + m->width - 1;
+	else if (*pX < m->x) *pX = m->x;
+
+	if (*pY >= (m->y + m->height)) *pY = m->y + m->height - 1;
+	else if (*pY < m->y) *pY = m->y;
+
+	return;
+    }
+
     if (*pX >= (DisplayWidth(DISPLAY, screen)))
 	*pX = DisplayWidth(DISPLAY, screen) - 1;
     else if (*pX < 0)

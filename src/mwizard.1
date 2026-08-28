@@ -606,12 +606,18 @@ interactivePlacementInteractivePlacementTrue/FalseTrue
 keyboardFocus-KeyboardFocus-stringexplicit
 PolicyPolicy
 lowerOnIconifyLowerOnIconifyTrue/FalseTrue
+monitorDialogOn-MonitorDialogOn-True/FalseFalse
+HotplugHotplug
+monitorLayoutFileMonitorLayoutFilefile$HOME/\&.mmonitors
 moveThresholdMoveThresholdpixels4
 multiScreenMultiScreenTrue/FalseFalse
 outlineWidthOutlineWidthpixels2
 passButtonsPassButtonsTrue/FalseFalse
 passSelectButtonPassSelectButtonTrue/FalseTrue
+perMonitor-PerMonitor-True/FalseTrue
+WorkspacesWorkspaces
 positionOnScreenPositionOnScreenTrue/FalseTrue
+primaryMonitorPrimaryMonitorstring(RandR primary)
 primaryXineramaScreenPrimaryXineramaScreenindex0
 quitTimeoutQuitTimeoutmillisec\&.1000
 raiseKeyFocusRaiseKeyFocusTrue/FalseFalse
@@ -623,6 +629,11 @@ startupKeyFocusStartupKeyFocusTrue/FalseTrue
 useWindowOutlineUseWindowOutlineTrue/FalseTrue
 wMenuButtonClickWMenuButtonClickTrue/FalseTrue
 wMenuButtonClick2WMenuButtonClick2True/FalseTrue
+workspaceFeedbackWorkspaceFeedbackstringnone
+workspaceFeedback-WorkspaceFeedback-millisec\&.1000
+TimeoutTimeout
+workspaceNotify-WorkspaceNotify-string(none)
+CommandCommand
 xineramaIconifyToPrimaryXineramaIconifyToPrimaryTrue/FalseFalse
 xineramaScreenFocusXineramaScreenFocusstringpointer
 .TE
@@ -770,6 +781,27 @@ resource value is True)\&. If a window is larger than the size of the screen,
 at least the upper-left corner of the window is on-screen\&. If the resource
 value is False, windows are placed in the requested position even if totally
 off-screen\&. The default value of this resource is True\&.
+.IP "\fImonitorDialogOnHotplug\fP\ (class\ \fIMonitorDialogOnHotplug\fP)" 10
+If True, mWmonitor is posted when an output is connected that was not present
+before\&. A layout saved in the file named by \fImonitorLayoutFile\fP for the
+monitors now attached is applied first, and when one is found the dialog is not
+posted\&. False is the default\&.
+.IP "\fImonitorLayoutFile\fP\ (class\ \fIMonitorLayoutFile\fP)" 10
+Names the file mWmonitor saves monitor layouts to and mWizard restores them
+from\&. Defaults to \fI$HOME/\&.mmonitors\fP\&. Entries are keyed on the set of
+connected output names, so several arrangements coexist in one file\&.
+.IP "\fIperMonitorWorkspaces\fP\ (class\ \fIPerMonitorWorkspaces\fP)" 10
+If True, each monitor shows its own workspace out of the one shared workspace
+list, and switching workspaces affects only the monitor being worked on\&.
+Which monitor that is follows \fIxineramaScreenFocus\fP\&. There is no
+observable difference on a single monitor, and True is the default\&.
+.IP "\fIprimaryMonitor\fP\ (class\ \fIPrimaryMonitor\fP)" 10
+Names the primary monitor by its RandR output name, as listed by
+\fBxrandr\fP(1) \(em for example \fIeDP\-1\fP or \fIDP\-2\fP\&. Takes
+precedence over \fIprimaryXineramaScreen\fP, which numbers a monitor rather
+than naming one and therefore changes meaning when an output is plugged in\&.
+Unset by default, in which case the monitor RandR itself marks primary is
+used\&.
 .IP "\fIprimaryXineramaScreen\fP\ (class\ \fIPrimaryXineramaScreen\fP)" 10
 This resource specifies the index of a Xinerama screen that is preferred for
 placing newly mapped application windows, modal dialog boxes and client icons
@@ -869,6 +901,18 @@ default value for this resource\&.
 .IP "\fIwMenuButtonClick2\fP\ (class\  \fIWMenuButtonClick2\fP)" 10
 When this resource is given the default value of True, a double-click
 action on the window menu button does an \fIf\&.kill function\fP\&.
+.IP "\fIworkspaceFeedback\fP\ (class\ \fIWorkspaceFeedback\fP)" 10
+Announces the new workspace when it changes\&. \fInone\fP, the default, does
+nothing; \fIbox\fP shows a small popup centred on the monitor that switched,
+drawn in the same window and the same style as the move and resize feedback;
+\fIcommand\fP runs \fIworkspaceNotifyCommand\fP instead\&.
+.IP "\fIworkspaceFeedbackTimeout\fP\ (class\ \fIWorkspaceFeedbackTimeout\fP)" 10
+How long the \fIbox\fP feedback above stays on the screen, in milliseconds\&.
+1000 is the default\&.
+.IP "\fIworkspaceNotifyCommand\fP\ (class\ \fIWorkspaceNotifyCommand\fP)" 10
+Run on a workspace switch when \fIworkspaceFeedback\fP is \fIcommand\fP\&.
+Run through the same shell as \fIf\&.exec\fP, with \fB$WORKSPACE\fP set to
+the workspace number and \fB$WORKSPACE_NAME\fP to its title\&.
 .IP "\fIxineramaIconifyToPrimary\fP\  (class\  \fIXineramaIconifyToPrimary\fP)" 10
 If this resource is set to True, client windows will be initially iconified to
 the primary Xinerama screen (see \fIprimaryXineramaScreen\fP resource), rather
@@ -1185,6 +1229,7 @@ matteTopShadowPixmapTopShadowPixmapcolortop
 matteWidthMatteWidthpixels0
 maximumClientSizeMaximumClientSizewxh
 vertical horizontalfill the screen
+monitorMonitorstringcurrent
 overrideGeometryOverrideGeometryWxH{+-}X{+-}Ynone
 occupyWorkspacesOccupyWorkspaces<Workspace ID> ... | allnone
 useClientIconUseClientIconTrue/FalseFalse
@@ -1387,6 +1432,15 @@ MWizard[\fI*screen_name\fP]*workspace_name*resource_id
 For example, \fIMWizard*ws0*title: Workspace I\fP will set the
 title for the first workspace. 
 The following workspace specific resources can be specified:
+.IP "\fImonitor\fP\ (class\ \fIMonitor\fP)" 10
+Which monitor the client belongs to\&. \fIcurrent\fP, the default, means
+whichever monitor the window is on; \fIprimary\fP pins it to the primary
+monitor; \fIall\fP keeps it on the screen whatever workspace any monitor is
+showing, which is what a panel or a system tray wants; anything else is taken
+as a RandR output name such as \fIDP\-1\fP\&. A name no monitor currently has
+is treated as \fIcurrent\fP rather than reported, so a block naming a monitor
+that is only sometimes attached is not an error\&. The client may override this
+for itself with the \fB_MWM_MONITOR_PRESENCE\fP property\&.
 .SS "Workspace Resources"
 .TS
 tab();

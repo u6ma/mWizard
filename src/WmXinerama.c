@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2018-2026 alx@fastestcode.org
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
  * to deal in the Software without restriction, including without limitation
@@ -20,110 +20,124 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+/*
+ * The Xinerama-shaped view of the monitor list.
+ *
+ * Until 1.3 this file owned the monitor data: it called XineramaQueryScreens()
+ * and kept the array in two file statics. It no longer does. WmMonitor.c owns
+ * the list -- backed by RandR, so the heads have names -- and this is the
+ * compatibility face over it.
+ *
+ * The file is kept rather than folded into WmMonitor.c because about twenty
+ * layout sites across WmWinConf.c, WmWinInfo.c, WmIPlace.c, WmMenu.c,
+ * WmCDecor.c, WmFeedback.c and the dialogs already speak this API, and every
+ * one of them gets named monitors, per-monitor struts and the nearest-monitor
+ * rule by having this reimplemented underneath them instead of being rewritten.
+ * XineramaScreenInfo carries exactly the four numbers they want.
+ *
+ * One behavioural change comes with that, and it is the point of the exercise:
+ * these functions used to return False whenever Xinerama was inactive, and
+ * every caller had a DisplayWidth/DisplayHeight fallback for that case. There
+ * is always at least one monitor now (WmMonitor.h says why), so they return
+ * True and the fallbacks have become dead code that stays for safety. On a
+ * single head the monitor covers the whole root and the answer is identical to
+ * what the fallback would have produced.
+ */
+
+#include <string.h>
+
 #include "WmGlobal.h"
 #include "WmError.h"
+#include "WmMonitor.h"
 #include "WmXinerama.h"
 
-static Bool is_active = False;
-static Bool is_present = False;
-static XineramaScreenInfo *g_xsi = NULL;
-static int g_nxsi = 0;
+static Bool FillFromMonitor(WmScreenData *pSD, int i, XineramaScreenInfo *xsi);
 
 /*
- * Checks for xinerama availability and fetches screen info.
+ * Copies one monitor into the shape the old callers expect.
  */
-void SetupXinerama(void)
+static Bool FillFromMonitor(WmScreenData *pSD, int i, XineramaScreenInfo *xsi)
 {
-	int major_opcode, first_event, first_error;
-	if((is_present = XQueryExtension(DISPLAY,"XINERAMA",
-		&major_opcode,&first_event,&first_error))) {
+	if(!pSD || i < 0 || i >= pSD->numMonitors) return False;
 
-		if(!XineramaIsActive(DISPLAY) ||
-			(g_xsi = XineramaQueryScreens(DISPLAY,&g_nxsi)) == NULL){
-			is_active = False;
-			return; 
-		}
-		is_active = True;
-	}
-}
+	xsi->screen_number = i;
+	xsi->x_org = pSD->pMonitors[i].x;
+	xsi->y_org = pSD->pMonitors[i].y;
+	xsi->width = pSD->pMonitors[i].width;
+	xsi->height = pSD->pMonitors[i].height;
 
-/*
- * Called on xrandr screen change events
- */
-void UpdateXineramaInfo(void)
-{
-	if(!is_present) return;
-	
-	if(g_xsi) XFree(g_xsi);
-	g_xsi = NULL;
-	
-	if(!XineramaIsActive(DISPLAY) ||
-		(g_xsi = XineramaQueryScreens(DISPLAY,&g_nxsi)) == NULL){
-		is_active = False;
-		return; 
-	}
-	is_active = True;
-}
-
-/*
- * Retrieves the count of xinerama screens available.
- */
-Bool GetXineramaScreenCount(int *i)
-{
-	if(!is_active) {
-		*i = 0;
-		return False;
-	}
-	*i = g_nxsi;
 	return True;
 }
 
 /*
- * Retrieves Xinerama screen info from given coordinates.
- * Returns True on success, False if xinerama is inactive or on error.
+ * Kept so that WmInitWs.c's early call still has something to call. The
+ * monitor list cannot be built here -- it is per screen, and no WmScreenData
+ * exists this early -- so SetupMonitors() is called from InitWmScreen()
+ * instead and this does nothing.
+ */
+void SetupXinerama(void)
+{
+}
+
+/*
+ * Called on xrandr screen change events.
+ *
+ * The rebuild belongs to WmMonitor.c now; HandleRRScreenChangeNotify() calls
+ * UpdateMonitors() directly and this remains only for callers that have not
+ * been changed.
+ */
+void UpdateXineramaInfo(void)
+{
+	if(ACTIVE_PSD) UpdateMonitors(ACTIVE_PSD);
+}
+
+/*
+ * Retrieves the count of monitors available.
+ */
+Bool GetXineramaScreenCount(int *i)
+{
+	WmScreenData *pSD = ACTIVE_PSD;
+
+	if(!pSD || pSD->numMonitors < 1) {
+		*i = 0;
+		return False;
+	}
+	*i = pSD->numMonitors;
+	return True;
+}
+
+/*
+ * Retrieves monitor info from given coordinates.
+ *
+ * A point outside every monitor now answers with the nearest one rather than
+ * failing; see MonitorFromLocation(). The negative-coordinate clamp the old
+ * implementation needed is gone with it -- a negative coordinate is simply a
+ * point off the left or top edge, and nearest handles it.
  */
 Bool GetXineramaScreenFromLocation(int x, int y, XineramaScreenInfo *xsi)
 {
-	int i;
+	WmScreenData *pSD = ACTIVE_PSD;
 
-	if(!is_active) return False;
-	
-	if(x < 0) x=0;
-	if(y < 0) y=0;
+	if(!pSD) return False;
 
-	for(i=0; i < g_nxsi; i++){
-		if((x >= g_xsi[i].x_org && x < (g_xsi[i].x_org+g_xsi[i].width)) &&
-			(y >= g_xsi[i].y_org &&	y < (g_xsi[i].y_org+g_xsi[i].height)))
-			break;
-	}
-
-	if(i < g_nxsi){
-		memcpy(xsi, &g_xsi[i], sizeof(XineramaScreenInfo));
-		return True;
-	}
-	return False;
+	return FillFromMonitor(pSD, MonitorFromLocation(pSD, x, y), xsi);
 }
 
 /*
- * Retrieves info for xinerama screen that contains the mouse pointer.
- * Returns True on success, False if xinerama is inactive or on error.
+ * Retrieves info for the monitor that contains the mouse pointer.
  */
 Bool GetXineramaScreenFromPointer(XineramaScreenInfo *xsi)
 {
-	Window wroot, wchild;
-	int root_x, root_y, child_x, child_y;
-	unsigned int mask;
-	
-	if(!XQueryPointer(DISPLAY,ACTIVE_ROOT,&wroot,&wchild,
-		&root_x,&root_y,&child_x,&child_y,&mask)) return False;
+	WmScreenData *pSD = ACTIVE_PSD;
 
-	return GetXineramaScreenFromLocation(root_x,root_y,xsi);
+	if(!pSD) return False;
+
+	return FillFromMonitor(pSD, MonitorFromPointer(pSD), xsi);
 }
 
 /*
- * Retrieves info for xinerama screen that contains a client window
- * with keyboard focus or the mouse pointer (in that order).
- * Returns True on success, False if xinerama is inactive or on error.
+ * Retrieves info for the monitor that contains a client window with keyboard
+ * focus or the mouse pointer (in that order).
  */
 Bool GetActiveXineramaScreen(XineramaScreenInfo *xsi)
 {
@@ -137,30 +151,25 @@ Bool GetActiveXineramaScreen(XineramaScreenInfo *xsi)
 }
 
 /*
- * Retrieves user's preferred xinerama screen.
- * Returns True on success, False if xinerama is inactive or on error.
+ * Retrieves the user's preferred monitor.
  */
 Bool GetPrimaryXineramaScreen(XineramaScreenInfo *xsi)
 {
-	if(!is_active) return False;
+	WmScreenData *pSD = ACTIVE_PSD;
 
-	if(wmGD.primaryXineramaScreen >= g_nxsi ||
-		wmGD.primaryXineramaScreen < 0){
-		Warning("PrimaryXineramaScreen out of range");
-		memcpy(xsi, &g_xsi[0], sizeof(XineramaScreenInfo));
-		return True;
-	}
-	memcpy(xsi,&g_xsi[wmGD.primaryXineramaScreen],
-		sizeof(XineramaScreenInfo));
-	return True;
+	if(!pSD) return False;
+
+	return FillFromMonitor(pSD, PrimaryMonitor(pSD), xsi);
 }
 
 /*
- * Retrieves xinerama screen info.
+ * Retrieves monitor info by index.
  */
 Bool GetXineramaScreenInfo(int index, XineramaScreenInfo *xsi)
 {
-	if(!is_active || index >= g_nxsi) return False;
-	memcpy(xsi, &g_xsi[index], sizeof(XineramaScreenInfo));
-	return True;
+	WmScreenData *pSD = ACTIVE_PSD;
+
+	if(!pSD) return False;
+
+	return FillFromMonitor(pSD, index, xsi);
 }

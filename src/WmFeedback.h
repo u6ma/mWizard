@@ -24,6 +24,20 @@
 
 void ConfirmAction (WmScreenData *pSD, int nbr);
 void HideFeedbackWindow (WmScreenData *pSD);
+
+/*
+ * A single styled line in the same feedback box, taken away after a timeout.
+ * See the note above ShowTextFeedback() for why the workspace notice reuses
+ * this window rather than putting up one of its own.
+ */
+void ShowTextFeedback (WmScreenData *pSD, int monitor, const char *text,
+	int timeout);
+
+/*
+ * The optional notice on a workspace switch: the feedback box, a command, or
+ * nothing, according to the workspaceFeedback resource.
+ */
+void AnnounceWorkspace (WmScreenData *pSD, WmWorkspaceData *pWS, int monitor);
 void InitCursorInfo (void);
 void PaintFeedbackWindow (WmScreenData *pSD);
 void ShowFeedbackWindow (WmScreenData *pSD, int x, int y, 

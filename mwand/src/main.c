@@ -63,6 +63,7 @@ static int xgrabkey_err_handler(Display*, XErrorEvent*);
 static int x_err_handler(Display*, XErrorEvent*);
 static void handle_root_event(XEvent*);
 static void set_ws_presence(Widget);
+static void set_monitor_presence(Widget);
 static void create_utility_widgets(Widget);
 static Widget create_user_host_widget(Widget);
 static void xt_sigusr1_handler(XtPointer, XtSignalId*);
@@ -227,6 +228,7 @@ int main(int argc, char **argv)
 	
 	XtRealizeWidget(wshell);
 	if(app_res.occupy_all) set_ws_presence(wshell);
+	set_monitor_presence(wshell);
 	set_icon(wshell);
 
 	if(setup_hotkeys())
@@ -303,6 +305,29 @@ static void set_ws_presence(Widget wshell)
 	
 	XChangeProperty(dpy, XtWindow(wshell), wps_atom,
 		wps_atom, 32, PropModeReplace, (unsigned char*)&all_atom, 1);
+}
+
+/*
+ * Which monitor the panel belongs to, new with mWizard 1.3.
+ *
+ * Set unconditionally, unlike the workspace property above, because both of
+ * its values are meaningful: "primary" is the default and says the panel lives
+ * on the primary head, "all" says it should be on the screen whatever any head
+ * is showing. Leaving it unset would mean "follow the window", which for a
+ * panel placed once by its own geometry is the least useful of the three.
+ *
+ * A window manager that does not know the property ignores it, so this is
+ * safe to set under any of them. See src/WmMonitor.h in mWizard.
+ */
+static void set_monitor_presence(Widget wshell)
+{
+	Display *dpy = XtDisplay(wshell);
+	Atom mp_atom = XInternAtom(dpy, _XA_MWM_MONITOR_PRESENCE, False);
+	const char *value = app_res.occupy_all_monitors ? "all" : "primary";
+
+	XChangeProperty(dpy, XtWindow(wshell), mp_atom,
+		XA_STRING, 8, PropModeReplace,
+		(unsigned char*)value, (int)strlen(value));
 }
 
 static Boolean setup_hotkeys(void)
