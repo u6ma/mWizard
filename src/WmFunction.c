@@ -1783,7 +1783,31 @@ Boolean F_Menu (String args, ClientData *pCD, XEvent *event)
      * This should have been done in MakeWmFunctionResources().
      */
 
-    pSD = (pCD) ? PSD_FOR_CLIENT(pCD) : ACTIVE_PSD;
+    /*
+     * Which screen the menu is built on.
+     *
+     * A menu belongs to one X screen and cannot be shown on another, so for a
+     * click on the root this has to come from the event rather than from
+     * ACTIVE_PSD. ACTIVE_PSD is whichever screen was last made active, which
+     * on a display with more than one X screen is not necessarily the one just
+     * clicked -- and the menu then gets built on that other screen's shells
+     * and appears there, however far away the pointer was. On a single screen
+     * the two are always the same and this changes nothing.
+     */
+    if (pCD)
+    {
+	pSD = PSD_FOR_CLIENT(pCD);
+    }
+    else
+    {
+	pSD = event ? GetScreenForWindow (event->xany.window) : NULL;
+
+	if (pSD)
+	    SetActiveScreen (pSD);
+	else
+	    pSD = ACTIVE_PSD;
+    }
+
     if ((menuSpec = MakeMenu (pSD, args, menuContext, 
 			      menuContext, (MenuItem *) NULL, FALSE)) != NULL)
     {

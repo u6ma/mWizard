@@ -37,6 +37,7 @@
 static char* get_line(void);
 static char* skip_blanks(char *p);
 static void parse_line(char *line, struct tb_entry *e);
+static int is_bare_keyword(const char *line);
 static void set_parse_error(int line, const char *text);
 static struct tb_entry* add_entry(const struct tb_entry *ent);
 static int parse_buffer(void);
@@ -85,6 +86,27 @@ static char* skip_blanks(char *p)
 	return p;
 }
 
+/*
+ * True for one all-caps word on its own -- the shape every built-in keyword
+ * has. Digits and underscores allowed so that a later FOO_2 still matches.
+ */
+static int is_bare_keyword(const char *line)
+{
+	const char *p = line;
+
+	if(!*p) return 0;
+
+	for(; *p; p++){
+		if(*p >= 'A' && *p <= 'Z') continue;
+		if(*p >= '0' && *p <= '9') continue;
+		if(*p == '_') continue;
+		return 0;
+	}
+
+	/* has to start with a letter, and be more than one character */
+	return (line[0] >= 'A' && line[0] <= 'Z' && line[1] != '\0');
+}
+
 /* Parses a line into the given entry structure */
 static void parse_line(char *line, struct tb_entry *e)
 {
@@ -111,6 +133,26 @@ static void parse_line(char *line, struct tb_entry *e)
 	/* Likewise MONITORS, which posts mWmonitor, the monitor arranger. */
 	if(!strcmp(line,"MONITORS")){
 		e->type=TBE_MONITORS;
+		return;
+	}
+
+	/*
+	 * A bare keyword this build does not know: skipped, not fatal.
+	 *
+	 * The built-ins are written as one all-caps word with no command, so
+	 * anything shaped like that and not recognised above is a keyword from
+	 * a newer mWand, not a menu title -- nobody labels a menu "MONITORS".
+	 *
+	 * Without this it parses as a cascade, a cascade with no brace after
+	 * it is a fatal error, and a fatal error in the rc file means mWand
+	 * does not start at all. So installing a config one release ahead of
+	 * the binary -- which is a normal thing to end up with, since mWand is
+	 * built by a separate make target from the files it reads -- left the
+	 * user with no panel and a parser message about menu scope. A keyword
+	 * from the future should cost its own menu entry and nothing else.
+	 */
+	if(is_bare_keyword(line)){
+		e->type=TBE_IGNORE;
 		return;
 	}
 	
@@ -222,8 +264,29 @@ static int parse_buffer(void)
 			nlevel++;
 			continue;
 		}else if(*line == '}'){
-			if(!nlevel || prev->type != TBE_COMMAND){
+			/*
+			 * A menu may end with any entry except a cascade.
+			 *
+			 * This used to insist the last entry before a brace be
+			 * a command, which quietly made "SEPARATOR", "MWINFO"
+			 * or "MONITORS" as the final line of a menu a fatal
+			 * parse error -- and a fatal parse error here means
+			 * mWand does not start at all, with a message about
+			 * delimiters that says nothing about the real cause.
+			 * There is no reason a menu cannot end in a built-in.
+			 *
+			 * What is genuinely wrong is a brace straight after a
+			 * cascade, which is an empty submenu, and that is
+			 * still refused.
+			 */
+			if(!nlevel){
 				set_parse_error(iline,"Delimiter \'}\' out of scope");
+				return -1;
+			}
+			if(prev && prev->type == TBE_CASCADE &&
+				prev->level == nlevel - 1){
+				set_parse_error(iline,
+					"Cascade entry has an empty menu");
 				return -1;
 			}
 			nlevel--;

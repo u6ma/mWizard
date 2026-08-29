@@ -84,6 +84,7 @@ static void AdjustMenuPosition(int *x, int *y,
 	unsigned int width, unsigned int height);
 static void MenuScreenRect(int x, int y, XineramaScreenInfo *xsi);
 static void SubMenuPopupCB(Widget, XtPointer, XtPointer);
+static void PlaceMenuShell(Widget menuW, int x, int y);
 static void CheckTerminalSeparator(MenuSpec *menuSpec,
 	Widget buttonWidget, Boolean manage);
 
@@ -1471,31 +1472,11 @@ void PostMenu (MenuSpec *menuSpec, ClientData *pCD, int x, int y, unsigned int b
     XmMenuPosition (menuSpec->menuWidget, &event);
 
     /*
-     * And then say where the menu goes, rather than leaving it to Motif.
-     *
-     * AdjustMenuPosition() above has already worked out a position that keeps
-     * the menu on the monitor it was asked for. XmMenuPosition() then does its
-     * own off-screen correction on top of that, against whatever it believes
-     * the screen to be -- and a Motif that gets that wrong on a multi-head
-     * desk quietly drags the menu onto another monitor, which is exactly the
-     * symptom: right-click anywhere, menu appears on the primary.
-     *
-     * The pane's parent is an XmMenuShell, which is override-redirect, so
-     * placing it is a plain move with no window manager in the loop and
-     * nothing to negotiate. mWizard knows where it wants the menu; this is it
-     * saying so and not being argued with.
+     * A first placement, so the shell is already about right before it is
+     * mapped. It is not the last word -- see PlaceMenuShell() after the menu
+     * is managed, which is.
      */
-    {
-	Widget shellW = XtParent (menuSpec->menuWidget);
-
-	if (shellW && XtIsShell (shellW))
-	{
-	    i = 0;
-	    XtSetArg (args[i], XmNx, (XtArgVal) x);	i++;
-	    XtSetArg (args[i], XmNy, (XtArgVal) y);	i++;
-	    XtSetValues (shellW, args, i);
-	}
-    }
+    PlaceMenuShell (menuSpec->menuWidget, x, y);
 
     wmGD.menuClient = pCD;
     wmGD.menuActive = menuSpec;   /* set to NULL within UnmapCallback() */
@@ -1527,6 +1508,25 @@ void PostMenu (MenuSpec *menuSpec, ClientData *pCD, int x, int y, unsigned int b
 #ifndef ALTERNATE_POSTMENU
 
     XtManageChild (menuSpec->menuWidget);
+
+    /*
+     * And now, after managing, place it for real.
+     *
+     * This has to come after XtManageChild() and that is the entire point.
+     * The pane is an XmRowColumn of type XmMENU_POPUP and managing it is what
+     * makes Motif's MenuShell lay the popup out -- including its own
+     * correction for running off the screen, against whatever Motif believes
+     * the screen to be. Anything set before that is simply overwritten.
+     *
+     * mWizard placed the menu before the manage as well, and it looked right,
+     * and it did nothing at all: Motif dragged it back onto the first monitor
+     * a moment later. Placing it here instead is what actually decides where
+     * the menu ends up.
+     *
+     * The shell is an XmMenuShell and override-redirect, so this is a plain
+     * move with no window manager in the loop and nothing to negotiate.
+     */
+    PlaceMenuShell (menuSpec->menuWidget, x, y);
 
 #else
     if (flags & POST_STICKY)
@@ -1946,6 +1946,30 @@ static void MenuScreenRect(int x, int y, XineramaScreenInfo *xsi)
 		xsi->width = XDisplayWidth(DISPLAY, ACTIVE_SCREEN);
 		xsi->height = XDisplayHeight(DISPLAY, ACTIVE_SCREEN);
 	}
+}
+
+/*
+ * Moves a posted menu's shell to x,y and makes Xt agree that is where it is.
+ *
+ * XtSetValues on a realized shell moves the window, and keeps core.x/core.y in
+ * step so that anything Xt does with the geometry afterwards is consistent --
+ * which XMoveWindow() on its own would not.
+ */
+static void PlaceMenuShell(Widget menuW, int x, int y)
+{
+	Widget shellW;
+	Arg args[2];
+	int i;
+
+	if(!menuW) return;
+
+	shellW = XtParent(menuW);
+	if(!shellW || !XtIsShell(shellW)) return;
+
+	i = 0;
+	XtSetArg(args[i], XmNx, (XtArgVal) x);	i++;
+	XtSetArg(args[i], XmNy, (XtArgVal) y);	i++;
+	XtSetValues(shellW, args, i);
 }
 
 static void AdjustMenuPosition(int *x, int *y,

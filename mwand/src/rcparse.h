@@ -30,7 +30,8 @@ enum tb_entry_type {
 	TBE_COMMAND,
 	TBE_SEPARATOR,
 	TBE_MWINFO,	/* built-in: posts the window manager's About window */
-	TBE_MONITORS	/* built-in: posts mWmonitor, the monitor arranger */
+	TBE_MONITORS,	/* built-in: posts mWmonitor, the monitor arranger */
+	TBE_IGNORE	/* a bare keyword this build does not know; skipped */
 };
 
 struct tb_entry {

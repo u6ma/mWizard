@@ -260,6 +260,10 @@ Boolean ConstructMenu(void)
 			XmStringFree(title);
 			XtManageChild(w);
 
+		}else if(cur->type == TBE_IGNORE){
+			/* A keyword from a newer mWand; see rcparse.c. */
+			;
+
 		}else if(cur->type == TBE_SEPARATOR){
 			w = XmCreateSeparatorGadget(
 				wlevel[cur->level], "separator", NULL, 0);
