@@ -53,6 +53,7 @@
 #include "WmFunction.h"
 #include "WmError.h"
 #include "WmXinerama.h"
+#include "WmMonitor.h"
 
 static Boolean MakeWinfoDialog(WmScreenData *pSD);
 static Pixmap MakeWinfoLogo(WmScreenData *pSD, Widget parent);
@@ -301,6 +302,7 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
 	Boolean haveXinerama = (GetXineramaScreenCount (&xsiCount) &&
 				xsiCount > 1);
 	const char *extensions;
+	char monitors[1024];
 
 	if (haveXinerama && wmGD.xrandr_present)
 	    extensions = "Xinerama, XRandR";
@@ -310,6 +312,36 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
 	    extensions = "XRandR";
 	else
 	    extensions = "none detected";
+
+	/*
+	 * The monitor list as mWizard actually sees it -- name, geometry and
+	 * which one is primary.
+	 *
+	 * Here because every multi-monitor question comes down to whether the
+	 * window manager agrees with the hardware, and until 1.3 there was no
+	 * way to ask short of reading the source. A menu landing on the wrong
+	 * head, or maximize filling the wrong rectangle, is this list being
+	 * wrong; and if it disagrees with "xrandr -q" then the fault is here
+	 * rather than anywhere it shows up.
+	 */
+	{
+	    char line[160];
+	    int i;
+
+	    monitors[0] = '\0';
+
+	    for (i = 0; i < pSD->numMonitors; i++)
+	    {
+		WmMonitorData *m = &pSD->pMonitors[i];
+
+		snprintf (line, sizeof (line), "  %-12s %dx%d%+d%+d%s\n",
+			  m->name, m->width, m->height, m->x, m->y,
+			  m->primary ? "  primary" : "");
+
+		if (strlen (monitors) + strlen (line) < sizeof (monitors))
+		    strcat (monitors, line);
+	    }
+	}
 
 	snprintf (body, sizeof (body),
 		  "%s\n"
@@ -322,6 +354,8 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
 		  "Release: %d\n"
 		  "Extensions: %s\n"
 		  "Toolkit: Motif %d.%d.%d\n"
+		  "Monitors: %d\n"
+		  "%s"
 		  "\n"
 		  "%s",
 		  winfoAboutText,
@@ -332,6 +366,8 @@ static Boolean MakeWinfoDialog(WmScreenData *pSD)
 		  (int) VendorRelease (DISPLAY),
 		  extensions,
 		  XmVERSION, XmREVISION, XmUPDATE_LEVEL,
+		  pSD->numMonitors,
+		  monitors,
 		  winfoLicenseText);
     }
 

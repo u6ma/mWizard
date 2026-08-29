@@ -118,6 +118,16 @@ void DestroyMonitors(WmScreenData *pSD);
  */
 int MonitorFromLocation(WmScreenData *pSD, int x, int y);
 
+/*
+ * The monitor that actually contains a point, or -1 if none does.
+ *
+ * The strict form of the above, for callers that need to know the difference.
+ * Clamping something to a monitor the pointer is not on is worse than not
+ * clamping it at all: it does not keep the thing on screen, it moves it to
+ * another screen.
+ */
+int MonitorContaining(WmScreenData *pSD, int x, int y);
+
 /* Index of the monitor a client's frame origin is on. */
 int MonitorOfClient(ClientData *pCD);
 

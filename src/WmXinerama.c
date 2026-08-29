@@ -35,13 +35,14 @@
  * rule by having this reimplemented underneath them instead of being rewritten.
  * XineramaScreenInfo carries exactly the four numbers they want.
  *
- * One behavioural change comes with that, and it is the point of the exercise:
- * these functions used to return False whenever Xinerama was inactive, and
- * every caller had a DisplayWidth/DisplayHeight fallback for that case. There
- * is always at least one monitor now (WmMonitor.h says why), so they return
- * True and the fallbacks have become dead code that stays for safety. On a
- * single head the monitor covers the whole root and the answer is identical to
- * what the fallback would have produced.
+ * The callers' fallbacks still matter. Every one of these used to return False
+ * when Xinerama was inactive, and each caller has a DisplayWidth/DisplayHeight
+ * path for that. 1.3 first made them always succeed -- there is always at least
+ * one monitor now -- and that was a mistake worth recording: it made
+ * GetXineramaScreenFromLocation() answer with the nearest monitor for a point
+ * on no monitor at all, so a caller clamping to that rectangle moved the thing
+ * it was clamping onto a different screen instead of leaving it alone. The
+ * location query is strict again and the fallbacks are live.
  */
 
 #include <string.h>
@@ -107,20 +108,36 @@ Bool GetXineramaScreenCount(int *i)
 }
 
 /*
- * Retrieves monitor info from given coordinates.
- *
- * A point outside every monitor now answers with the nearest one rather than
- * failing; see MonitorFromLocation(). The negative-coordinate clamp the old
- * implementation needed is gone with it -- a negative coordinate is simply a
- * point off the left or top edge, and nearest handles it.
+ * Retrieves monitor info from given coordinates, or False if the point is on
+ * no monitor at all.
  */
 Bool GetXineramaScreenFromLocation(int x, int y, XineramaScreenInfo *xsi)
 {
 	WmScreenData *pSD = ACTIVE_PSD;
+	int mon;
 
 	if(!pSD) return False;
 
-	return FillFromMonitor(pSD, MonitorFromLocation(pSD, x, y), xsi);
+	/*
+	 * Strictly the monitor containing the point, and False when none does.
+	 *
+	 * This keeps the contract the callers were written against, and 1.3
+	 * briefly broke it: answering with the *nearest* monitor made this
+	 * always succeed, which turned every caller's whole-root fallback into
+	 * dead code. That is fine while the monitor list is right and actively
+	 * harmful when it is not -- a menu posted at a point the list does not
+	 * cover stopped being left alone and started being clamped onto
+	 * whichever head came nearest, which on a two-head desk means the menu
+	 * jumps to the other monitor.
+	 *
+	 * Callers that want the nearest monitor for a point in the dead space
+	 * of an L-shaped arrangement -- the clamping sites in WmWinConf.c --
+	 * ask MonitorFromLocation() directly and get it.
+	 */
+	mon = MonitorContaining(pSD, x, y);
+	if(mon < 0) return False;
+
+	return FillFromMonitor(pSD, mon, xsi);
 }
 
 /*

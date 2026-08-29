@@ -400,6 +400,26 @@ void DestroyMonitors(WmScreenData *pSD)
     }
 }
 
+int MonitorContaining(WmScreenData *pSD, int x, int y)
+{
+    int i;
+
+    if (!pSD) return (-1);
+
+    for (i = 0; i < pSD->numMonitors; i++)
+    {
+	WmMonitorData *m = &pSD->pMonitors[i];
+
+	if (x >= m->x && x < (m->x + m->width) &&
+	    y >= m->y && y < (m->y + m->height))
+	{
+	    return (i);
+	}
+    }
+
+    return (-1);
+}
+
 int MonitorFromLocation(WmScreenData *pSD, int x, int y)
 {
     int i;

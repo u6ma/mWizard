@@ -50,9 +50,10 @@
 #include <Xm/Frame.h>
 #include <Xm/Label.h>
 #include <Xm/PushB.h>
-#include <Xm/PushBG.h>
 #include <Xm/ToggleB.h>
 #include <Xm/DrawingA.h>
+#include <Xm/List.h>
+#include <Xm/ScrolledW.h>
 #include <Xm/RowColumn.h>
 #include <Xm/SeparatoG.h>
 
@@ -70,17 +71,21 @@ static void PlaceMonitorDialog(WmScreenData *pSD);
 static void UnpostMonitorDialog(void);
 static void LoadConfig(void);
 static void FreeConfig(void);
-static void RebuildModeMenu(void);
+static void RebuildModeList(void);
 static void SyncControls(void);
 static void CanvasScale(int *ox, int *oy, double *scale);
 static int  CanvasHit(int cx, int cy);
 static void SnapSelected(void);
+static void ResolveOverlaps(void);
+static Boolean MonitorsOverlap(WmMonitorConfig *a, WmMonitorConfig *b);
 
 static void CanvasExposeCB(Widget, XtPointer, XtPointer);
 static void CanvasInputCB(Widget, XtPointer, XtPointer);
 static void CanvasMotionEH(Widget, XtPointer, XEvent*, Boolean*);
 static void HandleCanvasEvent(XEvent *ev);
 static void ModeCB(Widget, XtPointer, XtPointer);
+static void PostMonitorNow(void);
+static void PostMonitorTimeout(XtPointer, XtIntervalId*);
 static void PrimaryCB(Widget, XtPointer, XtPointer);
 static void EnabledCB(Widget, XtPointer, XtPointer);
 static void ApplyCB(Widget, XtPointer, XtPointer);
@@ -92,8 +97,7 @@ static void MonitorProtocolHandler(Widget, XtPointer, XEvent*, Boolean*);
 static Widget monShellW = NULL;
 static Widget monCanvasW = NULL;
 static Widget monNameW = NULL;
-static Widget monModeMenuW = NULL;
-static Widget monModePaneW = NULL;
+static Widget monModeListW = NULL;
 static Widget monPrimaryW = NULL;
 static Widget monEnabledW = NULL;
 static WmScreenData *monPSD = NULL;
@@ -109,15 +113,9 @@ static WmMonitorMode *monModes = NULL;
 static int monNumModes = 0;
 
 /*
- * The mode menu's buttons, in the same order as monModes.
- *
- * Kept rather than read back from the pane with XmNchildren, because
- * XtDestroyWidget() is deferred: a widget destroyed here stays on its parent's
- * child list until Xt returns to the event loop, so a rebuild leaves the old
- * buttons and the new ones on that list together and an index into it names
- * the wrong mode.
+ * Posting is deferred by one turn of the event loop; see PostMonitorDialog().
  */
-static WidgetList monModeBtns = NULL;
+static XtIntervalId monPostTimer = (XtIntervalId) 0;
 
 /*
  * The canvas GCs.
@@ -171,8 +169,6 @@ static void FreeConfig(void)
     monModes = NULL;
     monNumModes = 0;
 
-    if (monModeBtns) XtFree ((char *) monModeBtns);
-    monModeBtns = NULL;
 }
 
 /*
@@ -328,6 +324,69 @@ static int CanvasHit(int cx, int cy)
  * user can drag a monitor to the left of the primary without having to think
  * about it.
  */
+/* Two monitor rectangles sharing any area at all. */
+static Boolean MonitorsOverlap(WmMonitorConfig *a, WmMonitorConfig *b)
+{
+    return ((a->x < b->x + b->width) && (b->x < a->x + a->width) &&
+	    (a->y < b->y + b->height) && (b->y < a->y + a->height) ?
+		True : False);
+}
+
+/*
+ * Pushes the dragged monitor clear of anything it has landed on.
+ *
+ * RandR will happily accept overlapping CRTCs -- that is what mirroring looks
+ * like at the protocol level -- but two boxes sitting on top of each other in
+ * an arranger describe a desk nobody has, and the layout they save puts part
+ * of one screen inside another. The drag is a picture of where the monitors
+ * physically are, so the boxes are solid.
+ *
+ * Pushed along whichever axis needs the least movement, which is what makes it
+ * feel like sliding a monitor against its neighbour rather than teleporting.
+ * Repeated because clearing one neighbour can push it onto the next; bounded
+ * by the number of monitors, so it always terminates.
+ */
+static void ResolveOverlaps(void)
+{
+    WmMonitorConfig *m = &monCfg[monSelected];
+    int pass, i;
+
+    if (!m->enabled) return;
+
+    for (pass = 0; pass <= monNumCfg; pass++)
+    {
+	Boolean moved = False;
+
+	for (i = 0; i < monNumCfg; i++)
+	{
+	    WmMonitorConfig *o = &monCfg[i];
+	    int left, right, up, down, best;
+
+	    if (i == monSelected || !o->enabled) continue;
+	    if (!MonitorsOverlap (m, o)) continue;
+
+	    left  = (m->x + m->width) - o->x;
+	    right = (o->x + o->width) - m->x;
+	    up    = (m->y + m->height) - o->y;
+	    down  = (o->y + o->height) - m->y;
+
+	    best = left;
+	    if (right < best) best = right;
+	    if (up < best) best = up;
+	    if (down < best) best = down;
+
+	    if (best == left)       m->x -= left;
+	    else if (best == right) m->x += right;
+	    else if (best == up)    m->y -= up;
+	    else                    m->y += down;
+
+	    moved = True;
+	}
+
+	if (!moved) break;
+    }
+}
+
 static void SnapSelected(void)
 {
     WmMonitorConfig *m = &monCfg[monSelected];
@@ -361,6 +420,16 @@ static void SnapSelected(void)
 	d = o->y - m->y;
 	if (d > -SNAP_DISTANCE && d < SNAP_DISTANCE) m->y = o->y;
     }
+
+    /*
+     * Snapping can seat an edge flush against a neighbour and still leave the
+     * two boxes overlapping, so this runs after it and before the layout is
+     * normalised back to the origin.
+     */
+    ResolveOverlaps ();
+
+    minX = m->x;
+    minY = m->y;
 
     for (i = 0; i < monNumCfg; i++)
     {
@@ -417,7 +486,7 @@ static void HandleCanvasEvent(XEvent *ev)
 	    if (hit != monSelected)
 	    {
 		monSelected = hit;
-		RebuildModeMenu ();
+		RebuildModeList ();
 		SyncControls ();
 	    }
 
@@ -465,69 +534,56 @@ static void HandleCanvasEvent(XEvent *ev)
  * do not offer the same number of modes, and a menu that kept the longest
  * output's worth of buttons would show modes the current one cannot drive.
  */
-static void RebuildModeMenu(void)
+/*
+ * Refills the mode list for the selected output.
+ *
+ * An XmList and not an option menu, and that is the whole point rather than a
+ * matter of taste.
+ *
+ * mWmonitor is posted from ActivateCallback() in WmMenu.c, which invokes an rc
+ * function *while the root menu is still posted and Motif still owns the
+ * pointer and keyboard grab that menu took* -- wmGD.menuActive is not cleared
+ * until the menu unmaps, later. Building a second Motif menu system from
+ * inside that reenters Motif's per-display menu state machine while it is
+ * mid-activation, and when that goes wrong the grab is never released: no
+ * pointer, no keyboard, no way to reach a terminal, nothing left but the power
+ * switch. f.run and f.about have always been safe from the same callback
+ * because neither creates a menu.
+ *
+ * A list has no menu shell, takes no grab, and touches none of that state. It
+ * also suits a list of thirty modes better than a pulldown does.
+ */
+static void RebuildModeList(void)
 {
-    XmRenderTable menuFont;
-    Arg args[8];
-    int n, i;
+    XmStringTable items;
+    int i;
 
-    if (!monModePaneW || !monNumCfg) return;
+    if (!monModeListW || !monNumCfg) return;
 
     if (monModes) XtFree ((char *) monModes);
     monModes = GetOutputModes (monPSD, monCfg[monSelected].name, &monNumModes);
 
-    if (monModeBtns) XtFree ((char *) monModeBtns);
-    monModeBtns = (WidgetList) XtCalloc (monNumModes ? monNumModes : 1,
-	    sizeof (Widget));
+    XmListDeleteAllItems (monModeListW);
 
-    {
-	WidgetList kids = NULL;
-	Cardinal numKids = 0;
+    if (monNumModes < 1) return;
 
-	n = 0;
-	XtSetArg (args[n], XmNchildren, &kids);		n++;
-	XtSetArg (args[n], XmNnumChildren, &numKids);	n++;
-	XtGetValues (monModePaneW, args, n);
-
-	while (numKids--) XtDestroyWidget (kids[numKids]);
-    }
-
-    /*
-     * Motif resolves a menu gadget's font from the ancestor menu shell rather
-     * than from a loose *renderTable binding, so this has to be set on every
-     * button as it is made or the menu ends up in Motif's default font while
-     * the rest of the window follows ~/.mstylesrc.
-     */
-    menuFont = StyleFont (WmStyleMenuFont);
+    items = (XmStringTable) XtCalloc (monNumModes, sizeof (XmString));
 
     for (i = 0; i < monNumModes; i++)
     {
 	char label[64];
-	XmString xms;
-	Widget btn;
 
 	snprintf (label, sizeof (label), "%dx%d  %d Hz%s",
 	    monModes[i].width, monModes[i].height, monModes[i].refresh,
-	    monModes[i].preferred ? "  (preferred)" : "");
+	    monModes[i].preferred ? "  *" : "");
 
-	xms = XmStringCreateLocalized (label);
-
-	n = 0;
-	XtSetArg (args[n], XmNlabelString, (XtArgVal) xms);	n++;
-	if (menuFont)
-	{
-	    XtSetArg (args[n], XmNrenderTable, (XtArgVal) menuFont); n++;
-	}
-
-	btn = XtCreateManagedWidget ("modeItem", xmPushButtonGadgetClass,
-		monModePaneW, args, n);
-	XmStringFree (xms);
-
-	monModeBtns[i] = btn;
-
-	XtAddCallback (btn, XmNactivateCallback,
-	    (XtCallbackProc) ModeCB, (XtPointer)(long) i);
+	items[i] = XmStringCreateLocalized (label);
     }
+
+    XmListAddItems (monModeListW, items, monNumModes, 1);
+
+    for (i = 0; i < monNumModes; i++) XmStringFree (items[i]);
+    XtFree ((char *) items);
 }
 
 /*
@@ -554,19 +610,20 @@ static void SyncControls(void)
     XmToggleButtonSetState (monPrimaryW, monCfg[monSelected].primary, False);
     XmToggleButtonSetState (monEnabledW, monCfg[monSelected].enabled, False);
 
-    /* Point the option menu at the mode this output is actually running. */
+    /* Point the list at the mode this output is actually running. */
+    if (!monModeListW) return;
+
+    XmListDeselectAllItems (monModeListW);
+
     for (i = 0; i < monNumModes; i++)
     {
 	if (monModes[i].width == monCfg[monSelected].width &&
 	    monModes[i].height == monCfg[monSelected].height &&
 	    monModes[i].refresh == monCfg[monSelected].refresh)
 	{
-	    if (monModeBtns && monModeBtns[i])
-	    {
-		XtSetArg (args[0], XmNmenuHistory,
-		    (XtArgVal) monModeBtns[i]);
-		XtSetValues (monModeMenuW, args, 1);
-	    }
+	    /* Positions are one-based, and False: selecting must not run the
+	     * callback, or syncing the display would count as a user edit. */
+	    XmListSelectPos (monModeListW, i + 1, False);
 	    break;
 	}
     }
@@ -574,9 +631,14 @@ static void SyncControls(void)
 
 static void ModeCB(Widget w, XtPointer client_data, XtPointer call_data)
 {
-    int i = (int)(long) client_data;
+    XmListCallbackStruct *cbs = (XmListCallbackStruct *) call_data;
+    int i;
 
-    if (i < 0 || i >= monNumModes || !monNumCfg) return;
+    if (!cbs || !monNumCfg) return;
+
+    i = cbs->item_position - 1;		/* the list counts from one */
+
+    if (i < 0 || i >= monNumModes) return;
 
     monCfg[monSelected].width = monModes[i].width;
     monCfg[monSelected].height = monModes[i].height;
@@ -649,7 +711,7 @@ static void ApplyCB(Widget w, XtPointer client_data, XtPointer call_data)
      * requested.
      */
     LoadConfig ();
-    RebuildModeMenu ();
+    RebuildModeList ();
     SyncControls ();
     CanvasExposeCB (monCanvasW, NULL, NULL);
 }
@@ -667,7 +729,7 @@ static void SaveCB(Widget w, XtPointer client_data, XtPointer call_data)
     SaveMonitorLayout (monPSD, monCfg, monNumCfg);
 
     LoadConfig ();
-    RebuildModeMenu ();
+    RebuildModeList ();
     SyncControls ();
     CanvasExposeCB (monCanvasW, NULL, NULL);
 }
@@ -675,7 +737,7 @@ static void SaveCB(Widget w, XtPointer client_data, XtPointer call_data)
 static void RevertCB(Widget w, XtPointer client_data, XtPointer call_data)
 {
     LoadConfig ();
-    RebuildModeMenu ();
+    RebuildModeList ();
     SyncControls ();
     CanvasExposeCB (monCanvasW, NULL, NULL);
 }
@@ -829,23 +891,6 @@ static Boolean MakeMonitorDialog(WmScreenData *pSD)
 				      controlsW, args, n);
     XmStringFree (xms);
 
-    /*
-     * XmCreateOptionMenu wants its pane made first and handed over, and the
-     * pane is a menu shell rather than a child of the row column -- which is
-     * why the font has to be set on each button in RebuildModeMenu() rather
-     * than inherited from anything here.
-     */
-    n = 0;
-    monModePaneW = XmCreatePulldownMenu (controlsW, "modePane", args, n);
-
-    xms = XmStringCreateLocalized ("Mode");
-    n = 0;
-    XtSetArg (args[n], XmNsubMenuId, (XtArgVal) monModePaneW);	n++;
-    XtSetArg (args[n], XmNlabelString, (XtArgVal) xms);		n++;
-    monModeMenuW = XmCreateOptionMenu (controlsW, "modeMenu", args, n);
-    XmStringFree (xms);
-    XtManageChild (monModeMenuW);
-
     xms = XmStringCreateLocalized ("Primary");
     n = 0;
     XtSetArg (args[n], XmNlabelString, (XtArgVal) xms);		n++;
@@ -864,12 +909,38 @@ static Boolean MakeMonitorDialog(WmScreenData *pSD)
     XtAddCallback (monEnabledW, XmNvalueChangedCallback,
 	(XtCallbackProc) EnabledCB, NULL);
 
-    /* The canvas takes everything above the controls. */
+    /*
+     * The mode list, down the right hand side.
+     *
+     * Beside the canvas rather than in the row of controls below it: a list
+     * tall enough to be useful would otherwise push the canvas out of the
+     * window. XmCreateScrolledList hands back the list; its parent is the
+     * scrolled window, and that is what gets attached.
+     */
+    n = 0;
+    XtSetArg (args[n], XmNvisibleItemCount, (XtArgVal) 8);		n++;
+    XtSetArg (args[n], XmNselectionPolicy, (XtArgVal) XmBROWSE_SELECT);	n++;
+    monModeListW = XmCreateScrolledList (formW, "modeList", args, n);
+    XtManageChild (monModeListW);
+
+    XtAddCallback (monModeListW, XmNbrowseSelectionCallback,
+	(XtCallbackProc) ModeCB, NULL);
+
+    n = 0;
+    XtSetArg (args[n], XmNtopAttachment, (XtArgVal) XmATTACH_FORM);	n++;
+    XtSetArg (args[n], XmNrightAttachment, (XtArgVal) XmATTACH_FORM);	n++;
+    XtSetArg (args[n], XmNbottomAttachment, (XtArgVal) XmATTACH_WIDGET);n++;
+    XtSetArg (args[n], XmNbottomWidget, (XtArgVal) controlsW);		n++;
+    XtSetValues (XtParent (monModeListW), args, n);
+
+    /* The canvas takes everything above the controls, left of the list. */
     n = 0;
     XtSetArg (args[n], XmNshadowType, (XtArgVal) XmSHADOW_IN);		n++;
     XtSetArg (args[n], XmNtopAttachment, (XtArgVal) XmATTACH_FORM);	n++;
     XtSetArg (args[n], XmNleftAttachment, (XtArgVal) XmATTACH_FORM);	n++;
-    XtSetArg (args[n], XmNrightAttachment, (XtArgVal) XmATTACH_FORM);	n++;
+    XtSetArg (args[n], XmNrightAttachment, (XtArgVal) XmATTACH_WIDGET);	n++;
+    XtSetArg (args[n], XmNrightWidget,
+	(XtArgVal) XtParent (monModeListW));				n++;
     XtSetArg (args[n], XmNbottomAttachment, (XtArgVal) XmATTACH_WIDGET);n++;
     XtSetArg (args[n], XmNbottomWidget, (XtArgVal) controlsW);		n++;
     frameW = XtCreateManagedWidget ("canvasFrame", xmFrameWidgetClass,
@@ -897,7 +968,7 @@ static Boolean MakeMonitorDialog(WmScreenData *pSD)
     XtAddEventHandler (monCanvasW, ButtonMotionMask, False,
 	(XtEventHandler) CanvasMotionEH, NULL);
 
-    RebuildModeMenu ();
+    RebuildModeList ();
     SyncControls ();
 
     /*
@@ -908,6 +979,22 @@ static Boolean MakeMonitorDialog(WmScreenData *pSD)
     PlaceMonitorDialog (pSD);
 
     XtRealizeWidget (monShellW);
+
+    /*
+     * allowShellResize goes off once the window exists, and this is not
+     * cosmetic.
+     *
+     * With it on, anything that changes a child's preferred size after realize
+     * -- refilling the mode list, relabelling the monitor name -- makes Xt ask
+     * the window manager to resize the shell. The window manager is this
+     * process, and the ask can arrive while it is already inside a callback.
+     * The window is user-resizable and nothing here needs to drive its size,
+     * so the safe answer is to stop asking.
+     */
+    n = 0;
+    XtSetArg (args[n], XtNallowShellResize, (XtArgVal) False);	n++;
+    XtSetArg (args[n], XtNwaitForWm, (XtArgVal) False);		n++;
+    XtSetValues (monShellW, args, n);
 
     /*
      * No _MOTIF_WM_HINTS: this window is meant to behave like any other, so
@@ -955,7 +1042,38 @@ static void PlaceMonitorDialog(WmScreenData *pSD)
     XtSetValues (monShellW, args, n);
 }
 
+/*
+ * Posts the window, one turn of the event loop later.
+ *
+ * ActivateCallback() in WmMenu.c runs an rc function from inside Motif's menu
+ * activation, with the menu still posted and its pointer and keyboard grab
+ * still held -- wmGD.menuActive is cleared later, when the menu unmaps. Doing
+ * anything substantial there runs inside Motif's menu state machine, and the
+ * cost of getting that wrong is the grab never being released: no pointer, no
+ * keyboard, nothing to do but cut the power.
+ *
+ * A zero-length timeout costs nothing and moves the whole of it out to the
+ * event loop, where the menu is down, the grab is gone and this is an ordinary
+ * callback like any other. The same shape the signal handlers use --
+ * XtNoticeSignal notes it, and the work happens from the loop.
+ *
+ * Coalesced, so holding the key binding down cannot queue a hundred of them.
+ */
+static void PostMonitorTimeout(XtPointer client_data, XtIntervalId *id)
+{
+    monPostTimer = (XtIntervalId) 0;
+    PostMonitorNow ();
+}
+
 void PostMonitorDialog(void)
+{
+    if (monPostTimer) return;
+
+    monPostTimer = XtAppAddTimeOut (wmGD.mwmAppContext, 0,
+	PostMonitorTimeout, (XtPointer) NULL);
+}
+
+static void PostMonitorNow(void)
 {
     WmScreenData *pSD = ACTIVE_PSD;
 
@@ -985,7 +1103,7 @@ void PostMonitorDialog(void)
 	XtDestroyWidget (monShellW);
 	monShellW = NULL;
 	monCanvasW = NULL;
-	monModePaneW = NULL;
+	monModeListW = NULL;
 	monOnScreen = False;
 
 	/*
@@ -1002,6 +1120,21 @@ void PostMonitorDialog(void)
     if (!monShellW)
     {
 	if (!MakeMonitorDialog (pSD)) return;
+
+	/*
+	 * Nothing to arrange. Better to say so and put no window up than to
+	 * leave an empty one with dead controls on the screen, which is what
+	 * this did before.
+	 */
+	if (monNumCfg < 1)
+	{
+	    Warning ("No monitors to configure");
+	    XtDestroyWidget (monShellW);
+	    monShellW = NULL;
+	    monCanvasW = NULL;
+	    monModeListW = NULL;
+	    return;
+	}
     }
     else
     {
@@ -1010,7 +1143,7 @@ void PostMonitorDialog(void)
 	 * window was last up -- a hotplug is one of the things that posts it.
 	 */
 	LoadConfig ();
-	RebuildModeMenu ();
+	RebuildModeList ();
 	SyncControls ();
     }
 

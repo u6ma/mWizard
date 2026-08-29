@@ -1289,60 +1289,65 @@ static Boolean wspCreateMonitorMenu(Widget mgrW, PtrWsPresenceData pPres)
 	    xmLabelGadgetClass, mgrW, args, n);
     XmStringFree (xms);
 
-    n = 0;
-    pPres->monitorPaneW = XmCreatePulldownMenu (mgrW, "monitorPane", args, n);
-
-    n = 0;
-    XtSetArg (args[n], XmNsubMenuId, (XtArgVal) pPres->monitorPaneW);	n++;
-    pPres->monitorMenuW = XmCreateOptionMenu (mgrW, "monitorMenu", args, n);
-    XtManageChild (pPres->monitorMenuW);
-
     /*
-     * The option menu's own label is unmanaged: the "Monitor: " label above
-     * already says what this is, and Motif would otherwise put the word twice
-     * on the same line.
+     * A radio box, not an option menu.
+     *
+     * The dialog is posted from a menu -- f.workspace_presence off the window
+     * menu -- and ActivateCallback() in WmMenu.c runs that while Motif still
+     * has the menu posted and grabbed. Creating a second Motif menu system in
+     * there reenters Motif's menu state machine mid-activation, and the way
+     * that fails is a pointer and keyboard grab that is never released. The
+     * same mistake in mWmonitor froze whole sessions; see the note above
+     * RebuildModeList() in WmMonitorDlg.c.
+     *
+     * Toggles take no grab and need no shell. With two or three monitors they
+     * are also less work to use than a menu.
      */
-    {
-	Widget lblW = XmOptionLabelGadget (pPres->monitorMenuW);
+    n = 0;
+    XtSetArg (args[n], XmNorientation, (XtArgVal) XmHORIZONTAL);	n++;
+    XtSetArg (args[n], XmNpacking, (XtArgVal) XmPACK_TIGHT);		n++;
+    XtSetArg (args[n], XmNradioBehavior, (XtArgVal) True);		n++;
+    XtSetArg (args[n], XmNradioAlwaysOne, (XtArgVal) True);		n++;
+    XtSetArg (args[n], XmNmarginWidth, (XtArgVal) 0);			n++;
+    XtSetArg (args[n], XmNmarginHeight, (XtArgVal) 0);			n++;
+    pPres->monitorMenuW = XtCreateManagedWidget ("monitorBox",
+	    xmRowColumnWidgetClass, mgrW, args, n);
 
-	if (lblW) XtUnmanageChild (lblW);
-    }
+    /* Kept for symmetry with the rest of the struct; there is no pane now. */
+    pPres->monitorPaneW = NULL;
 
     return (pPres->monitorMenuW != NULL);
 }
 
 static void wspMonitorCB(Widget w, XtPointer client_data, XtPointer call_data)
 {
+    XmToggleButtonCallbackStruct *cbs =
+	(XmToggleButtonCallbackStruct *) call_data;
+
+    /* Radio behaviour reports the one being turned off as well. */
+    if (cbs && !cbs->set) return;
+
     wspSelectedMonitor = (int)(long) client_data;
 }
 
 static void wspUpdateMonitorMenu(PtrWsPresenceData pPres)
 {
     WmScreenData *pSD;
-    XmRenderTable menuFont;
-    Arg args[8];
     WidgetList kids = NULL;
     Cardinal numKids = 0;
-    Widget selectedW = NULL;
+    Arg args[6];
     int n, i;
 
-    if (!pPres->monitorPaneW || !pPres->pCDforClient) return;
+    if (!pPres->monitorMenuW || !pPres->pCDforClient) return;
 
     pSD = pPres->pCDforClient->pSD;
 
     n = 0;
     XtSetArg (args[n], XmNchildren, &kids);		n++;
     XtSetArg (args[n], XmNnumChildren, &numKids);	n++;
-    XtGetValues (pPres->monitorPaneW, args, n);
+    XtGetValues (pPres->monitorMenuW, args, n);
 
     while (numKids--) XtDestroyWidget (kids[numKids]);
-
-    /*
-     * Motif resolves a menu gadget's font from the ancestor menu shell rather
-     * than from a loose *renderTable binding, so it is set on each button as
-     * it is built or this menu alone stays in Motif's default font.
-     */
-    menuFont = StyleFont (WmStyleMenuFont);
 
     wspSelectedMonitor = pPres->pCDforClient->monitorPresence;
 
@@ -1353,32 +1358,25 @@ static void wspUpdateMonitorMenu(PtrWsPresenceData pPres)
 									\
 	n = 0;								\
 	XtSetArg (args[n], XmNlabelString, (XtArgVal) xms);	n++;	\
-	if (menuFont) {							\
-	    XtSetArg (args[n], XmNrenderTable,				\
-		(XtArgVal) menuFont);				n++;	\
-	}								\
+	XtSetArg (args[n], XmNindicatorType,				\
+	    (XtArgVal) XmONE_OF_MANY);				n++;	\
+	XtSetArg (args[n], XmNset,					\
+	    (XtArgVal) (((value) == wspSelectedMonitor) ?		\
+		True : False));					n++;	\
 	btnW = XtCreateManagedWidget ("monitorItem",			\
-		xmPushButtonGadgetClass, pPres->monitorPaneW, args, n);	\
+		xmToggleButtonWidgetClass, pPres->monitorMenuW, args, n);\
 	XmStringFree (xms);						\
-	XtAddCallback (btnW, XmNactivateCallback,			\
+	XtAddCallback (btnW, XmNvalueChangedCallback,			\
 	    (XtCallbackProc) wspMonitorCB, (XtPointer)(long)(value));	\
-	if ((value) == wspSelectedMonitor) selectedW = btnW;		\
     }
 
-    WSP_MON_ITEM ("Follow window", MONITOR_FOLLOW)
-    WSP_MON_ITEM ("All monitors", MONITOR_ALL)
+    WSP_MON_ITEM ("Follow", MONITOR_FOLLOW)
+    WSP_MON_ITEM ("All", MONITOR_ALL)
 
     for (i = 0; i < pSD->numMonitors; i++)
 	WSP_MON_ITEM (pSD->pMonitors[i].name, i)
 
 #undef WSP_MON_ITEM
-
-    if (selectedW)
-    {
-	n = 0;
-	XtSetArg (args[n], XmNmenuHistory, (XtArgVal) selectedW);	n++;
-	XtSetValues (pPres->monitorMenuW, args, n);
-    }
 }
 
 /*************************************<->*************************************
