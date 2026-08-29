@@ -228,7 +228,17 @@ int main(int argc, char **argv)
 	
 	XtRealizeWidget(wshell);
 	if(app_res.occupy_all) set_ws_presence(wshell);
-	set_monitor_presence(wshell);
+
+	/*
+	 * Only when it is actually wanted. Setting this unconditionally --
+	 * which 1.3 did, to say "primary" by default -- makes mWand ask the
+	 * window manager to treat it as pinned in every session, including
+	 * ones where nothing about monitors is otherwise in play. There is no
+	 * gain in that and there is a whole class of failure: a window manager
+	 * that mishandles the pin now mishandles mWand by default. Unset means
+	 * "wherever I am", which is what a panel with its own geometry wants.
+	 */
+	if(app_res.occupy_all_monitors) set_monitor_presence(wshell);
 	set_icon(wshell);
 
 	if(setup_hotkeys())
@@ -323,7 +333,7 @@ static void set_monitor_presence(Widget wshell)
 {
 	Display *dpy = XtDisplay(wshell);
 	Atom mp_atom = XInternAtom(dpy, _XA_MWM_MONITOR_PRESENCE, False);
-	const char *value = app_res.occupy_all_monitors ? "all" : "primary";
+	const char *value = "all";
 
 	XChangeProperty(dpy, XtWindow(wshell), mp_atom,
 		XA_STRING, 8, PropModeReplace,

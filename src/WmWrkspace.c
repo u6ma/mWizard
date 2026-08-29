@@ -1028,24 +1028,23 @@ void GetClientMonitorInfo(ClientData *pCD)
     if (prop) XFree (prop);
 
     /*
-     * A window pinned to a monitor starts there. Without this the pin would
-     * only take effect the next time something moved the window, which for a
-     * panel placed by its own geometry is never.
+     * The pin decides where the window is considered to *be*, and nothing
+     * more. It does not move it.
+     *
+     * 1.3 originally relocated a pinned window to its monitor as it was
+     * managed, on the reasoning that a panel placed by its own geometry would
+     * otherwise never honour the pin. That was wrong twice over. A panel
+     * chooses its own position deliberately and the window manager has no
+     * business overriding it -- and worse, the move is computed from the
+     * monitor list, so any error in that list throws the window somewhere
+     * invisible. Being mapped is what triggers it, so relaunching the panel
+     * throws it away again: mWand vanishing and refusing to come back was this
+     * code, not mWand.
+     *
+     * What the pin is actually for is ClientShouldBeVisible() under
+     * perMonitorWorkspaces, which reads monitorPresence and needs no window
+     * to have been moved anywhere.
      */
-    if (pCD->monitorPresence >= 0 &&
-	MonitorFromLocation (pSD, pCD->clientX, pCD->clientY) !=
-	    pCD->monitorPresence)
-    {
-	int fromMon = MonitorFromLocation (pSD, pCD->clientX, pCD->clientY);
-	int x = pCD->clientX;
-	int y = pCD->clientY;
-
-	MapPointToMonitor (pSD, fromMon, pCD->monitorPresence, &x, &y,
-	    (int) pCD->clientWidth, (int) pCD->clientHeight);
-
-	pCD->clientX = x;
-	pCD->clientY = y;
-    }
 }
 
 Boolean GetClientWorkspaceInfo(ClientData *pCD, long manageFlags )

@@ -394,13 +394,14 @@ Client stalonetray
 	clientFunctions		-close
 	clientTitle		Tray
 
-	! Which monitor the tray lives on: an output name, "primary",
-	! "current" (follow the window, the default for everything else), or
-	! "all" to keep it on the screen whatever any monitor is showing.
-	! "primary" is the sensible default for a tray on a multi-head desk;
-	! with perMonitorWorkspaces on, "all" is how you keep it visible from
-	! every one of them.
-	monitor			primary
+	! Which monitor the tray belongs to: an output name, "primary",
+	! "current" (wherever it is -- the default), or "all" to keep it on
+	! the screen whatever any monitor is showing. This decides where the
+	! tray is considered to be, not where it is put; it places itself.
+	!
+	! Left at the default. With perMonitorWorkspaces on, "all" is how you
+	! keep a tray visible from every head.
+!	monitor			all
 }
 
 ! A tray that announces itself as a dock instead gets no frame and move as
