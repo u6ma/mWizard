@@ -2900,6 +2900,13 @@ static void HandleRRScreenChangeNotify(XEvent *evt)
 	for(iws = 0; iws < pSD->numWorkspaces; iws++)
 		InitIconPlacement(&pSD->pWS[iws]);
 
+	/*
+	 * Nothing below is a window being moved by the user, so the
+	 * cross-monitor re-homing in ProcessNewConfiguration() must not fire
+	 * for any of it. See SetScreenReconfigure() in WmWrkspace.c.
+	 */
+	SetScreenReconfigure(True);
+
 	e = pSD->clientList;
 	
 	while(e) {
@@ -2956,6 +2963,8 @@ static void HandleRRScreenChangeNotify(XEvent *evt)
 		/* Next client */
 		e = e->nextSibling;
 	}
+
+	SetScreenReconfigure(False);
 }
 
 /*

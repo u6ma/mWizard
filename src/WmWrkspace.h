@@ -47,6 +47,12 @@ Boolean MoveClientToMonitor(ClientData *pCD, int toMon);
 Boolean RehomeClientToMonitor(ClientData *pCD, int fromMon, int toMon);
 
 /*
+ * Suppresses the re-homing above for the duration of a screen reconfiguration.
+ * See the note on it in WmWrkspace.c.
+ */
+void SetScreenReconfigure(Boolean inProgress);
+
+/*
  * Resolves the "monitor" client resource and the _MWM_MONITOR_PRESENCE
  * property into ClientData.monitorPresence. Called as a client is managed.
  */

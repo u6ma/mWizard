@@ -190,12 +190,39 @@ Boolean ClientShouldBeVisible(ClientData *pCD)
  *
  * Returns True if the occupancy changed.
  */
+/*
+ * True while the monitor layout is being rebuilt after a RandR change.
+ *
+ * Re-homing is meant to follow a window the *user* dragged across the
+ * boundary. A screen reconfiguration is not that: it reruns
+ * ProcessNewConfiguration() over every client at its existing coordinates, and
+ * the monitor list has just been rebuilt underneath them, so the indices those
+ * coordinates resolve to have moved even though nothing was dragged anywhere.
+ * Every client then looks like it changed monitor at once.
+ *
+ * Left unguarded that walks the whole client list moving windows into other
+ * workspaces -- including out of the one on screen. Pressing Apply in
+ * mWmonitor made every window on the desk vanish, mWand and the tray with
+ * them, and this is why.
+ *
+ * Windows that genuinely need rescuing after a monitor goes away are handled
+ * without moving them between workspaces: MonitorOfClient() answers with the
+ * nearest surviving head, so ClientShouldBeVisible() keeps them on screen.
+ */
+static Boolean screenReconfigure = False;
+
+void SetScreenReconfigure(Boolean inProgress)
+{
+    screenReconfigure = inProgress;
+}
+
 Boolean RehomeClientToMonitor(ClientData *pCD, int fromMon, int toMon)
 {
     WmScreenData *pSD;
     WmWorkspaceData *pToWS;
     WmWorkspaceData *pFromWS;
 
+    if (screenReconfigure) return (False);
     if (!pCD || !pCD->pSD) return (False);
     if (!wmGD.perMonitorWorkspaces) return (False);
     if (fromMon == toMon) return (False);

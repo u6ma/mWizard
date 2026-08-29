@@ -82,6 +82,8 @@ static void UnmapCallback (Widget w, XtPointer client_data,
 static MenuItem *DuplicateMenuItems (MenuItem *menuItems);
 static void AdjustMenuPosition(int *x, int *y,
 	unsigned int width, unsigned int height);
+static void MenuScreenRect(int x, int y, XineramaScreenInfo *xsi);
+static void SubMenuPopupCB(Widget, XtPointer, XtPointer);
 static void CheckTerminalSeparator(MenuSpec *menuSpec,
 	Widget buttonWidget, Boolean manage);
 
@@ -1111,6 +1113,22 @@ Widget CreateMenuWidget (WmScreenData *pSD,
 			    i++;
 	                children[n] = XmCreateCascadeButtonGadget (menuW,
 					  CASCADE_BTN_NAME, (ArgList) args, i);
+
+			/*
+			 * Place the pull-right ourselves when it pops up;
+			 * see SubMenuPopupCB().
+			 */
+			{
+			    Widget subShellW = XtParent (subMenuW);
+
+			    if (subShellW && XtIsShell (subShellW) &&
+				children[n])
+			    {
+				XtAddCallback (subShellW, XtNpopupCallback,
+				    (XtCallbackProc) SubMenuPopupCB,
+				    (XtPointer) children[n]);
+			    }
+			}
 		    }
 		    else
 		    /*
@@ -1897,51 +1915,127 @@ void FreeCustomMenuSpec (MenuSpec *menuSpec)
  * split across Xinerama screns.
  *
  *************************************<->***********************************/
+/*
+ * The rectangle a menu posted at this point has to stay inside: the monitor
+ * containing it, or the whole root when no monitor claims it.
+ *
+ * The root's size is asked for rather than taken from DisplayWidth(), which
+ * reports what was cached when the connection was opened and only changes when
+ * something calls XRRUpdateConfiguration(). A screen that grew after mWizard
+ * started still reads at its old size there, and this is the path where being
+ * wrong shows: it clamps menus into the old, smaller rectangle, which drags
+ * them onto the primary monitor wherever the click was.
+ */
+static void MenuScreenRect(int x, int y, XineramaScreenInfo *xsi)
+{
+	Window root_ret;
+	int rx, ry;
+	unsigned int rw, rh, rbw, rdepth;
+
+	if(GetXineramaScreenFromLocation(x, y, xsi)) return;
+
+	if(XGetGeometry(DISPLAY, ACTIVE_ROOT, &root_ret, &rx, &ry,
+		&rw, &rh, &rbw, &rdepth)) {
+		xsi->x_org = 0;
+		xsi->y_org = 0;
+		xsi->width = rw;
+		xsi->height = rh;
+	} else {
+		xsi->x_org = 0;
+		xsi->y_org = 0;
+		xsi->width = XDisplayWidth(DISPLAY, ACTIVE_SCREEN);
+		xsi->height = XDisplayHeight(DISPLAY, ACTIVE_SCREEN);
+	}
+}
+
 static void AdjustMenuPosition(int *x, int *y,
 	unsigned int width, unsigned int height)
 {
 	XineramaScreenInfo xsi;
 
-	if(!GetXineramaScreenFromLocation(*x, *y, &xsi)){
-		Window root_ret;
-		int rx, ry;
-		unsigned int rw, rh, rbw, rdepth;
+	MenuScreenRect(*x, *y, &xsi);
 
-		/*
-		 * The root's size asked for now, not DisplayWidth().
-		 *
-		 * DisplayWidth() reports the size cached when the connection
-		 * was opened, and it only ever changes when something calls
-		 * XRRUpdateConfiguration(). A screen that grew after mWizard
-		 * started -- a monitor plugged in, a layout applied from
-		 * xinitrc -- therefore still reads at its old size here, and
-		 * this fallback is the one place where being wrong is visible
-		 * to the user: it clamps the menu into the old, smaller
-		 * rectangle, which is to say it drags every menu back onto the
-		 * primary monitor no matter where the click was.
-		 *
-		 * One round trip, only on the path where no monitor claimed
-		 * the point, which is not a path taken per keystroke.
-		 */
-		if(XGetGeometry(DISPLAY, ACTIVE_ROOT, &root_ret, &rx, &ry,
-			&rw, &rh, &rbw, &rdepth)) {
-			xsi.x_org = 0;
-			xsi.y_org = 0;
-			xsi.width = rw;
-			xsi.height = rh;
-		} else {
-			xsi.x_org = 0;
-			xsi.y_org = 0;
-			xsi.width = XDisplayWidth(DISPLAY, ACTIVE_SCREEN);
-			xsi.height = XDisplayHeight(DISPLAY, ACTIVE_SCREEN);
-		}
-	}
-	
 	if((*x + width) >= (xsi.x_org + xsi.width)) {
 		*x -= ((*x + width) - (xsi.x_org + xsi.width));
 	}
 	if((*y + height) >= (xsi.y_org + xsi.height)) {
 		*y -= ((*y + height) - (xsi.y_org + xsi.height));
 	}
+
+	if(*x < xsi.x_org) *x = xsi.x_org;
+	if(*y < xsi.y_org) *y = xsi.y_org;
+}
+
+/*
+ * Places a pull-right, because Motif otherwise does and gets it wrong.
+ *
+ * A submenu is positioned by Motif's own cascade code relative to its parent
+ * item, then corrected against whatever Motif believes the screen to be. On a
+ * multi-head desk that correction is what pins every pull-right to the primary
+ * monitor however far away the menu it belongs to was posted -- the same fault
+ * the top level menu had, arriving by a different route, because PostMenu()
+ * only ever placed the top level one.
+ *
+ * Hung off the submenu shell's popup callback, which runs after Motif has
+ * decided and before the shell is mapped, so this is the last word. The shell
+ * is an XmMenuShell and override-redirect, so placing it is a plain move with
+ * no window manager in the loop.
+ */
+static void SubMenuPopupCB(Widget shellW, XtPointer client_data,
+	XtPointer call_data)
+{
+	Widget cascadeW = (Widget) client_data;
+	Widget parentW;
+	Position cx = 0, cy = 0, rootX = 0, rootY = 0;
+	Dimension cw = 0, sw = 0, sh = 0;
+	XineramaScreenInfo xsi;
+	Arg args[4];
+	int i, x, y;
+
+	if(!cascadeW || !shellW) return;
+
+	parentW = XtParent(cascadeW);
+	if(!parentW || !XtIsRealized(parentW)) return;
+
+	i = 0;
+	XtSetArg(args[i], XmNx, &cx);		i++;
+	XtSetArg(args[i], XmNy, &cy);		i++;
+	XtSetArg(args[i], XmNwidth, &cw);	i++;
+	XtGetValues(cascadeW, args, i);
+
+	XtTranslateCoords(parentW, cx, cy, &rootX, &rootY);
+
+	i = 0;
+	XtSetArg(args[i], XmNwidth, &sw);	i++;
+	XtSetArg(args[i], XmNheight, &sh);	i++;
+	XtGetValues(shellW, args, i);
+
+	/* Beside the item it belongs to, on the monitor that item is on. */
+	MenuScreenRect((int)rootX, (int)rootY, &xsi);
+
+	x = (int)rootX + (int)cw;
+	y = (int)rootY;
+
+	if((x + (int)sw) > (xsi.x_org + xsi.width)) {
+		int flipped = (int)rootX - (int)sw;
+
+		/* To the left of the parent if it fits there, hard against
+		 * the right edge if it does not. */
+		if(flipped >= xsi.x_org)
+			x = flipped;
+		else
+			x = xsi.x_org + xsi.width - (int)sw;
+	}
+
+	if((y + (int)sh) > (xsi.y_org + xsi.height))
+		y = xsi.y_org + xsi.height - (int)sh;
+
+	if(x < xsi.x_org) x = xsi.x_org;
+	if(y < xsi.y_org) y = xsi.y_org;
+
+	i = 0;
+	XtSetArg(args[i], XmNx, (XtArgVal) x);	i++;
+	XtSetArg(args[i], XmNy, (XtArgVal) y);	i++;
+	XtSetValues(shellW, args, i);
 }
 

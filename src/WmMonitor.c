@@ -996,8 +996,13 @@ void FreeMonitorConfig(WmMonitorConfig *cfg, int num)
 Boolean ApplyMonitorLayout(WmScreenData *pSD, WmMonitorConfig *cfg, int num)
 {
     XRRScreenResources *res;
-    int i, j;
-    int maxX = 0, maxY = 0;
+    RRCrtc *claimed;
+    Window rootRet;
+    int rx, ry;
+    unsigned int curW = 0, curH = 0, rbw, rdepth;
+    int i, j, k;
+    int newW = 0, newH = 0;
+    int growW, growH;
     int mmWidth, mmHeight;
     Boolean ok = True;
 
@@ -1010,13 +1015,13 @@ Boolean ApplyMonitorLayout(WmScreenData *pSD, WmMonitorConfig *cfg, int num)
     for (i = 0; i < num; i++)
     {
 	if (!cfg[i].enabled) continue;
-	if (cfg[i].x + MonitorConfigWidth (&cfg[i]) > maxX)
-	    maxX = cfg[i].x + MonitorConfigWidth (&cfg[i]);
-	if (cfg[i].y + MonitorConfigHeight (&cfg[i]) > maxY)
-	    maxY = cfg[i].y + MonitorConfigHeight (&cfg[i]);
+	if (cfg[i].x + MonitorConfigWidth (&cfg[i]) > newW)
+	    newW = cfg[i].x + MonitorConfigWidth (&cfg[i]);
+	if (cfg[i].y + MonitorConfigHeight (&cfg[i]) > newH)
+	    newH = cfg[i].y + MonitorConfigHeight (&cfg[i]);
     }
 
-    if (maxX < 1 || maxY < 1)
+    if (newW < 1 || newH < 1)
     {
 	Warning ("Refusing a monitor layout with nothing enabled");
 	XRRFreeScreenResources (res);
@@ -1024,41 +1029,77 @@ Boolean ApplyMonitorLayout(WmScreenData *pSD, WmMonitorConfig *cfg, int num)
     }
 
     /*
-     * Every CRTC off first.
-     *
-     * XRRSetScreenSize() fails outright if any active CRTC would fall outside
-     * the new size, and working out which ones those are -- then shrinking
-     * them individually in an order that never leaves an overlap -- is the
-     * bulk of what makes this operation fiddly. Turning them all off costs a
-     * moment of black and makes the rest of this function a straight line.
+     * The screen's current size, asked for rather than taken from
+     * DisplayWidth(), which reports whatever was cached at connect time.
      */
-    for (i = 0; i < res->ncrtc; i++)
+    if (!XGetGeometry (DISPLAY, pSD->rootWindow, &rootRet, &rx, &ry,
+	    &curW, &curH, &rbw, &rdepth))
     {
-	XRRCrtcInfo *ci = XRRGetCrtcInfo (DISPLAY, res, res->crtcs[i]);
-
-	if (!ci) continue;
-
-	if (ci->mode != None)
-	{
-	    XRRSetCrtcConfig (DISPLAY, res, res->crtcs[i], CurrentTime,
-		0, 0, None, RR_Rotate_0, NULL, 0);
-	}
-
-	XRRFreeCrtcInfo (ci);
+	curW = DisplayWidth (DISPLAY, pSD->screen);
+	curH = DisplayHeight (DISPLAY, pSD->screen);
     }
 
     /*
-     * Physical size. Reported to clients as the basis for DPI, so it has to
-     * track the pixel size rather than stay at whatever the old layout was --
-     * otherwise every toolkit that scales by DPI gets it wrong after a resize.
-     * Derived at 96dpi, which is what the X server itself assumes when it has
-     * nothing better, and what a mixed-DPI desk has no single right answer for.
+     * Grow the screen first, shrink it last, and never blank the desk in
+     * between.
+     *
+     * The obvious order -- turn every CRTC off, resize, turn them back on --
+     * is a straight line to write and wrong to use. XRRSetScreenSize() does
+     * refuse a size that would leave an active CRTC hanging off the edge,
+     * which is what tempts one into it, but disabling everything means the
+     * screen briefly has no monitors on it at all. The server sends a screen
+     * change for that intermediate state like any other, the window manager
+     * dutifully lays every window out against a screen that is momentarily
+     * nothing, and the desk does not come back the way it went.
+     *
+     * Growing first means the CRTCs always have room to move into their new
+     * places; shrinking afterwards is safe because by then they are all
+     * inside the final rectangle. Only outputs actually being switched off
+     * get disabled, and nothing else ever goes dark.
      */
-    mmWidth = (int) ((maxX * 25.4) / 96.0 + 0.5);
-    mmHeight = (int) ((maxY * 25.4) / 96.0 + 0.5);
+    growW = ((int) curW > newW) ? (int) curW : newW;
+    growH = ((int) curH > newH) ? (int) curH : newH;
 
-    XRRSetScreenSize (DISPLAY, pSD->rootWindow, maxX, maxY,
-	mmWidth, mmHeight);
+    mmWidth = (int) ((growW * 25.4) / 96.0 + 0.5);
+    mmHeight = (int) ((growH * 25.4) / 96.0 + 0.5);
+
+    if (growW != (int) curW || growH != (int) curH)
+	XRRSetScreenSize (DISPLAY, pSD->rootWindow, growW, growH,
+	    mmWidth, mmHeight);
+
+    /*
+     * CRTCs are claimed as they are handed out, so that two outputs cannot be
+     * given the same one. An output keeps the CRTC it is already on wherever
+     * possible -- there is less for the server to reprogram, and a monitor
+     * that is not changing does not flicker.
+     */
+    claimed = (RRCrtc *) XtCalloc (num ? num : 1, sizeof (RRCrtc));
+
+    /* Turn off only what is being switched off. */
+    for (i = 0; i < num; i++)
+    {
+	XRROutputInfo *oi = NULL;
+
+	if (cfg[i].enabled) continue;
+
+	for (j = 0; j < res->noutput; j++)
+	{
+	    oi = XRRGetOutputInfo (DISPLAY, res, res->outputs[j]);
+	    if (oi && oi->name && !strcmp (oi->name, cfg[i].name)) break;
+	    if (oi) XRRFreeOutputInfo (oi);
+	    oi = NULL;
+	}
+
+	if (!oi) continue;
+
+	if (oi->crtc != None)
+	{
+	    XRRSetCrtcConfig (DISPLAY, res, oi->crtc, CurrentTime,
+		0, 0, None, RR_Rotate_0, NULL, 0);
+	}
+
+	XRRFreeOutputInfo (oi);
+    }
 
     for (i = 0; i < num; i++)
     {
@@ -1095,17 +1136,36 @@ Boolean ApplyMonitorLayout(WmScreenData *pSD, WmMonitorConfig *cfg, int num)
 
 	if (mode == None && oi->nmode > 0) mode = oi->modes[0];
 
-	/*
-	 * Any CRTC this output can drive that nothing has claimed yet. Its
-	 * own comes first when it still has one, so an unchanged output keeps
-	 * the CRTC it had and the server has less to reprogram.
-	 */
+	/* Its own CRTC first, if it has one and nothing else has taken it. */
+	if (oi->crtc != None)
+	{
+	    Boolean taken = False;
+
+	    for (k = 0; k < num; k++)
+		if (claimed[k] == oi->crtc) taken = True;
+
+	    if (!taken) crtc = oi->crtc;
+	}
+
 	for (j = 0; j < oi->ncrtc && crtc == None; j++)
 	{
-	    XRRCrtcInfo *ci = XRRGetCrtcInfo (DISPLAY, res, oi->crtcs[j]);
+	    XRRCrtcInfo *ci;
+	    Boolean taken = False;
 
+	    for (k = 0; k < num; k++)
+		if (claimed[k] == oi->crtcs[j]) taken = True;
+
+	    if (taken) continue;
+
+	    ci = XRRGetCrtcInfo (DISPLAY, res, oi->crtcs[j]);
 	    if (!ci) continue;
+
+	    /*
+	     * Free, or driving only outputs this layout is turning off -- the
+	     * loop above has already released those.
+	     */
 	    if (ci->noutput == 0) crtc = oi->crtcs[j];
+
 	    XRRFreeCrtcInfo (ci);
 	}
 
@@ -1120,6 +1180,8 @@ Boolean ApplyMonitorLayout(WmScreenData *pSD, WmMonitorConfig *cfg, int num)
 	    XRRFreeOutputInfo (oi);
 	    continue;
 	}
+
+	claimed[i] = crtc;
 
 	if (XRRSetCrtcConfig (DISPLAY, res, crtc, CurrentTime,
 		cfg[i].x, cfg[i].y, mode,
@@ -1137,6 +1199,18 @@ Boolean ApplyMonitorLayout(WmScreenData *pSD, WmMonitorConfig *cfg, int num)
 	    XRRSetOutputPrimary (DISPLAY, pSD->rootWindow, output);
 
 	XRRFreeOutputInfo (oi);
+    }
+
+    XtFree ((char *) claimed);
+
+    /* And now down to the size actually wanted, with everything inside it. */
+    if (newW != growW || newH != growH)
+    {
+	mmWidth = (int) ((newW * 25.4) / 96.0 + 0.5);
+	mmHeight = (int) ((newH * 25.4) / 96.0 + 0.5);
+
+	XRRSetScreenSize (DISPLAY, pSD->rootWindow, newW, newH,
+	    mmWidth, mmHeight);
     }
 
     XRRFreeScreenResources (res);
