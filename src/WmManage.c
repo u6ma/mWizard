@@ -519,7 +519,7 @@ ManageWindow (WmScreenData *pSD, Window clientWindow, long manageFlags)
 
     initialState = pCD->clientState;
 
-    if (!ClientInWorkspace (pSD->pActiveWS, pCD))
+    if (ClientHiddenForWorkspace (pSD->pActiveWS, pCD))
     {
 	initialState |= UNSEEN_STATE;
     }

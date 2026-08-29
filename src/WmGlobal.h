@@ -1574,6 +1574,7 @@ typedef struct _ClientData
     WorkspaceID	*pWorkspaceHints;	/* _MWM_WORKSPACE_HINTS */
     int		numWorkspaceHints;	/* size of pWorkspaceHints */
     Boolean	putInAll;		/* persistent window flag */
+    Boolean	reportedWsMismatch;	/* warned once; see ClientHiddenForWorkspace */
     long	wsmFunctions;
 
     /*

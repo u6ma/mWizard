@@ -38,6 +38,13 @@ void InitMonitorWorkspaces(WmScreenData *pSD);
 Boolean ClientShouldBeVisible(ClientData *pCD);
 
 /*
+ * True if the client should be hidden for not being in this workspace. Holds
+ * the invariant that an occupy-all-workspaces client never is; see the note on
+ * it in WmWrkspace.c.
+ */
+Boolean ClientHiddenForWorkspace(WmWorkspaceData *pWS, ClientData *pCD);
+
+/*
  * Moves one client onto another monitor, mapping its position proportionally
  * and re-homing it into whatever workspace that monitor is showing. Returns
  * True if anything moved. Shared by f.move_to_monitor and by the re-homing

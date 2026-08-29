@@ -91,6 +91,53 @@ static WorkspaceID *pResIDs = NULL;
 
 
 /*
+ * Should this client be hidden because it is not in the given workspace?
+ *
+ * The one place that question is answered, so that every site asking it gets
+ * the same answer. There are four -- managing a window, a MapRequest, a
+ * WM_CHANGE_STATE message, and a workspace switch -- and each used to ask
+ * ClientInWorkspace() directly.
+ *
+ * The invariant this exists to hold: a client that occupies every workspace is
+ * never hidden for being on the wrong one. That should follow from the
+ * workspace list, since such a client is put into all of them, and when the two
+ * disagree the flag is the one to believe -- putInAll is what the user asked
+ * for and what _MWM_WORKSPACE_PRESENCE carries, while the list is a derived
+ * structure rebuilt as workspaces come and go and as clients are re-homed.
+ *
+ * A disagreement is worth knowing about rather than quietly papering over, so
+ * it is reported once per client. If this is the last thing in the log before
+ * a panel goes missing, the bug is wherever that client's workspace list is
+ * built, not here.
+ */
+Boolean ClientHiddenForWorkspace(WmWorkspaceData *pWS, ClientData *pCD)
+{
+    if (!pCD || !pWS) return (False);
+
+    if (ClientInWorkspace (pWS, pCD)) return (False);
+
+    if (pCD->putInAll)
+    {
+	if (!pCD->reportedWsMismatch)
+	{
+	    char msg[256];
+
+	    snprintf (msg, sizeof (msg),
+		"\"%s\" occupies all workspaces but is absent from the "
+		"workspace list; not hiding it",
+		pCD->clientName ? pCD->clientName : "(unnamed)");
+	    Warning (msg);
+
+	    pCD->reportedWsMismatch = True;
+	}
+
+	return (False);
+    }
+
+    return (True);
+}
+
+/*
  * Per-monitor workspaces, new in 1.3.
  *
  * Monitors share one workspace list -- pSD->pWS -- and each shows one entry
@@ -155,7 +202,7 @@ Boolean ClientShouldBeVisible(ClientData *pCD)
     pSD = pCD->pSD;
 
     if (!wmGD.perMonitorWorkspaces)
-	return (ClientInWorkspace (pSD->pActiveWS, pCD));
+	return (!ClientHiddenForWorkspace (pSD->pActiveWS, pCD));
 
     /*
      * A window that occupies every workspace is always on the screen. Said
@@ -188,7 +235,7 @@ Boolean ClientShouldBeVisible(ClientData *pCD)
 	return (False);
     }
 
-    return (ClientInWorkspace (
+    return (!ClientHiddenForWorkspace (
 	MonitorActiveWorkspace (pSD, MonitorOfClient (pCD)), pCD));
 }
 

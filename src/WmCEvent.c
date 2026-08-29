@@ -390,7 +390,7 @@ Boolean WmDispatchClientEvent (XEvent *event)
 	     * This is a request to change the state of the client window from
 	     * iconic (minimized) to normal.
 	     */
-        if (!ClientInWorkspace (ACTIVE_WS, pCD))
+        if (ClientHiddenForWorkspace (ACTIVE_WS, pCD))
 	    {
 		if (pCD->absentMapBehavior == AMAP_BEHAVIOR_IGNORE)
 		{
@@ -2610,7 +2610,7 @@ void HandleClientMessage (ClientData *pCD, XClientMessageEvent *clientEvent)
 	{
 	    newState = NORMAL_STATE;
 	}
-	if (!ClientInWorkspace (ACTIVE_WS, pCD))
+	if (ClientHiddenForWorkspace (ACTIVE_WS, pCD))
 	{
 	    newState |= UNSEEN_STATE;
 	}
