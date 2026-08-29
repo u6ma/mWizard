@@ -1068,7 +1068,6 @@ Boolean GetClientWorkspaceInfo(ClientData *pCD, long manageFlags )
     Atom *pIDs;
     int i;
     unsigned int numIDs = 0;
-    Boolean bAll;
 
     /* 
      * Allocate initial workspace ID list 
@@ -1094,7 +1093,7 @@ Boolean GetClientWorkspaceInfo(ClientData *pCD, long manageFlags )
 	pCD->pWsList[i].iconFrameWin = None;
 	pCD->pWsList[i].pIconBox = NULL;
     }
-    pCD->putInAll = bAll = False;
+    pCD->putInAll = False;
 
     /* 
      * Determine initial workspace set.
@@ -1110,10 +1109,27 @@ Boolean GetClientWorkspaceInfo(ClientData *pCD, long manageFlags )
 	   GetMyOwnPresence (pCD, &pIDs, &numIDs))) && numIDs)
     {
 	/*
-	 * Got some workspace hints! 
+	 * Got some workspace hints!
+	 *
+	 * Checked for the all-workspaces atom like every other hint list.
+	 * This used to assign putInAll from bAll, which is set False at the
+	 * top of the function and never changed -- so a client that occupied
+	 * every workspace lost that across a restart, and came back holding
+	 * the all-atom as if it were an ordinary workspace id. It then
+	 * inhabited nothing and never appeared again.
 	 */
-	pCD->putInAll = bAll;
-	ProcessWorkspaceHintList (pCD, pIDs, numIDs);
+	CheckForPutInAllRequest (pCD, pIDs, numIDs);
+
+	if (pCD->putInAll)
+	{
+	    XtFree ((char*)pIDs);
+	    for (i = 0; i < pCD->pSD->numWorkspaces; i++)
+		PutClientIntoWorkspace (&pCD->pSD->pWS[i], pCD);
+	}
+	else
+	{
+	    ProcessWorkspaceHintList (pCD, pIDs, numIDs);
+	}
     }
 
     if (pCD->numInhabited == 0)
@@ -1123,8 +1139,24 @@ Boolean GetClientWorkspaceInfo(ClientData *pCD, long manageFlags )
 			ConvertNamesToIDs(pCD->pSD,
 				(unsigned char*)pCD->occupyWorkspaces, &pIDs, &numIDs)) {
 
-			ProcessWorkspaceHintList(pCD, pIDs, numIDs);
-			/* Don't free pIDs, ProcessWorkspaceHintList reuses it in pCD */
+			/*
+			 * "occupyWorkspaces all" has to mean the same thing as
+			 * a client asking for all workspaces itself. Only the
+			 * property path below used to check for it, so saying
+			 * it in a Client block set no putInAll flag and left
+			 * the client holding the all-atom as though it were an
+			 * ordinary workspace id -- which is to say, in none.
+			 */
+			CheckForPutInAllRequest(pCD, pIDs, numIDs);
+
+			if(pCD->putInAll) {
+				XtFree((char*)pIDs);
+				for(i=0; i < pCD->pSD->numWorkspaces; i++)
+				    PutClientIntoWorkspace(&pCD->pSD->pWS[i], pCD);
+			} else {
+				ProcessWorkspaceHintList(pCD, pIDs, numIDs);
+				/* Don't free pIDs, ProcessWorkspaceHintList reuses it in pCD */
+			}
 
 		} else if(GetMyOwnPresence(pCD, &pIDs, &numIDs)) {
 
@@ -1216,10 +1248,30 @@ Boolean ConvertNamesToIDs(WmScreenData *pSD, unsigned char *pchIn,
 		if( (pLocalIDs[num] = (WorkspaceID) 
 			XInternAtom(DISPLAY, (char *)pchName, True)) ) {
 
-			for (iwsx = 0; iwsx < pSD->numWorkspaces; iwsx++) {
-				if((pSD->pWS[iwsx].id == pLocalIDs[num]) ||
-					(pLocalIDs[num] == wmGD.xa_ALL_WORKSPACES) )
+			/*
+			 * "all" is one id, not one per workspace.
+			 *
+			 * The loop below counts a match once for each
+			 * workspace, and for the all-workspaces atom every
+			 * iteration matched -- so num advanced by the number
+			 * of workspaces while only pLocalIDs[num] had ever
+			 * been assigned. The caller was handed a list whose
+			 * first entry was "all" and whose remaining entries
+			 * were uninitialised stack, then matched real
+			 * workspace ids against that. Nothing matched, the
+			 * client was placed in no workspace at all, and it
+			 * became invisible everywhere while WM_STATE still
+			 * said normal.
+			 */
+			if(pLocalIDs[num] == wmGD.xa_ALL_WORKSPACES) {
+				num++;
+			} else {
+				for (iwsx = 0; iwsx < pSD->numWorkspaces; iwsx++) {
+					if(pSD->pWS[iwsx].id == pLocalIDs[num]) {
 						num++;
+						break;
+					}
+				}
 			}
 		} else {
 			/*
