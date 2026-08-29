@@ -1226,6 +1226,30 @@ Boolean GetClientWorkspaceInfo(ClientData *pCD, long manageFlags )
 		}
     }
 
+    /*
+     * And whatever happened above, the client ends up somewhere.
+     *
+     * Every branch is meant to leave it inhabiting at least one workspace and
+     * none of them promises to: ProcessWorkspaceHintList() only places a
+     * client into workspaces that still exist, so a hint list naming none of
+     * them -- a stale presence property after workspaces were deleted, an
+     * occupyWorkspaces resource naming workspaces this session does not have
+     * -- places it nowhere and says nothing about it.
+     *
+     * A client in no workspace is in the wrong one wherever it is asked, so it
+     * is hidden on being managed and stays hidden: no frame on screen, no icon
+     * to find it by, and WM_STATE reporting Normal the whole time. There is no
+     * user action that recovers from it. Being in one workspace that is not
+     * the one showing is recoverable and being in none is not, so this is the
+     * safer failure by a wide margin.
+     */
+    if (pCD->numInhabited == 0)
+    {
+	Warning ("Client could not be placed in any workspace; "
+	    "putting it in the current one");
+	PutClientIntoWorkspace (pCD->pSD->pActiveWS, pCD);
+    }
+
     return (True);
 
 } /* END OF FUNCTION GetClientWorkspaceInfo */

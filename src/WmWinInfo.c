@@ -886,7 +886,19 @@ ProcessWmHints (ClientData *pCD, Boolean firstTime)
         }
 
 
-	if (!ClientInWorkspace (PSD_FOR_CLIENT(pCD)->pActiveWS, pCD))
+	/*
+	 * The third site that asks whether a client is hidden for being in the
+	 * wrong workspace, and the one that was missed when the question was
+	 * given a single answer in ClientHiddenForWorkspace(). It is also the
+	 * worst one to get wrong: the bit is set into the state a client is
+	 * first managed with, and ManageWindow() only ever ORs more into that
+	 * -- it has no path that clears it again. So a window this line hid
+	 * stayed hidden even where every later check agreed it should be on
+	 * screen, and what the user sees is a program that starts, sets
+	 * WM_STATE to Normal, and never appears. mWand is the window that
+	 * happens to, because it is the one that asks for every workspace.
+	 */
+	if (ClientHiddenForWorkspace (PSD_FOR_CLIENT(pCD)->pActiveWS, pCD))
 	{
 	    pCD->clientState |= UNSEEN_STATE;
 	}

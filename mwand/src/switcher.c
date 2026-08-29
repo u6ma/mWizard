@@ -86,7 +86,13 @@ Boolean GetWorkspaceInfo(unsigned short *ws_count, unsigned short *iactive)
 		*ws_count = (unsigned short)*prop_data;
 		XFree(prop_data);
 	} else {
-		ws_count = 0;
+		/*
+		 * Through the pointer. Assigning to ws_count itself only
+		 * retargeted the local, leaving the caller's count whatever
+		 * happened to be on its stack -- read by the callers that look
+		 * at it before checking the return value.
+		 */
+		*ws_count = 0;
 		success = False;
 	}
 

@@ -519,9 +519,28 @@ ManageWindow (WmScreenData *pSD, Window clientWindow, long manageFlags)
 
     initialState = pCD->clientState;
 
+    /*
+     * Set *and* cleared, rather than only ever set.
+     *
+     * This used to OR the bit in and nothing anywhere took it out again, so
+     * whether a window came up on screen was decided by whichever earlier
+     * caller had touched clientState -- ProcessWmHints() sets it from its own
+     * workspace test while the client data is still half built. Two answers to
+     * one question, and the pessimistic one won by default: a window that
+     * belongs on screen was managed straight into UNSEEN_STATE, its frame
+     * never mapped, WM_STATE saying Normal all the while. That is a program
+     * that launches and shows no window at all.
+     *
+     * This is the last word on the matter before the state is applied, so it
+     * gives the answer in both directions.
+     */
     if (ClientHiddenForWorkspace (pSD->pActiveWS, pCD))
     {
 	initialState |= UNSEEN_STATE;
+    }
+    else
+    {
+	initialState &= ~UNSEEN_STATE;
     }
 
     pCD->clientState = WITHDRAWN_STATE;

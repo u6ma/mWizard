@@ -152,7 +152,12 @@ static void parse_line(char *line, struct tb_entry *e)
 	 * from the future should cost its own menu entry and nothing else.
 	 */
 	if(is_bare_keyword(line)){
-		e->type=TBE_IGNORE;
+		/*
+		 * The title is kept: a brace on the next line says this was a
+		 * menu after all, and parse_buffer() turns it back into one.
+		 */
+		e->title = line;
+		e->type = TBE_IGNORE;
 		return;
 	}
 	
@@ -256,6 +261,28 @@ static int parse_buffer(void)
 		}
 
 		if(*line == '{'){
+			/*
+			 * A brace settles what the line before it was.
+			 *
+			 * parse_line() cannot tell an unknown keyword from a
+			 * menu title -- both are one bare word -- so it guesses
+			 * "keyword" and this undoes the guess when the next
+			 * line proves otherwise. Nothing but a menu title has a
+			 * brace after it.
+			 *
+			 * Without this, a menu whose title happens to be one
+			 * all-caps word ("SYSTEM", "TOOLS", "GAMES") was read
+			 * as a keyword from a newer mWand and skipped, its
+			 * brace then had no cascade to open, and that is a
+			 * fatal parse error. A fatal parse error means mWand
+			 * exits before it maps anything: the panel simply does
+			 * not appear, and the message names a delimiter rather
+			 * than the menu it came from.
+			 */
+			if(prev && prev->type == TBE_IGNORE && prev->title){
+				prev->type = TBE_CASCADE;
+			}
+
 			if(!prev || prev->type != TBE_CASCADE){
 				set_parse_error(iline,
 					"Delimiter \'{\' must follow a cascade entry");
