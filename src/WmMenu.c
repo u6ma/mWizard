@@ -28,6 +28,7 @@
  * Included Files:
  */
 
+#include <string.h>
 #include "WmGlobal.h"
 #include "WmCEvent.h"
 #include "WmResource.h"
@@ -1427,9 +1428,56 @@ void PostMenu (MenuSpec *menuSpec, ClientData *pCD, int x, int y, unsigned int b
 			menuSpec->height, newContext);
     }
 
+    /*
+     * Fill the event in properly before handing it over.
+     *
+     * It is a bare stack struct and only x_root/y_root were ever set on it, so
+     * everything else Motif looks at -- type, display, root, same_screen --
+     * was whatever happened to be on the stack. It got away with that for as
+     * long as nothing downstream cared.
+     */
+    memset (&event, 0, sizeof(event));
+    event.type = ButtonPress;
+    event.send_event = False;
+    event.display = XtDisplay (menuSpec->menuWidget);
+    event.root = RootWindowOfScreen (XtScreen (menuSpec->menuWidget));
+    event.window = event.root;
+    event.subwindow = None;
+    event.same_screen = True;
+    event.button = whichButton;
     event.x_root = x;
     event.y_root = y;
+    event.x = x;
+    event.y = y;
+
     XmMenuPosition (menuSpec->menuWidget, &event);
+
+    /*
+     * And then say where the menu goes, rather than leaving it to Motif.
+     *
+     * AdjustMenuPosition() above has already worked out a position that keeps
+     * the menu on the monitor it was asked for. XmMenuPosition() then does its
+     * own off-screen correction on top of that, against whatever it believes
+     * the screen to be -- and a Motif that gets that wrong on a multi-head
+     * desk quietly drags the menu onto another monitor, which is exactly the
+     * symptom: right-click anywhere, menu appears on the primary.
+     *
+     * The pane's parent is an XmMenuShell, which is override-redirect, so
+     * placing it is a plain move with no window manager in the loop and
+     * nothing to negotiate. mWizard knows where it wants the menu; this is it
+     * saying so and not being argued with.
+     */
+    {
+	Widget shellW = XtParent (menuSpec->menuWidget);
+
+	if (shellW && XtIsShell (shellW))
+	{
+	    i = 0;
+	    XtSetArg (args[i], XmNx, (XtArgVal) x);	i++;
+	    XtSetArg (args[i], XmNy, (XtArgVal) y);	i++;
+	    XtSetValues (shellW, args, i);
+	}
+    }
 
     wmGD.menuClient = pCD;
     wmGD.menuActive = menuSpec;   /* set to NULL within UnmapCallback() */
