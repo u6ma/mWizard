@@ -158,6 +158,22 @@ Boolean ClientShouldBeVisible(ClientData *pCD)
 	return (ClientInWorkspace (pSD->pActiveWS, pCD));
 
     /*
+     * A window that occupies every workspace is always on the screen. Said
+     * outright rather than left to fall out of the workspace test below.
+     *
+     * It ought to be equivalent -- a client in all workspaces is in whichever
+     * one a head is showing -- and relying on that was a mistake. putInAll is
+     * the flag the user set and the one the property carries; the per-workspace
+     * list is a derived thing, rebuilt as workspaces are created and deleted
+     * and as clients are re-homed. Deriving "is this panel visible" from the
+     * copy rather than the original means any moment where the two disagree
+     * takes the panel off the screen, and mWand is exactly the window this
+     * happens to: it asks for every workspace and it is the first thing the
+     * user notices missing.
+     */
+    if (pCD->putInAll) return (True);
+
+    /*
      * Pinned to all monitors -- a panel or a tray. Visible as long as any head
      * is showing a workspace it inhabits, so that switching one head does not
      * take the panel away from the others.

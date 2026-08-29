@@ -149,6 +149,23 @@ void ReportRcFileError(const char *rc_file, const char *err_desc)
 	}
 
 	sprintf(buffer,"%s %s\n%s.",err_msg,rc_file,err_desc);
+
+	/*
+	 * To stderr as well as to a dialog, and the stderr half is the one
+	 * that matters.
+	 *
+	 * This is called from ConstructMenu(), which runs before
+	 * XtRealizeWidget() -- and the shell is created with
+	 * XmNmappedWhenManaged False besides, so at this point there is no
+	 * mapped window to parent a dialog on and nothing appears. mWand then
+	 * returns EXIT_FAILURE and is gone, having said nothing at all: no
+	 * window, no message, no clue. Run from a terminal it printed nothing
+	 * either, which is a miserable way to debug a panel that will not
+	 * start.
+	 */
+	fprintf(stderr, "%s: %s %s\n%s.\n", APP_NAME, err_msg, rc_file,
+		err_desc);
+
 	MessageDialog(False,buffer);
 	free(buffer);
 }
