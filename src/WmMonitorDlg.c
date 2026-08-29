@@ -88,6 +88,7 @@ static void PostMonitorNow(void);
 static void PostMonitorTimeout(XtPointer, XtIntervalId*);
 static void PrimaryCB(Widget, XtPointer, XtPointer);
 static void EnabledCB(Widget, XtPointer, XtPointer);
+static void RotateCB(Widget, XtPointer, XtPointer);
 static void ApplyCB(Widget, XtPointer, XtPointer);
 static void SaveCB(Widget, XtPointer, XtPointer);
 static void RevertCB(Widget, XtPointer, XtPointer);
@@ -100,6 +101,7 @@ static Widget monNameW = NULL;
 static Widget monModeListW = NULL;
 static Widget monPrimaryW = NULL;
 static Widget monEnabledW = NULL;
+static Widget monRotateW = NULL;
 static WmScreenData *monPSD = NULL;
 static Boolean monOnScreen = False;
 
@@ -197,10 +199,10 @@ static void CanvasScale(int *ox, int *oy, double *scale)
     {
 	if (monCfg[i].x < minX) minX = monCfg[i].x;
 	if (monCfg[i].y < minY) minY = monCfg[i].y;
-	if (monCfg[i].x + monCfg[i].width > maxX)
-	    maxX = monCfg[i].x + monCfg[i].width;
-	if (monCfg[i].y + monCfg[i].height > maxY)
-	    maxY = monCfg[i].y + monCfg[i].height;
+	if (monCfg[i].x + MonitorConfigWidth (&monCfg[i]) > maxX)
+	    maxX = monCfg[i].x + MonitorConfigWidth (&monCfg[i]);
+	if (monCfg[i].y + MonitorConfigHeight (&monCfg[i]) > maxY)
+	    maxY = monCfg[i].y + MonitorConfigHeight (&monCfg[i]);
     }
 
     sx = (double) (cw - 2 * CANVAS_MARGIN) / (double) (maxX - minX);
@@ -247,8 +249,8 @@ static void CanvasExposeCB(Widget w, XtPointer client_data, XtPointer call_data)
     {
 	int bx = ox + (int) (monCfg[i].x * scale);
 	int by = oy + (int) (monCfg[i].y * scale);
-	int bw = (int) (monCfg[i].width * scale);
-	int bh = (int) (monCfg[i].height * scale);
+	int bw = (int) (MonitorConfigWidth (&monCfg[i]) * scale);
+	int bh = (int) (MonitorConfigHeight (&monCfg[i]) * scale);
 	XmString label;
 	char text[128];
 
@@ -305,8 +307,8 @@ static int CanvasHit(int cx, int cy)
     {
 	int bx = ox + (int) (monCfg[i].x * scale);
 	int by = oy + (int) (monCfg[i].y * scale);
-	int bw = (int) (monCfg[i].width * scale);
-	int bh = (int) (monCfg[i].height * scale);
+	int bw = (int) (MonitorConfigWidth (&monCfg[i]) * scale);
+	int bh = (int) (MonitorConfigHeight (&monCfg[i]) * scale);
 
 	if (cx >= bx && cx < bx + bw && cy >= by && cy < by + bh) return (i);
     }
@@ -327,9 +329,10 @@ static int CanvasHit(int cx, int cy)
 /* Two monitor rectangles sharing any area at all. */
 static Boolean MonitorsOverlap(WmMonitorConfig *a, WmMonitorConfig *b)
 {
-    return ((a->x < b->x + b->width) && (b->x < a->x + a->width) &&
-	    (a->y < b->y + b->height) && (b->y < a->y + a->height) ?
-		True : False);
+    return ((a->x < b->x + MonitorConfigWidth (b)) &&
+	    (b->x < a->x + MonitorConfigWidth (a)) &&
+	    (a->y < b->y + MonitorConfigHeight (b)) &&
+	    (b->y < a->y + MonitorConfigHeight (a)) ? True : False);
 }
 
 /*
@@ -365,10 +368,10 @@ static void ResolveOverlaps(void)
 	    if (i == monSelected || !o->enabled) continue;
 	    if (!MonitorsOverlap (m, o)) continue;
 
-	    left  = (m->x + m->width) - o->x;
-	    right = (o->x + o->width) - m->x;
-	    up    = (m->y + m->height) - o->y;
-	    down  = (o->y + o->height) - m->y;
+	    left  = (m->x + MonitorConfigWidth (m)) - o->x;
+	    right = (o->x + MonitorConfigWidth (o)) - m->x;
+	    up    = (m->y + MonitorConfigHeight (m)) - o->y;
+	    down  = (o->y + MonitorConfigHeight (o)) - m->y;
 
 	    best = left;
 	    if (right < best) best = right;
@@ -401,21 +404,25 @@ static void SnapSelected(void)
 	if (i == monSelected || !o->enabled) continue;
 
 	/* Horizontal: right-to-left edge, left-to-right edge, and aligned. */
-	d = (o->x + o->width) - m->x;
-	if (d > -SNAP_DISTANCE && d < SNAP_DISTANCE) m->x = o->x + o->width;
+	d = (o->x + MonitorConfigWidth (o)) - m->x;
+	if (d > -SNAP_DISTANCE && d < SNAP_DISTANCE)
+	    m->x = o->x + MonitorConfigWidth (o);
 
-	d = o->x - (m->x + m->width);
-	if (d > -SNAP_DISTANCE && d < SNAP_DISTANCE) m->x = o->x - m->width;
+	d = o->x - (m->x + MonitorConfigWidth (m));
+	if (d > -SNAP_DISTANCE && d < SNAP_DISTANCE)
+	    m->x = o->x - MonitorConfigWidth (m);
 
 	d = o->x - m->x;
 	if (d > -SNAP_DISTANCE && d < SNAP_DISTANCE) m->x = o->x;
 
 	/* Vertical: the same three. */
-	d = (o->y + o->height) - m->y;
-	if (d > -SNAP_DISTANCE && d < SNAP_DISTANCE) m->y = o->y + o->height;
+	d = (o->y + MonitorConfigHeight (o)) - m->y;
+	if (d > -SNAP_DISTANCE && d < SNAP_DISTANCE)
+	    m->y = o->y + MonitorConfigHeight (o);
 
-	d = o->y - (m->y + m->height);
-	if (d > -SNAP_DISTANCE && d < SNAP_DISTANCE) m->y = o->y - m->height;
+	d = o->y - (m->y + MonitorConfigHeight (m));
+	if (d > -SNAP_DISTANCE && d < SNAP_DISTANCE)
+	    m->y = o->y - MonitorConfigHeight (m);
 
 	d = o->y - m->y;
 	if (d > -SNAP_DISTANCE && d < SNAP_DISTANCE) m->y = o->y;
@@ -607,6 +614,17 @@ static void SyncControls(void)
     XtSetValues (monNameW, args, 1);
     XmStringFree (xms);
 
+    if (monRotateW)
+    {
+	snprintf (text, sizeof (text), "Rotation: %s",
+	    MonitorRotationName (monCfg[monSelected].rotation));
+
+	xms = XmStringCreateLocalized (text);
+	XtSetArg (args[0], XmNlabelString, (XtArgVal) xms);
+	XtSetValues (monRotateW, args, 1);
+	XmStringFree (xms);
+    }
+
     XmToggleButtonSetState (monPrimaryW, monCfg[monSelected].primary, False);
     XmToggleButtonSetState (monEnabledW, monCfg[monSelected].enabled, False);
 
@@ -695,6 +713,24 @@ static void EnabledCB(Widget w, XtPointer client_data, XtPointer call_data)
 	return;
     }
 
+    CanvasExposeCB (monCanvasW, NULL, NULL);
+}
+
+static void RotateCB(Widget w, XtPointer client_data, XtPointer call_data)
+{
+    if (!monNumCfg) return;
+
+    monCfg[monSelected].rotation =
+	(monCfg[monSelected].rotation + 1) % MONITOR_ROTATE_COUNT;
+
+    /*
+     * Turning a monitor swaps its footprint, so it can now be sitting inside a
+     * neighbour. SnapSelected() re-seats it and clears any overlap, the same
+     * as it does at the end of a drag.
+     */
+    SnapSelected ();
+
+    SyncControls ();
     CanvasExposeCB (monCanvasW, NULL, NULL);
 }
 
@@ -843,6 +879,16 @@ static Boolean MakeMonitorDialog(WmScreenData *pSD)
     buttonsW = XtCreateManagedWidget ("buttons", xmFormWidgetClass,
 				      formW, args, n);
 
+/*
+ * Each button gets exactly its quarter, both edges attached.
+ *
+ * Attached on the left alone -- which is what this did -- a button starts at
+ * its quarter and then runs to whatever width its label needs. Narrow the
+ * window and they grow into each other; Motif stacks the overlap and the
+ * button on top takes the click, so the ones underneath simply stop working
+ * with nothing to show for it. Pinning both edges costs a wider minimum
+ * window and makes overlap impossible.
+ */
 #define BUTTON(var,label,pos,cb)					\
     xms = XmStringCreateLocalized (label);				\
     n = 0;								\
@@ -850,6 +896,11 @@ static Boolean MakeMonitorDialog(WmScreenData *pSD)
     XtSetArg (args[n], XmNleftAttachment,				\
 	(XtArgVal) XmATTACH_POSITION);				n++;	\
     XtSetArg (args[n], XmNleftPosition, (XtArgVal) (pos));	n++;	\
+    XtSetArg (args[n], XmNleftOffset, (XtArgVal) 4);		n++;	\
+    XtSetArg (args[n], XmNrightAttachment,				\
+	(XtArgVal) XmATTACH_POSITION);				n++;	\
+    XtSetArg (args[n], XmNrightPosition, (XtArgVal) ((pos) + 1)); n++;	\
+    XtSetArg (args[n], XmNrightOffset, (XtArgVal) 4);		n++;	\
     XtSetArg (args[n], XmNtopAttachment, (XtArgVal) XmATTACH_FORM); n++;	\
     XtSetArg (args[n], XmNbottomAttachment,				\
 	(XtArgVal) XmATTACH_FORM);				n++;	\
@@ -908,6 +959,24 @@ static Boolean MakeMonitorDialog(WmScreenData *pSD)
     XmStringFree (xms);
     XtAddCallback (monEnabledW, XmNvalueChangedCallback,
 	(XtCallbackProc) EnabledCB, NULL);
+
+    /*
+     * Rotation, as one button that cycles rather than four toggles or a menu.
+     *
+     * A menu is out of the question here -- see the note above
+     * RebuildModeList() -- and four radio buttons would be the widest thing in
+     * the window for a setting most people never touch. There are only four
+     * values and they have an obvious order, so the button shows the current
+     * one and advances.
+     */
+    xms = XmStringCreateLocalized ("Rotation: normal");
+    n = 0;
+    XtSetArg (args[n], XmNlabelString, (XtArgVal) xms);		n++;
+    monRotateW = XtCreateManagedWidget ("rotate", xmPushButtonWidgetClass,
+					controlsW, args, n);
+    XmStringFree (xms);
+    XtAddCallback (monRotateW, XmNactivateCallback,
+	(XtCallbackProc) RotateCB, NULL);
 
     /*
      * The mode list, down the right hand side.
@@ -1128,7 +1197,16 @@ static void PostMonitorNow(void)
 	 */
 	if (monNumCfg < 1)
 	{
-	    Warning ("No monitors to configure");
+	    /*
+	     * Naming the cause rather than the symptom. "Nothing to
+	     * configure" with RandR missing and "nothing to configure" with
+	     * RandR present but reporting no connected output are different
+	     * faults, and telling them apart from the outside is otherwise
+	     * guesswork. mWinfo carries the same information.
+	     */
+	    Warning (wmGD.xrandr_present ?
+		"mWmonitor: RandR reports no connected outputs" :
+		"mWmonitor: the X server has no RandR extension");
 	    XtDestroyWidget (monShellW);
 	    monShellW = NULL;
 	    monCanvasW = NULL;

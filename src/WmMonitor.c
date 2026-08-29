@@ -825,6 +825,61 @@ WmMonitorMode *GetOutputModes(WmScreenData *pSD, const char *name, int *pNum)
     return (modes);
 }
 
+static const char *rotationNames[MONITOR_ROTATE_COUNT] = {
+    "normal", "left", "inverted", "right"
+};
+
+static const Rotation rotationMasks[MONITOR_ROTATE_COUNT] = {
+    RR_Rotate_0, RR_Rotate_90, RR_Rotate_180, RR_Rotate_270
+};
+
+const char *MonitorRotationName(int rotation)
+{
+    if (rotation < 0 || rotation >= MONITOR_ROTATE_COUNT)
+	rotation = MONITOR_ROTATE_NORMAL;
+
+    return (rotationNames[rotation]);
+}
+
+static int RotationFromName(const char *name)
+{
+    int i;
+
+    if (!name) return (MONITOR_ROTATE_NORMAL);
+
+    for (i = 0; i < MONITOR_ROTATE_COUNT; i++)
+	if (!strcmp (name, rotationNames[i])) return (i);
+
+    return (MONITOR_ROTATE_NORMAL);
+}
+
+static int RotationFromMask(Rotation mask)
+{
+    int i;
+
+    for (i = 0; i < MONITOR_ROTATE_COUNT; i++)
+	if (mask & rotationMasks[i]) return (i);
+
+    return (MONITOR_ROTATE_NORMAL);
+}
+
+/* Turned on its side at 90 and 270; see the note in WmMonitor.h. */
+static Boolean RotationSwapsAxes(int rotation)
+{
+    return ((rotation == MONITOR_ROTATE_LEFT ||
+	     rotation == MONITOR_ROTATE_RIGHT) ? True : False);
+}
+
+int MonitorConfigWidth(WmMonitorConfig *cfg)
+{
+    return (RotationSwapsAxes (cfg->rotation) ? cfg->height : cfg->width);
+}
+
+int MonitorConfigHeight(WmMonitorConfig *cfg)
+{
+    return (RotationSwapsAxes (cfg->rotation) ? cfg->width : cfg->height);
+}
+
 WmMonitorConfig *GetMonitorConfig(WmScreenData *pSD, int *pNum)
 {
     XRRScreenResources *res;
@@ -874,9 +929,26 @@ WmMonitorConfig *GetMonitorConfig(WmScreenData *pSD, int *pNum)
 		cfg[num].enabled = True;
 		cfg[num].x = ci->x;
 		cfg[num].y = ci->y;
-		cfg[num].width = ci->width;
-		cfg[num].height = ci->height;
 		cfg[num].refresh = mi ? ModeRefresh (mi) : 0;
+		cfg[num].rotation = RotationFromMask (ci->rotation);
+
+		/*
+		 * A CRTC reports the size it presents to the screen, which for
+		 * a rotated one is the mode with its axes swapped. Stored back
+		 * the other way round because the mode is what has to be
+		 * matched against the output's mode list and written to the
+		 * layout file; the footprint is derived when it is needed.
+		 */
+		if (RotationSwapsAxes (cfg[num].rotation))
+		{
+		    cfg[num].width = ci->height;
+		    cfg[num].height = ci->width;
+		}
+		else
+		{
+		    cfg[num].width = ci->width;
+		    cfg[num].height = ci->height;
+		}
 
 		XRRFreeCrtcInfo (ci);
 	    }
@@ -938,8 +1010,10 @@ Boolean ApplyMonitorLayout(WmScreenData *pSD, WmMonitorConfig *cfg, int num)
     for (i = 0; i < num; i++)
     {
 	if (!cfg[i].enabled) continue;
-	if (cfg[i].x + cfg[i].width > maxX) maxX = cfg[i].x + cfg[i].width;
-	if (cfg[i].y + cfg[i].height > maxY) maxY = cfg[i].y + cfg[i].height;
+	if (cfg[i].x + MonitorConfigWidth (&cfg[i]) > maxX)
+	    maxX = cfg[i].x + MonitorConfigWidth (&cfg[i]);
+	if (cfg[i].y + MonitorConfigHeight (&cfg[i]) > maxY)
+	    maxY = cfg[i].y + MonitorConfigHeight (&cfg[i]);
     }
 
     if (maxX < 1 || maxY < 1)
@@ -1048,7 +1122,8 @@ Boolean ApplyMonitorLayout(WmScreenData *pSD, WmMonitorConfig *cfg, int num)
 	}
 
 	if (XRRSetCrtcConfig (DISPLAY, res, crtc, CurrentTime,
-		cfg[i].x, cfg[i].y, mode, RR_Rotate_0, &output, 1) != Success)
+		cfg[i].x, cfg[i].y, mode,
+		rotationMasks[cfg[i].rotation], &output, 1) != Success)
 	{
 	    char msg[128];
 
@@ -1286,10 +1361,13 @@ Boolean SaveMonitorLayout(WmScreenData *pSD, WmMonitorConfig *cfg, int num)
 	    continue;
 	}
 
-	fprintf (out, "\t%s\t%dx%d\t%dx%d\t%d%s\n",
+	fprintf (out, "\t%s\t%dx%d\t%dx%d\t%d%s%s%s\n",
 	    cfg[i].name, cfg[i].width, cfg[i].height,
 	    cfg[i].x, cfg[i].y, cfg[i].refresh,
-	    cfg[i].primary ? "\tprimary" : "");
+	    cfg[i].primary ? "\tprimary" : "",
+	    (cfg[i].rotation != MONITOR_ROTATE_NORMAL) ? "\t" : "",
+	    (cfg[i].rotation != MONITOR_ROTATE_NORMAL) ?
+		MonitorRotationName (cfg[i].rotation) : "");
     }
 
     fprintf (out, "}\n");
@@ -1332,7 +1410,7 @@ Boolean ApplySavedMonitorLayout(WmScreenData *pSD)
 
     while (fgets (line, sizeof (line), f))
     {
-	char name[256], mode[64], pos[64], flag[32];
+	char name[256], mode[64], pos[64], rest[192];
 	int refresh = 0;
 	int n;
 
@@ -1348,9 +1426,16 @@ Boolean ApplySavedMonitorLayout(WmScreenData *pSD)
 
 	if (strchr (line, '}')) break;
 
-	flag[0] = '\0';
-	n = sscanf (line, " %255s %63s %63s %d %31s",
-		name, mode, pos, &refresh, flag);
+	/*
+	 * The trailing words -- "primary", and a rotation -- are read as one
+	 * run and picked out by name rather than by position. They are
+	 * independent of each other and either may be absent, so an entry
+	 * written before rotation existed still reads correctly, and the two
+	 * may be written in either order.
+	 */
+	rest[0] = '\0';
+	n = sscanf (line, " %255s %63s %63s %d %191[^\n]",
+		name, mode, pos, &refresh, rest);
 	if (n < 2) continue;
 
 	if (num == size)
@@ -1374,7 +1459,30 @@ Boolean ApplySavedMonitorLayout(WmScreenData *pSD)
 
 	cfg[num].enabled = True;
 	cfg[num].refresh = (n >= 4) ? refresh : 0;
-	cfg[num].primary = (n >= 5 && !strcmp (flag, "primary")) ? True : False;
+	cfg[num].primary = strstr (rest, "primary") ? True : False;
+	cfg[num].rotation = MONITOR_ROTATE_NORMAL;
+
+	if (n >= 5)
+	{
+	    char word[32];
+	    const char *p = rest;
+
+	    while (sscanf (p, " %31s", word) == 1)
+	    {
+		int rot = RotationFromName (word);
+
+		if (rot != MONITOR_ROTATE_NORMAL ||
+		    !strcmp (word, "normal"))
+		{
+		    cfg[num].rotation = rot;
+		}
+
+		p = strstr (p, word);
+		if (!p) break;
+		p += strlen (word);
+	    }
+	}
+
 	num++;
     }
 

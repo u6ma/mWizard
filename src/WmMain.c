@@ -129,6 +129,15 @@ int main (int argc, char *argv [], char *environ [])
 	    }
 	}
 
+	/*
+	 * XRandR events first, and before anything looks at which window they
+	 * arrived on. See HandleRandrEvent() in WmCEvent.c.
+	 */
+	if (HandleRandrEvent (&event))
+	{
+	    continue;
+	}
+
 	dispatchEvent = True;
 	if (wmGD.menuActive)
 	{

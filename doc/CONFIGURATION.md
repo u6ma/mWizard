@@ -730,8 +730,14 @@ Click a box to select it, then use the controls below:
 | Control | Does |
 |---|---|
 | **Mode** | resolution and refresh, from the modes that output reports |
+| **Rotation** | cycles `normal` → `left` → `inverted` → `right` |
 | **Primary** | makes this the primary monitor |
 | **Enabled** | turns the output on or off |
+
+Rotating a monitor swaps its footprint on the desk, so the box on the canvas
+turns with it and is re-seated against its neighbours. Boxes are solid: drag one
+onto another and it is pushed clear along whichever axis needs the least
+movement, because two monitors cannot occupy the same space.
 
 | Button | Does |
 |---|---|
@@ -764,14 +770,17 @@ and neither is applied in the other's situation:
 ```
 eDP-1,HDMI-1 {
 	eDP-1	2560x1600	0x0	60	primary
-	HDMI-1	1920x1080	2560x0	60
+	HDMI-1	1920x1080	2560x0	60	left
 	DP-2	off
 }
 ```
 
 Each line is an output name, then `WIDTHxHEIGHT`, then `XxY`, then the refresh
-in whole Hz, then `primary` if it is the primary. An output that should be off
-is written `off` and nothing else. Refresh is matched to the nearest mode the
+in whole Hz, then any of `primary` and a rotation (`normal`, `left`,
+`inverted`, `right`) in either order. Both are optional, so an entry written
+before rotation existed still reads correctly. The size is the **mode**, before
+rotation — a monitor turned `left` occupies height by width on the desk. An
+output that should be off is written `off` and nothing else. Refresh is matched to the nearest mode the
 output offers rather than exactly, so a layout still applies when a driver
 update moves a mode by a hertz.
 

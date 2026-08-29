@@ -1903,10 +1903,38 @@ static void AdjustMenuPosition(int *x, int *y,
 	XineramaScreenInfo xsi;
 
 	if(!GetXineramaScreenFromLocation(*x, *y, &xsi)){
-		xsi.x_org = 0;
-		xsi.y_org = 0;
-		xsi.width = XDisplayWidth(DISPLAY, ACTIVE_SCREEN);
-		xsi.height = XDisplayHeight(DISPLAY, ACTIVE_SCREEN);
+		Window root_ret;
+		int rx, ry;
+		unsigned int rw, rh, rbw, rdepth;
+
+		/*
+		 * The root's size asked for now, not DisplayWidth().
+		 *
+		 * DisplayWidth() reports the size cached when the connection
+		 * was opened, and it only ever changes when something calls
+		 * XRRUpdateConfiguration(). A screen that grew after mWizard
+		 * started -- a monitor plugged in, a layout applied from
+		 * xinitrc -- therefore still reads at its old size here, and
+		 * this fallback is the one place where being wrong is visible
+		 * to the user: it clamps the menu into the old, smaller
+		 * rectangle, which is to say it drags every menu back onto the
+		 * primary monitor no matter where the click was.
+		 *
+		 * One round trip, only on the path where no monitor claimed
+		 * the point, which is not a path taken per keystroke.
+		 */
+		if(XGetGeometry(DISPLAY, ACTIVE_ROOT, &root_ret, &rx, &ry,
+			&rw, &rh, &rbw, &rdepth)) {
+			xsi.x_org = 0;
+			xsi.y_org = 0;
+			xsi.width = rw;
+			xsi.height = rh;
+		} else {
+			xsi.x_org = 0;
+			xsi.y_org = 0;
+			xsi.width = XDisplayWidth(DISPLAY, ACTIVE_SCREEN);
+			xsi.height = XDisplayHeight(DISPLAY, ACTIVE_SCREEN);
+		}
 	}
 	
 	if((*x + width) >= (xsi.x_org + xsi.width)) {

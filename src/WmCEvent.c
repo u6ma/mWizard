@@ -491,23 +491,6 @@ Boolean HandleEventsOnSpecialWindows (XEvent *pEvent)
     Boolean dispatchEvent = True;
     WmScreenData *pSD;
 
-	/* Check for Xrandr screen change event; update configuration */
-	if(wmGD.xrandr_present && pEvent->type == 
-		(wmGD.xrandr_base_evt + RRScreenChangeNotify) ) {
-		HandleRRScreenChangeNotify(pEvent);
-	}
-
-	/*
-	 * RRNotify carries several kinds of event in one type, distinguished
-	 * by a subtype in the event body; only the output one is wanted here.
-	 * Crtc and Output notifications also arrive as RRNotify, so the
-	 * subtype check is not optional.
-	 */
-	if(wmGD.xrandr_present && pEvent->type ==
-		(wmGD.xrandr_base_evt + RRNotify) &&
-		((XRRNotifyEvent*)pEvent)->subtype == RRNotify_OutputChange) {
-		HandleRROutputChangeNotify(pEvent);
-	}
 
 	/*
 	 * The keyboard map changed: re-resolve the key bindings and put the
@@ -2819,6 +2802,48 @@ WmScreenData * GetScreenForWindow(Window win)
 } /* END OF FUNCTION GetScreenForWindow */
 
 /*
+ * The one place RandR events are recognised.
+ *
+ * Called from main()'s dispatch loop before anything looks at which window the
+ * event arrived on, and that is the point. These used to be picked up inside
+ * HandleEventsOnSpecialWindows(), which only sees events that have already
+ * been routed as "not a managed root, not a known client" -- so whether
+ * mWizard ever heard about a monitor being plugged in depended on which window
+ * XRRSelectInput() had been called on and on how that window happened to route.
+ * Get that wrong and the failure is silent and total: the monitor list never
+ * updates, Xlib's cached screen size never updates with it, and every
+ * placement decision in the window manager is made against a screen that
+ * stopped existing.
+ *
+ * A RandR event is a RandR event whatever window it names, so it is matched on
+ * type here and nowhere else.
+ *
+ * Returns True if the event was a RandR event and has been dealt with.
+ */
+Boolean HandleRandrEvent(XEvent *pEvent)
+{
+	if(!wmGD.xrandr_present) return False;
+
+	if(pEvent->type == (wmGD.xrandr_base_evt + RRScreenChangeNotify)) {
+		HandleRRScreenChangeNotify(pEvent);
+		return True;
+	}
+
+	/*
+	 * RRNotify carries several kinds of event in one type, told apart by a
+	 * subtype in the body; Crtc and Output notifications both arrive this
+	 * way, so the subtype check is not optional.
+	 */
+	if(pEvent->type == (wmGD.xrandr_base_evt + RRNotify)) {
+		if(((XRRNotifyEvent*)pEvent)->subtype == RRNotify_OutputChange)
+			HandleRROutputChangeNotify(pEvent);
+		return True;
+	}
+
+	return False;
+}
+
+/*
  * Updates client and icon placement data.
  * Called on XRandr screen change notification event.
  */
@@ -2828,8 +2853,21 @@ static void HandleRRScreenChangeNotify(XEvent *evt)
 	WmScreenData *pSD = GetScreenForWindow(evt->xany.window);
 	int iws;
 
+	/*
+	 * Fall back to the active screen rather than dropping the event. The
+	 * window a RandR event names is whichever one input was selected on,
+	 * and it is not required to resolve to a managed screen -- refusing to
+	 * act when it does not is how a screen change gets silently ignored.
+	 */
+	if(!pSD) pSD = ACTIVE_PSD;
 	if(!pSD) return;
-		
+
+	/*
+	 * Before anything else, and unconditionally: this is what updates
+	 * Xlib's cached screen dimensions. Skip it and DisplayWidth() keeps
+	 * reporting the size the screen was when mWizard connected, which is
+	 * the size every fallback path in the window manager then uses.
+	 */
 	XRRUpdateConfiguration(evt);
 
 	/*
@@ -2937,6 +2975,7 @@ static void HandleRROutputChangeNotify(XEvent *evt)
 {
 	WmScreenData *pSD = GetScreenForWindow(evt->xany.window);
 
+	if(!pSD) pSD = ACTIVE_PSD;
 	if(!pSD) return;
 
 	XRRUpdateConfiguration(evt);

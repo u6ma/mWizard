@@ -57,6 +57,12 @@ extern void HandleCShapeNotify (ClientData *pCD,  XShapeEvent *shapeEvent);
 extern Boolean HandleEventsOnClientWindow (ClientData *pCD, XEvent *pEvent);
 extern Boolean HandleEventsOnSpecialWindows (XEvent *pEvent);
 
+/*
+ * True if the event was an XRandR event and has been handled. Called from the
+ * main dispatch loop, ahead of any routing by window; see the note above it.
+ */
+extern Boolean HandleRandrEvent (XEvent *pEvent);
+
 
 extern void SetupCButtonBindings (Window window, ButtonSpec *buttonSpecs);
 extern Boolean WmDispatchClientEvent (XEvent *event);

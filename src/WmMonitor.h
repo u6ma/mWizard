@@ -179,15 +179,39 @@ int MonitorFromSpec(WmScreenData *pSD, const char *spec, int fromMon);
  * stores. Deliberately named rather than indexed, because the whole point of
  * the file is to survive being reloaded onto a differently ordered output list.
  */
+/*
+ * Rotation, as a plain index rather than a RandR bitmask, so that this header
+ * stays free of <X11/extensions/Xrandr.h> for the same reason output and crtc
+ * above are unsigned long. WmMonitor.c maps them to RR_Rotate_*.
+ */
+#define MONITOR_ROTATE_NORMAL	0
+#define MONITOR_ROTATE_LEFT	1	/* 90 degrees */
+#define MONITOR_ROTATE_INVERTED	2	/* 180 */
+#define MONITOR_ROTATE_RIGHT	3	/* 270 */
+#define MONITOR_ROTATE_COUNT	4
+
 typedef struct _WmMonitorConfig
 {
     char	*name;		/* output name; owned by the config */
     Boolean	enabled;
     Boolean	primary;
     int		x, y;
-    int		width, height;	/* mode dimensions */
+    int		width, height;	/* mode dimensions, *before* rotation */
     int		refresh;	/* whole Hz, 0 for "any mode this size" */
+    int		rotation;	/* MONITOR_ROTATE_* */
 } WmMonitorConfig;
+
+/* "normal", "left", "inverted", "right" -- the words xrandr(1) uses. */
+const char *MonitorRotationName(int rotation);
+
+/*
+ * The footprint a monitor occupies on the desk, which is its mode turned on
+ * its side when the rotation is 90 or 270. Everything that positions, hit
+ * tests or collides these has to use these rather than width/height, or a
+ * rotated monitor is laid out to the shape it would have had unrotated.
+ */
+int MonitorConfigWidth(WmMonitorConfig *cfg);
+int MonitorConfigHeight(WmMonitorConfig *cfg);
 
 /*
  * Reads the current configuration of every connected output, enabled or not,

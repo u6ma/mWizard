@@ -887,8 +887,27 @@ void InitWmGlobal (int argc, char *argv [], char *environ [])
 			if(!pSD->managed || !pSD->screenTopLevelW) continue;
 			if(!XtWindow(pSD->screenTopLevelW)) continue;
 
+			/*
+			 * On the root as well as on the shell.
+			 *
+			 * Selection is per window, and which window the events
+			 * then arrive on decides nothing now that the main
+			 * loop matches them by type -- but whether they arrive
+			 * at all still depends on having selected somewhere
+			 * that works. The root is the window RandR clients
+			 * conventionally select on and the one guaranteed to
+			 * outlive everything here; the shell is kept because
+			 * that is where this has always been done. Selecting
+			 * twice costs nothing and duplicate delivery is
+			 * harmless: UpdateMonitors() returns False when
+			 * nothing changed and the second event stops there.
+			 */
 			XRRSelectInput(wmGD.display,
 				XtWindow(pSD->screenTopLevelW),
+				RRScreenChangeNotifyMask |
+				RROutputChangeNotifyMask);
+
+			XRRSelectInput(wmGD.display, pSD->rootWindow,
 				RRScreenChangeNotifyMask |
 				RROutputChangeNotifyMask);
 		}
